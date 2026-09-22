@@ -1,0 +1,26 @@
+# Generated files and local editor state
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+/.vs/
+/.idea/
+/.vscode/
+*.sln
+*.suo
+*.user
+/Content/Developers/
+/Plugins/**/Binaries/
+/Plugins/**/Intermediate/
+
+# Art is shared as a separate ZIP; gameplay and levels stay in Git.
+/Content/Assets/
+
+# Local asset packages and DCC source files
+/AssetPackages/
+*.blend
+*.blend1
+*.fbx
+*.psd
+.DS_Store
+Thumbs.db

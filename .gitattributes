@@ -1,0 +1,8 @@
+* text=auto
+*.uasset binary
+*.umap binary
+*.ubulk binary
+*.uexp binary
+*.uproject text eol=lf
+*.ini text eol=crlf
+*.md text eol=lf

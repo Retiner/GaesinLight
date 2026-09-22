@@ -1,0 +1,312 @@
+{
+  "version": "20260922-225105",
+  "archive": "GaesinLight-Art-20260922-225105.zip",
+  "archiveSha256": "4214C283E9C81BA7D76CDE62E2DEE88EB7F90BC871F45B4D960F45C41A34F6FE",
+  "files": [
+    {
+      "path": "Content/Assets/Materials/M_Light_Cyan.uasset",
+      "bytes": 64097,
+      "sha256": "C6F2BEC2B8D15E062570680CF740E81D5DA69D0FA563E4BC419365B05F80779C"
+    },
+    {
+      "path": "Content/Assets/Materials/M_Light_Cyan_001.uasset",
+      "bytes": 64146,
+      "sha256": "F45BC51987AB8915C32B68E96A2C4AB6BCE8124CBA5870689F10DFABAC413203"
+    },
+    {
+      "path": "Content/Assets/Materials/M_Metal_Gunmetal.uasset",
+      "bytes": 62864,
+      "sha256": "2E7973FBA2AEE1708589E1C03E3E5DA3D24CAD9F3C1AB5212805736BC1DD9B73"
+    },
+    {
+      "path": "Content/Assets/Materials/M_Metal_Gunmetal_002.uasset",
+      "bytes": 63048,
+      "sha256": "8BBA6522A36B36636110BA185595EFF019D9858B1154B0D60E951C2D02978CC9"
+    },
+    {
+      "path": "Content/Assets/Materials/M_Metal_board.uasset",
+      "bytes": 64083,
+      "sha256": "59CD5798F75937E4FB9C937949E650419694BD22FE50C455D460A88EADE3BC49"
+    },
+    {
+      "path": "Content/Assets/Materials/M_Trim_Black.uasset",
+      "bytes": 62202,
+      "sha256": "A57916F9FC71E35F0EE7509036E2AB09634042758C3FED939327BC8FAF1850F6"
+    },
+    {
+      "path": "Content/Assets/Materials/board.uasset",
+      "bytes": 63611,
+      "sha256": "BF3F052CC1D351CE48224DDE842D0EDDCF256F8DD3CECD0AE8B21A18F22035CF"
+    },
+    {
+      "path": "Content/Assets/Materials/butten.uasset",
+      "bytes": 63742,
+      "sha256": "061CF03FBB65907D51EB1A28BC59C3FA502E5ED9A90D2C355E9D599BA1C07E4A"
+    },
+    {
+      "path": "Content/Assets/Materials/corner.uasset",
+      "bytes": 62326,
+      "sha256": "6C7CB59329E594AAE1BD56444E0A060F6D0E897520BD3995A7ED650881496A7B"
+    },
+    {
+      "path": "Content/Assets/Materials/crystal.uasset",
+      "bytes": 63518,
+      "sha256": "5A2381B1344FC736C3623827C8E9DB035CA604723AD41CB4AB935797945DF326"
+    },
+    {
+      "path": "Content/Assets/Materials/empty.uasset",
+      "bytes": 62157,
+      "sha256": "6EF3DD7C26FBC640082C17FC3DEA342B62DC46BF8F8D7BA517CD925666AE0560"
+    },
+    {
+      "path": "Content/Assets/Materials/glass.uasset",
+      "bytes": 64079,
+      "sha256": "AE20C3F8BFFCB5D4D1EE5E67A36BADA5875065BE06B6E95425BB1959A387D546"
+    },
+    {
+      "path": "Content/Assets/Materials/glass_filter.uasset",
+      "bytes": 63202,
+      "sha256": "77E200868C10F326745D3E7F500783D8E96A6B283C214A12884E10CC2C688F0D"
+    },
+    {
+      "path": "Content/Assets/Materials/housing.uasset",
+      "bytes": 62637,
+      "sha256": "7B3A23462C4BD596167A9C3297E5EA7E21B6F18F7F2356F5A7FA362F9C05FA40"
+    },
+    {
+      "path": "Content/Assets/Materials/pannel.uasset",
+      "bytes": 62815,
+      "sha256": "8BDFCCDDE37F04A890A85BED8216C32079460EECF165F6D272024B38FB7414CE"
+    },
+    {
+      "path": "Content/Assets/Materials/text.uasset",
+      "bytes": 63845,
+      "sha256": "366BBE4AFD6820E54A8C65F00BC7DD852642DC4578AF2525B117E23B6E989167"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_BarStand.uasset",
+      "bytes": 79846,
+      "sha256": "AD40BF0C0C21296DA1B3C109105FF038B33DD175DD7F99B48A437B2FCF79DE98"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Bar_part1.uasset",
+      "bytes": 77295,
+      "sha256": "35B0AA7BDDD70DFA2FAD191E77665348AD09D258BDD8376D26E73D3B47D7843A"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Bar_part2.uasset",
+      "bytes": 79678,
+      "sha256": "F9782D3C64A248A61F9C52D3119EB62B7C6A84E7AFC7FADA8538D95D27357B61"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Butten.uasset",
+      "bytes": 96987,
+      "sha256": "F8EDFAF43DE884BF2478553762567374E024455E683F50D6CC6F19F6F0B9F2F7"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Butten_Stand.uasset",
+      "bytes": 115499,
+      "sha256": "86E011981D8832B643FA47F06C33C8E2EA3426704487E63B2E7050CDE7BEF899"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Ceiling-Outlet.uasset",
+      "bytes": 116232,
+      "sha256": "4C12548A12BAB8A91ED7FDA32D5D7AA94DB774B14C877151C9FE43DEFD12D168"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Ceiling.uasset",
+      "bytes": 77405,
+      "sha256": "E5EDF0493011A808D22E357A40A2999183020601A88B0F4D12437822185E3126"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Ceiling_L.uasset",
+      "bytes": 78813,
+      "sha256": "5635BFD38E3BE3E8EBCB353A94C63700C47FC5EB30896DDA9DA67EB557E01925"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Ceiling_Straight.uasset",
+      "bytes": 77900,
+      "sha256": "F9E1BBD50883B6055DBB2C251FB045753C4274634FE57F2DBCD2BAA2303356FA"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Control_Panel.uasset",
+      "bytes": 113921,
+      "sha256": "3EBFEB8565479440F7AC1C6AC7A3BF25A7C1799D11C2A11406452A2E8CBC2BD3"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Door.uasset",
+      "bytes": 82462,
+      "sha256": "F0173EC1F67CA0701315333FAFA164CD985053E952C567DAAB7B90C0657F0E0C"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_DoorFrame_Light.uasset",
+      "bytes": 114915,
+      "sha256": "A01C0E8788035AFFED46291CCDCF5E84E36C822F22B4C12D777331E14F874A23"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Door_Contrl_Panel.uasset",
+      "bytes": 120424,
+      "sha256": "61A92BB91645EC4CDB564FACA1F7FE618EFC411B4AADAC3CED81E807B99D9670"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Element_Chain.uasset",
+      "bytes": 85186,
+      "sha256": "FAD4FC8177E3507D8BE280E47BE8FCE1105B0E6144CE9615100DEE2DFEF4549F"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Element_Panel.uasset",
+      "bytes": 120223,
+      "sha256": "3BECE7C33E6E811B8CC516976DC189013824C21C28DA7420F9FE967466F5F666"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Element_Plain.uasset",
+      "bytes": 221987,
+      "sha256": "A3CC426220CD2EA6AEA808AEC4201B93A640FA584FD0A286F0C94201F835FFEF"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Flashlight.uasset",
+      "bytes": 99706,
+      "sha256": "BDDAFAC423423636C6BE8DFCF321C52F9ADF9A1C7EE2922C6204219BDF68B52E"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Flashlight_Filter.uasset",
+      "bytes": 82494,
+      "sha256": "50933896965EB7B1959837B207577B22BBE52DD9667A23F2F3F1A6C716B077A7"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Floor_Grate.uasset",
+      "bytes": 90198,
+      "sha256": "1CB757FFD089824116654EF00D900FDA281515B43C420E79000776670A2B4EF4"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Floor_Light.uasset",
+      "bytes": 90003,
+      "sha256": "70DFB36B3DF53A2346EA9C3A9F62D05CC461837BE3547B589230C97B4841EB5C"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Floor_Plain.uasset",
+      "bytes": 81230,
+      "sha256": "974391A7D6C490D5441EA9D128E16EB37A03EC09A0941B488B7606D05BC411A6"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Floor_Plain_Light.uasset",
+      "bytes": 84858,
+      "sha256": "85EC2D5C292821A0656B6953601E396FDFFDEBD5A1507FF1FE3CF1F3329A140E"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Housing1.uasset",
+      "bytes": 76665,
+      "sha256": "BED6549A5ADA6B2BF74F1598B863E2FD42676F478A6D89C9ED691C57F994892E"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Housing2.uasset",
+      "bytes": 76813,
+      "sha256": "E7A18728841CF24D17CEAA3477DC4C98A654E2EAD20E19D874747E1EFC652BD3"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Light_BarStand.uasset",
+      "bytes": 86933,
+      "sha256": "E66AD63B89BAD70C8E4F79844DE2FA951A46C849C32519F54B32D44BAE176E02"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Pillar.uasset",
+      "bytes": 84660,
+      "sha256": "0B04878C094B6A4432FD5358C195DB5520BC3DC628F56953632F730E60136387"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Pillar_Light.uasset",
+      "bytes": 89366,
+      "sha256": "98A4AA82C61B5A314A26A5BBE351AA6FB62127B792C623234F3C5E20329552FB"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Pillar_Light_Slim.uasset",
+      "bytes": 89283,
+      "sha256": "E2EEF4B267C150AB9D31C9FE7E9C1B1524198A7A345BE78C50739C2596FC505D"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Pillar_Slim.uasset",
+      "bytes": 84691,
+      "sha256": "0A9AF9A86477367850E18445AA7D5ACC828DBA6AB204ECB2A559F40E9FD356BB"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Pressure_Plate1.uasset",
+      "bytes": 170057,
+      "sha256": "3EFAEBF6DB897B600C00A0B6EE50CA6DC9E636EBAF07FEF868D79AFE8B632882"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Pressure_Plate2.uasset",
+      "bytes": 95476,
+      "sha256": "87BD9E1DA0D231A7F0538EE192227E7B195531795CD527462AE3EA297D3119A1"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Stairs_Light.uasset",
+      "bytes": 96943,
+      "sha256": "2BFC7AA667A5010E8B43C64AF6CE8AAF265B4BDBB221B482CCA9B18E083F740E"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light.uasset",
+      "bytes": 110986,
+      "sha256": "D1A89AC537AAB421E8262BAC883BD045283CD8CDF02F8D3A160FCCFEED6FFF51"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Cross.uasset",
+      "bytes": 114391,
+      "sha256": "135F6506114B9E7E7CEDCA42B4964A896FA08CE91913548114855B75E818BD4D"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_L.uasset",
+      "bytes": 116609,
+      "sha256": "D7998A9A769CB41D0526F21D2FDB4663F980C10ADF25FF12C7118B32F8201883"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Plain_Half1.uasset",
+      "bytes": 142281,
+      "sha256": "167A18638D4D5C0E9719CFCE1184E1673A8297DF21066E09B77C1CB84F7C5FC1"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Plain_Half2.uasset",
+      "bytes": 141237,
+      "sha256": "6E823AF669B277A461F45CD9224F6A54EB8BEF49A005D790D176299324CB93C9"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Short.uasset",
+      "bytes": 114634,
+      "sha256": "F49571FA85B0F46E63A0FFF8E6705DFF5526B9CAC8707CB9DE56F9E1EEB27B3B"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Straight.uasset",
+      "bytes": 126535,
+      "sha256": "D603BCF26935E70A6995DBC37385670168F3919CA04A7A6C73194B2700A69F9B"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Straight_Half1.uasset",
+      "bytes": 148683,
+      "sha256": "5AAECB01C6B6593FD742E803EF83A5D30A0E5CC8EAB09F79D89F782702E8172D"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_Straight_Half2.uasset",
+      "bytes": 148764,
+      "sha256": "32E86A1886C5C7FB21E9AB9E5426C72EEB2B557062A95E32651C8DC695FA6710"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Light_T.uasset",
+      "bytes": 116571,
+      "sha256": "68A3EC1B9B564B27D35D401CB3126AA2E877B7C5A186171853FE10569EF28F47"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Plain.uasset",
+      "bytes": 122900,
+      "sha256": "37C371E674E4549CDFCF3F291422A166E7662CE1F827FC3E95CBE23FF023E7CB"
+    },
+    {
+      "path": "Content/Assets/StaticMeshes/SM_Wall_Window.uasset",
+      "bytes": 162636,
+      "sha256": "1C1F9B992320BE0DCD434CE49A3DF18A341A3A65A53DE5F9738EFFB29444F286"
+    },
+    {
+      "path": "Content/Assets/Textures/.gitkeep",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    }
+  ]
+}
