@@ -1,50 +1,142 @@
 # GaesinLight 프로젝트 — AI 작업 컨텍스트
 
-RGB 손전등 퍼즐 게임. UE 5.8. 이 파일은 이전 세션(C:\unreal\Gesin에서 작업)에서 만든 내용을 정리한 것 — 새 세션 시작 시 먼저 읽고 시작할 것.
+RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작할 것.
+레벨 제작자용 상세 매뉴얼은 `README.md`에 있음 (이 파일은 AI / 개발 이어가기용 요약 + 구현 메모).
 
-## 빛 감지 시스템
+---
 
-- **BP_Charactor**(플레이어): `SpotLight` 위치에서 13개 지점(중심 1 + 내부링 4개@40%반경 + 외부링 8개@100%반경)으로 매 틱 레이캐스트. `SpreadRadius`(퍼짐 범위)/`LightLength`(사거리) 변수 사용. `CurrentHit`/`LastLitActor`(둘 다 Actor 배열)로 diff 계산해서 `LightActor`/`UnLightActor` 호출. `IA_Red`/`IA_Green`/`IA_Blue`로 `CurrentColor`(손전등 색) 전환.
-- **BP_Light**(맵 배치 광원): 같은 13포인트 시스템 포팅됨. `LightColor` enum(Red/Blue/Green 3색)만 지원.
-- **LightActor/UnLightActor**: `IsValid` + `DoesImplementInterface(BPI_LightInteractable)` 체크 후 `AddColorContribution`/`RemoveColorContribution` 인터페이스 메시지 전송.
-- **색 혼합 버그 수정 완료**: 계속 비추는 중 색 바꿔도 반영되도록 `LightActor`를 매 틱 무조건 호출하게 고침 (예전엔 "새로 비춘 것"만 호출해서 색 안 바뀌는 버그 있었음).
+## 1. 블루프린트 목록과 인스턴스 설정 (사용 매뉴얼 요약)
 
-## BP_AvilityBlock (능력 블록) — 6색 전부 구현 완료
+### 1-0. 신호 구조
+- 송신: BP_Button, BP_PressurePlate → `Targets`(Actor 배열, 스포이드로 지정)에 `BPI_Activatable`의 `Activate` / `Deactivate` 메시지 전송. 상태가 바뀔 때만 보냄. 인터페이스 메시지라 BPI_Activatable 미구현 액터나 None이 들어 있어도 오류 없이 무시됨.
+- 수신: BP_Activate를 부모로 하는 BP_Door, BP_Light, BP_AvilityBlock.
+- 공통 수신 설정 `RequiredCount`(기본 1): 켜진 신호 수(`ActiveCount`)가 이 값 이상이면 `OnActive`, 아래로 내려가면 `OnDeactive`. 2 이상이면 AND 조건.
+- 버튼과 발판은 같은 신호를 보내므로 한 수신 장치에 섞어서 연결 가능(합산). 예: 문 `RequiredCount=2` + Togle 버튼 + 발판 = 버튼 켜고 발판 밟아야 열림. AND에 `ReOn`은 즉시 꺼져서 사용 불가.
 
-**공통 변수**: `ReactColor`(반응할 색), `Move`(Fixed/Physics/PatrolReturn/PatrolRotation/PatrolRestart), `MovePoint`(Patrol 경유지 배열), `MoveSpeed`, `IsUserStaticMesh`, `UserStaticMesh`, `BaseSize`(내부용, 편집 대상 아님).
+### 1-1. BP_Charactor — 플레이어
+- 무엇: 손전등을 든 플레이어. 1·2·3 키 색 전환(`IA_Red/Green/Blue`), F 키 상호작용(`IA_Relation`, 버튼 누르기 / 블록 잡기·놓기).
+- 인스턴스 설정: 없음 (손전등 `LightLength`는 BP 내부 고정값).
+- 주의: 손전등 메시는 반드시 NoCollision (BlockAll이면 보라 Physics 블록이 WorldStatic으로 보고 부딪혀 튕김).
 
-**능력 발동 흐름**: `ChargeAlpha` 0→1 차오르면(색마다 `ChargeTime` 다름, Green은 0.2초로 빠름) `AvilityStart` 호출 → `HoldRemain` 카운트다운(빛 비추는 동안 갱신) → 0 되면 `AvilityEnd` + CoolTime 진입.
-
-| 색 | 변수 | 동작 |
+### 1-2. BP_Button — 버튼 (송신, BPI_Interact)
+| 인스턴스 설정 | 설명 | 기본값 |
 |---|---|---|
-| Red(폭발) | `InnerRadius`/`OuterRadius`/`ExplosionForce`/`PushForce`/`Exp_PlayerForce` | `Move=Physics`면 자신이 밀려남(Push), 아니면 주변을 밀어냄(Explosion) |
-| Blue(당기기) | `MaxPullSpeed`/`PlayerMaxPullSpeed` | `Move=Physics`면 블록이 끌려옴(BlockPull), 아니면 플레이어가 끌려감(PlayerPull) |
-| Green(정지) | (튜닝 변수 없음) | `Move=Physics`면 SimulatePhysics 끔, Patrol이면 이동 멈춤. `Freeze`/`Unfreeze` 함수 |
-| Yellow/SkyBlue(크기 변화) | `ChangeSpeed`(공통) + `UpScale`/`DownScale` | 아래 참고 |
-| Purple(반투명 통과) | (튜닝 변수 없음, Opacity 목표값 고정) | 아래 참고 |
+| `Targets` | 신호 받을 장치 | 비어 있음 |
+| `ButtonMode` | `JustOn`(한 번 켜고 고정) / `Togle`(켜짐↔꺼짐) / `ReOn`(펄스: Activate 직후 Deactivate) / `Timed`(`TimedDuration`초 후 자동 꺼짐) | `JustOn` |
+| `TimedDuration` | Timed 지속 시간 | 10 |
+| `UseAsset` + `UseStaticMesh` | 외형 메시 교체 (Construction Script, 메시에 콜리전 필요) | 꺼짐 / 없음 |
+- 예시: JustOn+문=영구 출구 / ReOn+Rotate 광원=색 회전 퍼즐 / Timed+문=타임어택.
+- ReOn(펄스)이 필요한 이유: BP_Activate는 `ActiveCount`로 세기 때문에 Activate만 반복하면 카운트만 쌓이고 `OnActive`가 다시 안 불림. 즉시 Deactivate해서 카운트를 되돌려야 매번 반응함.
 
-**Yellow/SkyBlue 상세**: `Y_UpScale(Alpha)`/`SB_DownScale(Alpha)` 함수 = `BaseSize × Lerp(1.0, UpScale 또는 1/DownScale, Alpha)`. EventGraph에 Timeline(Alpha 트랙, 0→0.4초) 추가, `Update`가 이 함수 호출. Custom Event `Grow`(→Timeline `Play`), `Y_Reset`/`SB_Reset`(→Timeline `Reverse`)를 `AvilityStart`/`AvilityEnd`에서 호출. **차징 중엔 크기가 안 변하고 차징 완료 후부터 서서히 변함** — 이게 `ChargeAlpha`를 직접 안 쓰고 독립 Timeline을 쓰는 이유(ChargeAlpha로 하면 차징 중에 이미 커지는 문제 있었음).
+### 1-3. BP_PressurePlate — 발판 (송신)
+| 인스턴스 설정 | 설명 | 기본값 |
+|---|---|---|
+| `Targets` | 신호 받을 장치 | 비어 있음 |
+- 감지: BP_Charactor 또는 BP_AvilityBlock(자식 포함)이 Trigger 박스에 하나라도 있으면 켜짐.
+- 예시: 발판+문 / 블록 올려두기 / 발판 2개 + 문(`RequiredCount=2`) = AND 퍼즐.
 
-**Purple 상세**: `M_BlockBase` 머티리얼을 Translucent + `Opacity` 파라미터로 변경. **Nanite가 Translucent 블렌드모드를 지원 안 해서**, `M_BlockBase`를 쓰는 스태틱메시(`SM_Element_Plain`, `SM_Element_Chain` 등)는 Nanite 꺼야 함(Nanite Settings > Enable Nanite Support 해제) — 이미 이 두 개는 처리함, 다른 메시가 더 있으면 동일하게 처리 필요. `P_Collision` 함수: `GetCollisionProfileName` 저장 → `Move==Physics` 분기 → Physics면 Pawn/WorldDynamic/PhysicsBody만 Ignore, 아니면 그 3개+WorldStatic도 Ignore. `P_CollisionReset`: `SetCollisionProfileName`(저장값)으로 한 번에 복구. **Visibility 채널은 항상 안 건드림**(빛 감지 레이캐스트가 이 채널을 쓰기 때문).
+### 1-4. BP_Door — 문 (수신)
+| 인스턴스 설정 | 설명 | 기본값 |
+|---|---|---|
+| `RequiredCount` | 필요한 신호 수 | 1 |
+- `OpenDistance`(문짝 이동 거리, 100), `OpenTime`(열리는 시간, 1초)은 BP 내부 고정값.
+- 좌우 문(LeftDoor/RightDoor) + DoorFrame, Timeline Play/Reverse라 도중에 꺼져도 자연스럽게 되돌아감.
 
-## 문서화
+### 1-5. BP_Light — 맵 광원 (수신)
+| 인스턴스 설정 | 설명 | 기본값 |
+|---|---|---|
+| `LightColor` | 기본 색 Red/Blue/Green (Construction Script에서 `LightColorValue`/`FirstColorValue` 설정) | `Red` |
+| `LightActiveMode` | `Default`(항상 켜짐, 신호 무시) / `ON/OFF`(평소 꺼짐, 신호 동안 켜짐) / `ChangeColor` | `Default` |
+| `ChangeColor` | `Red`/`Green`/`Blue`(신호 켜지면 그 색, 꺼지면 원래 색) / `Rotate`(켜질 때마다 R→G→B 회전, 꺼짐 무시 → ReOn 버튼과 사용) | `Rotate` |
+| `RequiredCount` | 필요한 신호 수 | 1 |
+| `LightLength` | 판정 거리 | 5000 |
+| SpotLight `Outer Cone Angle` | 판정 원뿔 각도 (SpreadRadius / 감지 박스 자동 계산) | 컴포넌트 값 |
+- `PlayerRange`(8000, 플레이어가 이 거리 안일 때만 판정), `ScanInterval`(0.1초, 판정 주기)은 BP 내부 고정값.
+- 맵 광원 단독으로는 블록 능력 발동 안 함 — 의도된 설계. 손전등과 색을 섞는 용도.
+- 예시: 빨강 광원 + 파랑 손전등 = 보라 통과 / ON/OFF+Togle 버튼 = 스위치 조명 / ChangeColor Rotate + ReOn 버튼 = 색 금고.
 
-`README.md`, `README.txt`에 위 옵션/능력 설명이 사용자 대상으로 정리되어 있음(이 파일과 중복 있음, 이 파일은 AI/개발 이어가기용, README는 팀 공유용).
+### 1-6. BP_AvilityBlock — 능력 블록 (수신)
+| 인스턴스 설정 | 설명 | 기본값 |
+|---|---|---|
+| `ReactColor` | All / Red / Blue / Green / Purple / Yello / SkyBlue | `All` |
+| `Move` | Fixed / Physics / PatrolReturn / PatrolRotation / PatrolRestart | `Fixed` |
+| `MovePoint`, `MoveSpeed` | Patrol 경유지, 속도 | 비어 있음 / 500 |
+| `WaitTrigger` | 켜면 신호 받을 때까지 Patrol 대기, 신호 꺼지면 그 자리에서 멈춤 | 꺼짐 |
+| `RequiredCount` | WaitTrigger용 필요 신호 수 | 1 |
+| `IsUserStaticMesh` + `UserStaticMesh` | 외형 교체 (발판·벽으로 활용) | 꺼짐 / 없음 |
+| Red: `InnerRadius`/`OuterRadius`/`ExplosionForce`/`PushForce`/`Exp_PlayerForce` | 폭발 | 200 / 1250 / 2500 / 2000 / 2000 |
+| Blue: `MaxPullSpeed`/`PlayerMaxPullSpeed` | 당기기 | 3000 / 2000 |
+| Yello/SkyBlue: `ChangeSpeed`/`UpScale`/`DownScale` | 크기 변화 | 0.3 / 2 / 2 |
+| Green / Purple | 튜닝 변수 없음 | - |
+- `MovePoint`: Show 3D Widget 벡터 배열, 블록 로컬 좌표. BeginPlay 쯤 `GetTransform → TransformLocation`으로 `WorldPatrolPoints`에 변환(이후 블록이 움직여도 경로 고정). `VInterpTo_Constant(MoveSpeed)`로 `PatrolIndex` 순서대로 이동.
+- 움직이는 발판/벽은 별도 BP 없이 이 블록으로 만듦: UserStaticMesh + Patrol + WaitTrigger + 버튼/발판 Targets.
+- 예시: 버튼으로 출발하는 엘리베이터 / 초록으로 멈추는 발판 / 보라 벽 / 노란 계단 / 파랑으로 끌어와 발판 누르기.
+- 충전·유지·쿨타임은 인스턴스 설정 불가 (`AvilityConfig` 함수에 색별 고정).
 
-## Git / 배포 구조
+### 1-7. 기타 애셋
+- `BP_Activate`: 수신 부모. 직접 배치하지 않음.
+- `BP_LightBlock`: BP_AvilityBlock으로 가는 리다이렉터(이름 변경 흔적). 사용 안 함.
+- 인터페이스: `BPI_Activatable`(Activate/Deactivate), `BPI_Interact`(Interact, GetInteractText), `BPI_LightInteractable`(Add/RemoveColorContribution).
+- Enum: `EN_ButtonMode`, `EN_LightActiveMode`, `EN_ChangeColor`, `EN_LightColor`, `EN_ColorState`, `EN_BlockMove`, `EN_Avility`.
 
-- 저장소: `https://github.com/Retiner/GaesinLight.git`, 이 폴더(`C:\unreal\GaesinLight`)가 로컬 클론이고 `origin/main`과 동기화된 상태.
-- `Content/Assets/`(Materials, StaticMeshes, Textures)는 **git 제외** — 구글 드라이브로 별도 배포(`ArtManifest.json`으로 관리), `.gitignore`에 `/Content/Assets/` 있음. 새 아트 애셋 받으면 이 폴더 구조 그대로 채워 넣을 것.
-- `Config/*.uproject`는 프로젝트마다 달라서 git으로 안 섞음. **단 예외**: `r.VolumetricFog.HistoryWeight=0`을 `Config/DefaultEngine.ini`의 `[ConsoleVariables]` 섹션에 추가해서 커밋함 (빛이 움직일 때 잔상/고스팅 생기던 문제 수정 — 원래 있던 `Gesin` 프로젝트 설정과 맞춘 것).
-- 커밋 전엔 항상 `git status`로 의도치 않은 변경(에디터 열어두면 자동저장되는 애셋 등)이 섞였는지 확인할 것.
+---
 
-## 알려진 미해결 항목
+## 2. 구현 메모
 
-- `Content/Assets/Materials/M_Metal_Gunmetal_002.uasset` 파일 누락 — 드라이브에서 재다운로드 필요.
-- 엔진 자체 파일(`FBXLegacyPhongSurfaceMaterial`, 언리얼 설치 폴더 안) 수정 건은 git으로 절대 안 옮겨짐 — 상대방 컴퓨터에서 FBX 메시가 하얗게/까맣게 보이는 증상 나오면 엔진 파일 자체를 직접 고쳐야 함(프로젝트 문제 아님).
-- 플레이어가 Physics 블록 직접 드는 기능, Red 폭발 힘 세기 튜닝, 디버그 Print String 정리, 손전등 빛샘(Lighting Channels), FlashBeam RectLight 여부 — 전부 미착수.
+### 2-1. 신호 시스템 (BP_Activate)
+- `Activate` → `ActiveCount++` → `ActiveCount >= RequiredCount` 이고 `IsActive == false`면 `IsActive = true` → `OnActive`. Deactivate는 반대.
+- 자식은 `OnActive`/`OnDeactive`를 함수 오버라이드(Parent 호출 노드 유지). Timeline은 함수에 못 넣으므로 함수에서 이벤트그래프의 Custom Event 호출.
+- 송신 쪽 `SendActivate`/`SendDeactivate` = ForEach(Targets) → Activate/Deactivate (Message).
+- 발판 `UpdatePressure`: Begin/End Overlap마다 `GetOverlappingActors` 재집계 → 이전 상태(`IsOn`)와 다를 때만 송신. Trigger 박스는 움직이는 윗판의 자식이 아니라 형제로 둘 것(자식이면 깜빡임).
 
-## 작업 스타일 (이전 세션 기준)
+### 2-2. 빛 감지
+- BP_Charactor(손전등): `SpotLight` 위치에서 13점(중심 1 + 40% 링 4 + 100% 링 8) 매 틱 레이캐스트. `CurrentHit`/`LastLitActor` diff → `LightActor`/`UnLightActor`. 계속 비추는 중 색 변경이 반영되도록 `LightActor`는 매번 호출.
+- BP_Light(맵 광원) — 최적화 구조:
+  ```
+  BeginPlay → Set Timer by Event(LightScan, ScanInterval, Looping, Initial Start Delay Variance = ScanInterval)
+  LightScan:
+    TurnOn? ─아니오→ ClearLitActor
+    GetDistanceTo(PlayerPawn) ≤ PlayerRange? ─아니오→ ClearLitActor
+    Set Candidates ← LightSencer.GetOverlappingActors(BP_AvilityBlock)   (순수 노드라 변수에 캐싱)
+    Length(Candidates) > 0? ─아니오→ ClearLitActor
+    Clear CurrentHit → ForEach(Candidates) → IsLit(블록) true면 CurrentHit.AddUnique
+    Completed → 기존 diff(UnLightActor / LightActor) → Set LastLitActor
+  ```
+  - `IsLit(Target)`: Start=SpotLight 위치, Center/Extent=`GetActorBounds`(Extent×0.8). 로컬 배열 `Dirs`(중심 (0,0,0) + (±1,±1,±1) 8개)를 돌며 Point=Center+Dir×Extent → 거리 ≤ LightLength AND `Dot(Normal(Point−Start), Forward) ≥ DegCos(OuterConeAngle)` → LineTrace(Visibility) HitActor==Target이면 즉시 Return true. 전부 실패 → Return false.
+  - Construction Script: `SpreadRadius = LightLength × DegTan(OuterConeAngle)`, 감지 박스 `LightSencer`(SpotLight 자식) Extent=(L/2, R, R), 위치=(L/2,0,0). ON/OFF 모드는 여기서 `TurnOn=false` + `SetVisibility`.
+  - 감지 박스 Object Type = `LightCencer` 커스텀 채널(DefaultEngine.ini, 기본 Overlap). 보라 능력이 WorldDynamic 등을 Ignore해도 감지되게 하려고 전용 채널 사용. 박스 응답은 WorldDynamic / PhysicsBody만 Overlap.
+  - 예전 13점 격자 방식(BuildTrace, TracePoint, RingCount, PointPerRing)은 먼 거리 빈틈 문제로 폐기됨.
+- LightActor/UnLightActor: `IsValid` + `DoesImplementInterface(BPI_LightInteractable)` 후 `AddColorContribution(Source, Color)`/`RemoveColorContribution`. 기여는 Source별로 덮어씀(누적 아님).
 
-- 사용자는 Blueprint를 배우는 중 — 직접 그래프를 만들고, 만든 후 K2Node 텍스트를 붙여넣어서 검증받는 방식으로 작업함. 대신 만들어주지 말고, 목적→노드 역할→구체적 행동 순서로 설명하고 한 번에 한 단계씩 진행할 것.
+### 2-3. BP_AvilityBlock
+- 능력 흐름: `ChargeAlpha` 0→1(색마다 ChargeTime, Green 0.2초) → `AvilityStart` → `HoldRemain` 카운트다운(빛 받는 동안 갱신) → 0이면 `AvilityEnd` + CoolTime.
+- Trigger: `AvilityTick`에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵. BeginPlay에서 `TriggerPaused = WaitTrigger`, OnActive→false, OnDeactive→true.
+- Yellow/SkyBlue: `BaseSize × Lerp(1, UpScale 또는 1/DownScale, Alpha)`. 독립 Timeline(0→0.4초)을 `Grow`(Play) / `Y_Reset`·`SB_Reset`(Reverse)로 구동. ChargeAlpha를 직접 쓰면 차징 중에 커지는 문제가 있어서 분리함.
+- Purple:
+  - `M_BlockBase` = Translucent + `Opacity` 파라미터. Cast Dynamic Shadow as Masked 켜야 그림자 생김(Translucent는 기본적으로 그림자 없음). Nanite는 Translucent 미지원이라 이 머티리얼 쓰는 메시(`SM_Element_Plain`, `SM_Element_Chain` 등)는 Nanite 끔.
+  - `P_Collision`: 프로필 이름 저장 → Physics면 Pawn/WorldDynamic/PhysicsBody Ignore(WorldStatic은 유지해서 바닥 안 뚫게), 아니면 WorldStatic까지 Ignore. `P_CollisionReset`: 저장한 프로필로 복구. Visibility 채널은 절대 안 건드림.
+  - SafeReset(EventGraph Custom Event): AvilityEnd 보라 경로는 `Set PurpleResetPending(true) → SafeReset`. SafeReset은 `PurpleResetPending` 확인 → `BoxOverlapActors`(Bounds×0.9, Pawn만, 자신 제외) → 겹치면 Delay 0.2 후 재호출, 비면 `PurpleResetPending=false → P_CollisionReset → P_Reset`. AvilityStart 보라 경로 맨 앞에서 `PurpleResetPending=false`(대기 취소).
+  - 보라 Physics 블록을 떨어뜨릴 바닥은 일반 Static Mesh(WorldStatic)가 아니라 BP_AvilityBlock(UserStaticMesh, Fixed)으로 깔아야 함 — WorldStatic은 유지, 블록끼리는 Ignore라서.
+  - Object Types를 Pawn만 두는 이유: 블록끼리 겹치면 서로를 기다려 무한 유지(교착)됨. 블록끼리는 메시 Physics의 Max Depenetration Velocity 100으로 천천히 분리.
+  - 블록 안에서는 손전등 레이가 블록을 못 맞힘(콜리전 내부 시작) → 통과 중 HoldRemain이 끝날 수 있음 → SafeReset이 이를 커버.
+
+### 2-4. 디테일 패널 카테고리 순서
+자식 BP의 Details 카테고리 순서는 자식 BP의 My Blueprint 카테고리 정렬을 따름. 부모 카테고리를 위로 올리려면 자식에서 "Show Inherited Variables" 켜고 부모 카테고리를 맨 위로 드래그.
+
+---
+
+## 3. Git / 배포 구조
+
+- 저장소: `https://github.com/Retiner/GaesinLight.git`, 이 폴더(`C:\unreal\GaesinLight`)가 로컬 클론.
+- `Content/Assets/`(Materials, StaticMeshes, Textures)는 git 제외 — 구글 드라이브로 별도 배포(`ArtManifest.json`), `.gitignore`에 `/Content/Assets/`. 새 아트 애셋은 같은 폴더 구조로 채울 것.
+  - 따라서 `M_BlockBase`의 Cast Dynamic Shadow as Masked 설정도 git으로 안 옮겨짐 — 팀원에게 따로 알릴 것.
+- `Config/DefaultEngine.ini`에서 공유해야 하는 것: `r.VolumetricFog.HistoryWeight=0`(안개 잔상 방지), `LightCencer` 콜리전 채널(맵 광원 감지).
+- 커밋 전엔 항상 `git status`로 의도치 않은 변경(에디터 자동저장 애셋 등) 확인.
+- 사용자가 커밋을 원하지 않을 때가 많음 — 명시적으로 요청할 때만 커밋.
+
+## 4. 작업 스타일
+
+- 사용자는 Blueprint를 배우는 중 — 직접 그래프를 만들고 K2Node 텍스트를 붙여넣어 검증받는 방식. 대신 만들어주지 말 것.
+- 설명은 목적 → 노드 역할 → 구체적 행동 순서, 이유 포함, 한 번에 한 단계(하위 단계로 쪼개서). 세션이 길어져도 설명을 압축하지 말 것.
+- 사용자가 스스로 변형(더 나은 방식)을 설계하는 경우가 많음 — 타당하면 받아들이고 검증.
 - 한국어로 대화.
