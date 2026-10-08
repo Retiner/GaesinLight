@@ -36,13 +36,15 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 - 감지: BP_Charactor 또는 BP_AvilityBlock(자식 포함)이 Trigger 박스에 하나라도 있으면 켜짐.
 - 예시: 발판+문 / 블록 올려두기 / 발판 2개 + 문(`ChannelRequired 0→2`) = AND 퍼즐.
 
-### 1-3-1. BP_Trigger — 통과 트리거 (송신, 2026-10-08 추가·동작 확인)
+### 1-3-1. BP_Trigger — 통과 트리거 + 레벨 이동 (송신, 2026-10-08 추가·동작 확인)
 | 인스턴스 설정 | 설명 | 기본값 |
 |---|---|---|
 | `SignalTargets` | 신호 받을 장치 + 채널 (`S_SignalTarget` 배열) | 비어 있음 |
+| `NextLevel` | 지나가면 열 레벨 (비면 신호만) | 비어 있음 |
 - 루트 = `TriggerBox`(Box Collision, Hidden in Game, OverlapAllDynamic). 크기는 액터 Scale.
 - `OnComponentBeginOverlap(TriggerBox)` → Branch(`OtherActor == GetPlayerCharacter` AND NOT `Triggered`) → `Triggered = true` → ForEach(SignalTargets) → Break → `Activate`(Message). 플레이어만, 한 번만, Deactivate는 보내지 않음(영구 켜짐).
 - 용도: 스테이지 전환 — 통로 트리거① → 출구 문 Ch1(잠금) + 입구 문 Ch0(열기), 입구 안쪽 트리거② → 입구 문 Ch1.
+- 레벨 이동(2026-10-08 추가·동작 확인): `NextLevel`(World Soft Object Reference, Instance Editable — 타입 목록에서 안 보여서 `Open Level (by Object Reference)`의 Level 핀 Promote to Variable로 만듦). ForEach Completed → Branch(`IsValidSoftObjectReference(NextLevel)`) → `GetPlayerCameraManager.StartCameraFade`(0→1, 0.5초, Hold) → `Delay 0.5` → `OpenLevel(by Object Reference)`. 비어 있으면 신호만. 도착 맵의 PlayerStart + GameMode Override(BP_GameMode) 필요. 이동 시 플레이어 재생성 → 획득 상태는 작업 6 GameInstance에 둘 것.
 
 ### 1-3-2. BP_Respawn — 블록 되돌리기 구역 (2026-10-08 추가·동작 확인)
 - 인스턴스 설정 없음(크기 = 액터 Scale). 루트 `ResetBox`(Box Collision, Hidden in Game, Custom: Query Only, Object Type `LightCencer`, WorldDynamic/PhysicsBody만 Overlap — 보라 블록은 WorldDynamic/PhysicsBody를 Ignore하지만 LightCencer는 안 건드리므로 잡힘).
