@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>레벨 제작 가이드 · GaesinLight</title><link rel="stylesheet" href="assets/guide.css"></head>
+<body>
+<div class="rgb-bar"></div>
+<header><div class="wrap">
+<div class="eyebrow">GaesinLight · 레벨 제작 참고서 · 2026-10-25</div>
+<h1>레벨 제작 가이드</h1>
+<p class="lead">RGB 손전등으로 블록을 비춰 능력을 발동시키고, 버튼·발판·문을 연결해 퍼즐을 만드는 게임입니다. 이 문서는 레벨에 블루프린트를 배치하고 Details 패널에서 설정하는 방법을 설명합니다.</p>
+<p class="muted">스테이지 흐름: 맵에서 손전등·색 필터를 주움(<a href="#pickup">줍기</a>) → 퍼즐을 풀며 진행 → 통로의 트리거로 다음 맵으로 이동(<a href="#trigger">트리거</a>). 맵 끝에서 가진 필터를 테이블에 반납하면 출구가 열림(<a href="#returntable">반납 테이블</a>).</p>
+<p class="muted">읽는 법: 표의 변수는 레벨에 배치한 인스턴스의 Details 패널에서 바꿀 수 있는 값입니다. Details 패널에 보이지 않는 변수는 내부 계산용이라 건드릴 필요가 없습니다. 각 장 끝에 "이렇게 만들 수 있어요" 예시가 있습니다.</p>
+</div></header>
+
+<nav class="local-toc" aria-label="이 문서 목차"><div class="wrap">
+<a class="toc-key" href="#channels">신호 채널표</a>
+<a href="#signal">0 신호 연결</a>
+<a href="#player">1 플레이어</a>
+<a href="#button">2 버튼</a>
+<a href="#plate">3 발판</a>
+<a href="#trigger">3-1 트리거</a>
+<a href="#respawn">3-2 되돌리기 구역</a>
+<a href="#pickup">3-3 줍기</a>
+<a href="#returntable">3-4 반납 테이블</a>
+<a href="#door">4 문</a>
+<a href="#light">5 맵 광원</a>
+<a href="#mirror">5-1 거울</a>
+<a href="#block">6 능력 블록</a>
+<a href="#hatch">7 다락문</a>
+<a href="#examples">8 조합 예시</a>
+<a href="#settings">9 설정·주의</a>
+</div></nav>
+
+<main class="wrap">
+<div class="guide-tools"><label for="guide-search">찾기</label><input id="guide-search" type="search" placeholder="Channel 1, StartOpen, 강제 닫기, MoveOffset…" autocomplete="off"><button id="clear-search" type="button">검색 지우기</button><button id="expand-all" type="button">모두 펼치기</button><button id="collapse-all" type="button">모두 접기</button></div>
+<p id="search-result" class="search-result" role="status" aria-live="polite"></p>
+
+<!-- ===================== 신호 채널 ===================== -->
+<details class="chapter" id="channels" open><summary><span class="chapter-number">★</span>신호 채널 한눈에 보기 (현재 버전)</summary><div class="chapter-body">
+<p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>)의 <code>SignalTargets</code>(트리거는 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
+<div class="scroll"><table><thead><tr><th>받는 장치</th><th>Channel</th><th>기능</th><th>신호 켜짐</th><th>신호 꺼짐</th></tr></thead><tbody>
+<tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">0</td><td>열기</td><td>열림</td><td>닫힘</td></tr>
+<tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">1</td><td><a href="#door-lock">강제 닫기 (잠금)</a></td><td>닫히고 영구히 잠김. 이후 0번 신호가 와도 안 열림</td><td>아무 일 없음 (잠금 유지)</td></tr>
+<tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">0</td><td>열기 (<code>WaitTrigger</code> 켬일 때만)</td><td>열림</td><td>닫힘</td></tr>
+<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">0</td><td>전원</td><td>켜짐</td><td>꺼짐</td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">1</td><td>색 바꾸기 (<code>ChangeColor</code> 설정대로)</td><td><code>Red</code>/<code>Green</code>/<code>Blue</code>면 그 색, <code>Rotate</code>면 빨강→초록→파랑 순서로 다음 색</td><td>원래 색(<code>LightColor</code>)으로 복귀. <code>Rotate</code>는 무시</td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">2</td><td>헤드 위아래로 꺾기</td><td><code>PitchAngle</code>만큼 꺾임</td><td>원래 각도로 복귀</td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">3</td><td>좌우로 돌리기</td><td><code>YawAngle</code>만큼 돌아감</td><td>원래 방향으로 복귀</td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">4</td><td>이동</td><td><code>MoveOffset</code> 위치로 이동</td><td>원래 위치로 복귀</td></tr>
+</tbody></table></div>
+<ul>
+<li>상자형 광원 <code>BP_Light2</code>는 번호와 기능이 <code>BP_Light</code>와 같습니다. 다른 점: 4번은 광원이 상자에서 레일을 따라 내려가고(꺼지면 올라가 상자로 들어감), 3번은 상자는 그대로 두고 광원 부분만 좌우로 돕니다. <a href="#light2">5장 상자형 광원</a> 참고.</li>
+<li>신호를 받지 않는 장치: 거울 <code>BP_Mirror</code>(회전·이동 신호 없음, 액터를 돌려 배치), 되돌리기 구역 <code>BP_Respawn</code>. 플레이어와 송신 장치도 신호를 받지 않습니다.</li>
+<li>표에 없는 번호로 보내면 아무 일도 일어나지 않습니다.</li>
+<li>채널 번호는 받는 장치 안에서만 의미가 있습니다. 문의 1번(강제 닫기)과 광원의 1번(색)은 서로 다른 기능입니다.</li>
+<li>"시작부터 켜진 상태" 설정(문·다락문 <code>StartOpen</code>, 능력 블록 <code>StartMoving</code>, 광원 <code>StartOn</code>)을 켜면 <strong>0번 채널</strong>의 켜짐/꺼짐이 반대로 동작합니다. 예: <code>StartOpen</code> 문은 신호가 켜지면 닫히고, 꺼지면 다시 열립니다. 광원의 1~4번과 문의 1번(강제 닫기)은 반대가 되지 않습니다.</li>
+<li>몇 개의 신호가 모여야 켜지는지는 받는 장치의 <code>ChannelRequired</code>로 정합니다(기본 1개, 2 이상이면 AND). 자세한 연결 방법은 <a href="#signal">0. 기본 개념</a>을 보세요.</li>
+</ul>
+</div></details>
+
+<!-- ===================== 0 신호 연결 ===================== -->
+<details class="chapter" id="signal"><summary><span class="chapter-number">0</span>기본 개념: 신호 연결</summary><div class="chapter-body">
+<p>퍼즐 장치는 보내는 쪽(송신)과 받는 쪽(수신)으로 나뉩니다.</p>
+<div class="scroll"><table><thead><tr><th>역할</th><th>BP</th><th>하는 일</th></tr></thead><tbody>
+<tr><td><span class="tag send">송신</span></td><td>BP_Button, BP_PressurePlate, BP_Trigger, BP_Pickup, BP_FilterReturn</td><td><code>Activate</code>(켜짐) / <code>Deactivate</code>(꺼짐) 신호를 보냄</td></tr>
+<tr><td><span class="tag recv">수신</span></td><td>BP_Door, BP_Door2, BP_Light, BP_Light2, BP_AvilityBlock, BP_Hatch</td><td>신호를 받아 열림 / 켜짐 / 이동 등 반응</td></tr>
+</tbody></table></div>
+
+<details class="node" id="signal-connect" open><summary>연결하는 방법</summary><div class="node-body">
+<ol>
+<li>레벨에서 송신 장치(버튼, 발판, 트리거, 줍기 아이템)를 선택합니다.</li>
+<li>Details의 <code>SignalTargets</code> 배열에서 + 를 눌러 칸을 추가합니다. (BP_Trigger만 이름이 <code>Targets</code>입니다.)</li>
+<li>칸을 펼쳐 <code>Target</code> 옆 스포이드 아이콘을 누르고, 뷰포트에서 수신 장치(문, 다락문, 광원, 블록)를 클릭합니다.</li>
+<li><code>Channel</code>에 몇 번 채널로 보낼지 적습니다. 보통은 <code>0</code>(그 장치의 기본 기능) 그대로 두면 됩니다.</li>
+<li>여러 장치를 동시에 움직이려면 칸을 여러 개 추가하면 됩니다.</li>
+</ol>
+</div></details>
+
+<details class="node" id="signal-channel"><summary>채널</summary><div class="node-body">
+<ul>
+<li>수신 장치는 기능마다 채널 번호가 정해져 있습니다(장치 BP에 고정, 레벨에서 바꾸지 않음). 0번은 항상 그 장치의 기본 기능입니다. 어떤 기능을 켤지는 송신 장치의 <code>Channel</code>로 고릅니다.</li>
+<li>채널 번호는 받는 장치 안에서만 의미가 있습니다. 문의 1번과 광원의 1번은 서로 다른 기능일 수 있습니다.</li>
+<li>송신 장치 2개를 같은 수신 장치의 다른 채널로 연결하면, 각각 다른 기능을 켜고 둘 다 켜면 두 기능이 함께 동작합니다.</li>
+<li>같은 장치를 다른 채널로 두 칸 넣으면, 버튼 하나로 그 장치의 기능 두 개를 동시에 켤 수 있습니다.</li>
+<li>채널마다 신호를 따로 셉니다. 1번 채널 신호는 0번 기능에 영향을 주지 않습니다.</li>
+</ul>
+<p>장치별 Channel → 기능 표는 <a href="#channels">신호 채널 한눈에 보기</a>에 있습니다.</p>
+<p class="note good">예: 발판 → 광원 Channel 0 + <code>ReOn</code> 버튼 → 같은 광원 Channel 1 = 발판을 밟아 불을 켜 두고, 버튼으로 색을 고르는 퍼즐</p>
+</div></details>
+
+<details class="node" id="signal-targets"><summary>SignalTargets 알아둘 점</summary><div class="node-body">
+<ul>
+<li>스포이드 대신 칸의 드롭다운에서 레벨에 있는 액터 이름을 골라도 됩니다.</li>
+<li>반응하는 것은 신호를 받을 수 있는 장치(문, 다락문, 맵 광원, 능력 블록)뿐입니다. 벽이나 일반 메시를 넣으면 오류 없이 그냥 무시됩니다.</li>
+<li>빈 칸(None)이 있어도 문제는 없지만, 헷갈리지 않게 지워 두는 것이 좋습니다.</li>
+<li>SignalTargets가 비어 있으면 버튼을 누르거나 발판을 밟아도 아무 일도 일어나지 않습니다.</li>
+<li>신호는 상태가 바뀔 때만 보냅니다. 예를 들어 발판에 두 번째 물체가 올라가도 이미 켜져 있으면 신호를 다시 보내지 않습니다.</li>
+<li>수신 장치를 복제(Alt+드래그, Ctrl+D)해도 SignalTargets에는 자동으로 추가되지 않습니다. 새 장치는 직접 넣어야 합니다.</li>
+</ul>
+</div></details>
+
+<details class="node" id="channel-required"><summary>ChannelRequired: 신호가 몇 개 모여야 켜지나</summary><div class="node-body">
+<p>모든 수신 장치에 공통으로 있는 설정입니다.</p>
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (키 = 채널 번호, 값 = 개수). 이 수 이상 모이면 켜지고, 아래로 떨어지면 꺼짐</td><td>장치가 받는 채널마다 1 (문 <code>0, 1 → 1</code>, 다락문/블록 <code>0 → 1</code>, 광원 <code>0~4 → 1</code>)</td></tr>
+</tbody></table></div>
+<ul>
+<li>값 1 → 연결된 송신 장치 중 하나만 켜져도 동작 (OR)</li>
+<li>값 2 → 두 개가 동시에 켜져야 동작 (AND)</li>
+<li>예: 광원 <code>ChannelRequired</code>의 <code>1 → 2</code> → 전원(0번)은 신호 1개, 색 변경(1번)은 신호 2개가 필요</li>
+<li>목록에 없는 채널은 1로 처리됩니다. 값이 0 이하여도 1로 처리됩니다.</li>
+<li>+를 누르면 <code>0 → 0</code> 칸이 생깁니다. Map은 같은 키를 두 번 가질 수 없으므로, 새 칸을 넣기 전에 기존 칸의 키를 다른 번호로 바꿔 두세요.</li>
+<li>여러 송신 장치가 같은 수신 장치의 같은 채널로 보내면 신호가 합산됩니다.</li>
+</ul>
+</div></details>
+
+<details class="node" id="signal-mix"><summary>버튼과 발판을 한 장치에 같이 연결하기</summary><div class="node-body">
+<p>버튼과 발판은 같은 신호를 보내므로, 둘 다 같은 수신 장치(같은 채널)를 SignalTargets에 넣을 수 있습니다. 종류를 섞어도 똑같이 합산됩니다.</p>
+<ul>
+<li>문(<code>ChannelRequired</code> <code>0 → 1</code>) + 버튼 + 발판 → 버튼을 누르거나 발판을 밟거나, 둘 중 하나만 해도 열림 (OR)</li>
+<li>문(<code>ChannelRequired</code> <code>0 → 2</code>) + 버튼(<code>Togle</code>) + 발판 → 버튼을 켜 두고 발판에 블록을 올려야 열림 (AND)</li>
+<li>문(<code>ChannelRequired</code> <code>0 → 2</code>) + 버튼(<code>Timed</code>) + 발판 → 발판을 밟은 채 제한 시간 안에 버튼까지 눌러야 열림</li>
+</ul>
+<p class="note">AND 조건에 버튼을 쓸 때는 <code>JustOn</code> / <code>Togle</code> / <code>Timed</code>처럼 켜진 상태가 유지되는 모드를 쓰세요. <code>ReOn</code>은 즉시 꺼지므로 발판과 동시에 켜진 상태가 되지 않습니다.</p>
+</div></details>
+</div></details>
+
+<!-- ===================== 1 플레이어 ===================== -->
+<details class="chapter" id="player"><summary><span class="chapter-number">1</span>BP_Charactor — 플레이어</summary><div class="chapter-body">
+<p>손전등을 들고 다니는 플레이어입니다. 레벨에 직접 배치할 경우 Auto Possess Player = Player 0으로 설정하세요. (또는 PlayerStart + GameMode의 Default Pawn Class 사용)</p>
+<details class="node" id="player-controls" open><summary>조작</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>입력</th><th>동작</th></tr></thead><tbody>
+<tr><td><code>1</code></td><td>손전등 흰 빛: 색을 더하지 않는 빛. 다른 빛의 색을 바꾸지 않고(빨강 광원 + 흰 빛 = 빨강), <code>OwnColor</code> 블록의 고유색을 발동시킴</td></tr>
+<tr><td><code>2</code> / <code>3</code> / <code>4</code></td><td>손전등 색 전환 (<span class="c-red">빨강</span> / <span class="c-green">초록</span> / <span class="c-blue">파랑</span>)</td></tr>
+<tr><td>지금 색의 숫자 키 다시 누르기 / <code>E</code></td><td>손전등 끄기</td></tr>
+<tr><td><code>F</code></td><td>바라보는 대상과 상호작용 — 버튼이면 누르기, 블록이면 잡기 / 놓기, 아이템이면 줍기</td></tr>
+</tbody></table></div>
+<p class="note">본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서는 손전등을 줍기 전까지 손에 손전등이 없고 <code>1</code>~<code>4</code>가 반응하지 않습니다. 색 키는 그 색 필터도 주워야 동작합니다 (<a href="#pickup">3-3 BP_Pickup</a>). 이 맵은 항상 빛이 꺼진 채 시작합니다. 테스트용(<code>BP_TestGameMode</code>) 맵은 제한 없이 지금처럼 동작합니다.</p>
+</div></details>
+</div></details>
+
+<!-- ===================== 2 버튼 ===================== -->
+<details class="chapter" id="button"><summary><span class="chapter-number">2</span>BP_Button — 버튼 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>플레이어가 바라보고 상호작용 키(F)를 누르는 버튼입니다.</p>
+<details class="node" id="button-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>SignalTargets</code></td><td>신호를 보낼 수신 장치와 채널 목록 (Target은 스포이드로 지정, Channel 기본 0. <a href="#signal-connect">연결하는 방법</a> 참고)</td><td>비어 있음</td></tr>
+<tr><td><code>ButtonMode</code></td><td>버튼 동작 방식 (아래 표)</td><td><code>JustOn</code></td></tr>
+<tr><td><code>TimedDuration</code></td><td><code>Timed</code> 모드에서 켜져 있는 시간(초)</td><td>10</td></tr>
+<tr><td><code>UseAsset</code></td><td>켜면 아래 <code>UseStaticMesh</code>로 버튼 외형 교체</td><td>꺼짐</td></tr>
+<tr><td><code>UseStaticMesh</code></td><td>사용할 버튼 메시 (콜리전이 있는 메시여야 상호작용 가능)</td><td>없음</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="button-mode"><summary>ButtonMode</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>모드</th><th>동작</th><th>어울리는 수신 장치</th></tr></thead><tbody>
+<tr><td><code>JustOn</code></td><td>한 번 누르면 켜진 채로 고정. 다시 눌러도 변화 없음</td><td>한 번 열리면 끝나는 문</td></tr>
+<tr><td><code>Togle</code></td><td>누를 때마다 켜짐 ↔ 꺼짐</td><td>열고 닫을 수 있는 문, 광원 전원(0번)</td></tr>
+<tr><td><code>ReOn</code></td><td>누를 때마다 켜짐 → 즉시 꺼짐 신호를 한 번에 보냄 (펄스)</td><td>Rotate 광원 (누를 때마다 색 한 칸씩 회전)</td></tr>
+<tr><td><code>Timed</code></td><td>누르면 켜지고 <code>TimedDuration</code>초 뒤 자동으로 꺼짐</td><td>시간 제한 문</td></tr>
+</tbody></table></div>
+<p class="note"><code>ReOn</code>은 "톡 치는" 신호라서 문에 쓰면 열리자마자 닫힙니다. 누를 때마다 한 번 반응하는 장치 전용입니다. (예: 라이트 색 변경)</p>
+</div></details>
+<details class="node" id="button-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li><code>JustOn</code> + 문: 한 번 열면 계속 열려 있는 출구</li>
+<li><code>ReOn</code> + Rotate 광원: 버튼을 누를 때마다 빛 색이 빨강 → 초록 → 파랑으로 바뀌는 색 맞추기 퍼즐</li>
+<li><code>Timed</code>(5초) + 문: 버튼을 누르고 5초 안에 문을 통과해야 하는 타임어택</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 3 발판 ===================== -->
+<details class="chapter" id="plate"><summary><span class="chapter-number">3</span>BP_PressurePlate — 발판 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>무언가 올라가 있는 동안 신호를 보내는 발판입니다.</p>
+<details class="node" id="plate-detect" open><summary>감지 대상</summary><div class="node-body">
+<ul>
+<li>플레이어 (<code>BP_Charactor</code>)</li>
+<li>능력 블록 (<code>BP_AvilityBlock</code>)</li>
+<li>하나라도 올라가 있으면 켜짐, 모두 내려오면 꺼짐</li>
+</ul>
+</div></details>
+<details class="node" id="plate-settings"><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>SignalTargets</code></td><td>신호를 보낼 수신 장치와 채널 목록 (Target은 스포이드로 지정, Channel 기본 0. <a href="#signal-connect">연결하는 방법</a> 참고)</td><td>비어 있음</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="plate-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>발판 + 문: 발판 위에 있는 동안만 문이 열림 → 플레이어가 내려오면 닫힘</li>
+<li>Physics 블록을 발판 위에 올려두기: 블록을 잡아서 발판에 올려두면 문이 계속 열려 있음</li>
+<li>발판 2개 + 문(<code>ChannelRequired</code> <code>0 → 2</code>): 두 발판을 동시에 눌러야 열리는 문. 하나는 플레이어, 하나는 블록으로 누르는 퍼즐</li>
+<li>파란 능력(당기기)으로 블록을 발판까지 끌어오기: 능력과 장치를 섞은 퍼즐</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 3-1 트리거 ===================== -->
+<details class="chapter" id="trigger"><summary><span class="chapter-number">3-1</span>BP_Trigger — 통과 트리거 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>보이지 않는 박스입니다. 플레이어가 처음 지나갈 때 신호(켜짐)를 <strong>딱 한 번</strong> 보내고, 지정하면 다음 레벨로 넘어갑니다.</p>
+<details class="node" id="trigger-detect" open><summary>감지 대상</summary><div class="node-body">
+<ul>
+<li>플레이어만 (<code>BP_Charactor</code>). 블록이 지나가도 반응하지 않습니다.</li>
+<li>한 번 보낸 뒤에는 다시 지나가도 아무 일도 일어나지 않고, 꺼짐 신호도 보내지 않습니다 (영구히 켜진 상태).</li>
+</ul>
+</div></details>
+<details class="node" id="trigger-settings"><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>Targets</code></td><td>신호를 보낼 수신 장치와 채널 목록 (버튼·발판의 <code>SignalTargets</code>와 같은 구조, 이름만 다름. <a href="#signal-connect">연결하는 방법</a> 참고)</td><td>비어 있음</td></tr>
+<tr><td><code>NextLevel</code></td><td>지나가면 넘어갈 레벨 (드롭다운에서 맵 선택). 비워 두면 레벨 이동 없이 신호만 보냄</td><td>비어 있음</td></tr>
+</tbody></table></div>
+<ul>
+<li>박스 크기는 액터 Scale로 조절합니다. 통로를 가로막을 만큼 키워야 지나칠 때 확실히 걸립니다.</li>
+<li>게임 중에는 보이지 않습니다. 에디터에서는 박스 테두리가 보입니다.</li>
+<li><code>NextLevel</code>을 지정하면: 신호를 먼저 다 보낸 뒤 → 화면이 0.5초 동안 검게 어두워지고 → 다음 레벨이 열립니다.</li>
+<li>다음 레벨에서는 그 맵의 <strong>PlayerStart</strong> 위치에서 시작합니다. 넘어갈 맵에 PlayerStart가 있는지, World Settings의 <strong>GameMode Override</strong>가 <code>BP_TestGameMode</code> 또는 <code>BP_RealGameMode</code>로 되어 있는지 확인하세요 (없으면 다른 플레이어로 시작할 수 있음, <a href="#settings-gamemode">9장</a> 참고).</li>
+</ul>
+</div></details>
+<details class="node" id="trigger-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<p><strong>스테이지 넘어가기</strong> (출구 닫고 입구 열기 → 입구 닫기, 블록을 못 가져가게 하려면 <a href="#respawn">3-2 BP_Respawn</a>을 같이 배치)</p>
+<pre>[스테이지 A] ── 출구 문 ── 통로(트리거①) ── 입구 문 ── 트리거② [스테이지 B]</pre>
+<div class="scroll"><table><thead><tr><th>트리거</th><th>위치</th><th>Targets</th></tr></thead><tbody>
+<tr><td>①</td><td>통로 중간</td><td>출구 문 / Channel 1 (강제 닫기), 입구 문 / Channel 0 (열기)</td></tr>
+<tr><td>②</td><td>입구 문을 지난 바로 안쪽</td><td>입구 문 / Channel 1 (강제 닫기)</td></tr>
+</tbody></table></div>
+<ul>
+<li>함정: 트리거 → 다락문(<code>IsDown</code>, <code>WaitTrigger</code>). 밟고 지나가는 순간 바닥이 열림</li>
+<li>다음 레벨로: 스테이지 끝 통로에 트리거를 놓고 <code>NextLevel</code> 지정. <code>Targets</code>에 지나온 문 Channel 1을 함께 넣어도 됨</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 3-2 되돌리기 구역 ===================== -->
+<details class="chapter" id="respawn"><summary><span class="chapter-number">3-2</span>BP_Respawn — 블록·플레이어 되돌리기 구역 <span class="tag zone">구역</span></summary><div class="chapter-body">
+<p>보이지 않는 박스입니다. 들어온 <strong>Physics 블록</strong>은 게임 시작 때 위치로 되돌리고, 들어온 <strong>플레이어</strong>는 지정한 위치로 소환합니다. 둘 중 무엇을 할지는 구역마다 고릅니다. 신호와는 상관없습니다.</p>
+<details class="node" id="respawn-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ResetBlock</code></td><td>켜면 들어온 Physics 블록을 시작 위치로 되돌림</td><td>켜짐</td></tr>
+<tr><td><code>ResetPlayer</code></td><td>켜면 들어온 플레이어를 <code>PlayerRespawnLocation</code>으로 소환</td><td>꺼짐</td></tr>
+<tr><td><code>PlayerRespawnLocation</code></td><td>플레이어 소환 위치. 뷰포트의 다이아몬드를 끌어서 정함 (구역 기준 위치라 구역을 옮기면 함께 따라감)</td><td>구역 중심</td></tr>
+</tbody></table></div>
+<p>크기는 액터 Scale로 조절합니다.</p>
+</div></details>
+<details class="node" id="respawn-block"><summary>블록 (<code>ResetBlock</code> 켬)</summary><div class="node-body">
+<ul>
+<li>플레이어가 블록을 <strong>들고</strong> 지나가면 블록이 손에서 떨어지고 제자리로 돌아갑니다.</li>
+<li>던지거나 능력으로 날아간 블록, 보라 상태(통과 중)인 블록도 잡습니다.</li>
+<li>돌아간 블록은 멈춘 상태입니다 (날아가던 속도·회전 없앰). 크기·능력 상태는 그대로이고 원래 흐름대로 풀립니다.</li>
+<li><code>Fixed</code>/<code>Patrol</code> 블록(움직이는 발판·벽)은 지나가도 영향 없습니다.</li>
+</ul>
+<p class="note">블록의 시작 위치가 구역 안에 있으면 안 됩니다. 처음부터 겹쳐 있으면 되돌리기가 동작하지 않습니다.</p>
+</div></details>
+<details class="node" id="respawn-player"><summary>플레이어 (<code>ResetPlayer</code> 켬)</summary><div class="node-body">
+<ul>
+<li>들어오는 순간 <code>PlayerRespawnLocation</code>으로 순간이동합니다. 보던 방향은 그대로이고, 떨어지거나 날아가던 속도는 멈춥니다.</li>
+<li>블록을 들고 있었다면 먼저 손에서 놓습니다 (블록을 들고 함께 이동할 수 없음).</li>
+<li>다이아몬드가 바닥에 조금 묻혀 있어도 겹치지 않는 가까운 자리로 소환됩니다.</li>
+</ul>
+<p class="note">소환 위치는 구역 <strong>밖</strong>에 두세요. 구역 안이면 도착하자마자 다시 소환됩니다.</p>
+</div></details>
+<details class="node" id="respawn-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>스테이지 경계: 출구 문 바로 안쪽에 깔아서 블록을 다음 스테이지로 가져가지 못하게 함 (<code>ResetBlock</code>만)</li>
+<li>낙하 구덩이: 맵 아래에 깔고 <code>ResetBlock</code> + <code>ResetPlayer</code> → 떨어진 블록은 제자리로, 플레이어는 구덩이 앞으로</li>
+<li>함정 바닥: 다락문(<code>IsDown</code>) 아래에 <code>ResetPlayer</code>만 켠 구역 → 떨어지면 방 입구에서 다시 시작</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 3-3 줍기 ===================== -->
+<details class="chapter" id="pickup"><summary><span class="chapter-number">3-3</span>BP_Pickup — 손전등·필터 줍기 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>책상 위 등에 놓는 아이템입니다. 플레이어가 바라보고 <strong>F</strong>를 누르면 손전등이나 색 필터를 얻고, 아이템은 사라집니다. 얻는 순간 연결한 장치에 신호(켜짐)를 <strong>한 번</strong> 보내는 송신 장치이기도 합니다.</p>
+<details class="node" id="pickup-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>PickupType</code></td><td><code>Flashlight</code>(손전등) / <code>Filter</code>(색 필터). 바꾸면 뷰포트의 모양도 바로 바뀜</td><td><code>Flashlight</code></td></tr>
+<tr><td><code>FilterColor</code></td><td>필터일 때 색 (Red / Blue / Green). 손전등이면 무시</td><td><code>Red</code></td></tr>
+<tr><td><code>SignalTargets</code></td><td>주웠을 때 신호를 보낼 장치와 채널 (버튼·발판과 같은 방식, <a href="#signal-connect">연결하는 방법</a> 참고)</td><td>비어 있음</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="pickup-behavior"><summary>동작</summary><div class="node-body">
+<ul>
+<li>손전등을 얻으면 손에 손전등이 나타나고 <code>1</code>(흰 빛)을 쓸 수 있습니다. 색 필터를 얻으면 그 색 키(<code>2</code>·<code>3</code>·<code>4</code>)를 쓸 수 있습니다. 색은 손전등과 필터가 <strong>둘 다</strong> 있어야 켜집니다.</li>
+<li>얻은 것은 레벨을 옮겨도 유지됩니다 (다음 스테이지에서도 계속 사용).</li>
+<li><strong>1회성</strong>: 같은 종류를 이미 가진 상태로 레벨이 시작되면 아이템은 나타나지 않습니다. 이때도 <code>SignalTargets</code>에 신호는 보내므로, 줍기로 열리던 문은 다시 열린 상태가 됩니다.</li>
+<li>신호는 켜짐만 보내고 끄지 않습니다 (영구).</li>
+<li>위 제한은 <strong>본 게임용 GameMode</strong>(<code>BP_RealGameMode</code>) 맵에서만 적용됩니다. 테스트용(<code>BP_TestGameMode</code>) 맵에서는 줍지 않아도 모든 빛을 쓸 수 있습니다 (<a href="#settings-gamemode">9장</a> 참고). 테스트 맵에서도 줍기 자체는 동작합니다.</li>
+</ul>
+</div></details>
+<details class="node" id="pickup-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>첫 손전등: 어두운 방 책상에 <code>Flashlight</code> → 주우면 방 문(Channel 0)이 열림</li>
+<li>필터 보상: 퍼즐을 풀어 열린 방 안에 <code>Filter</code> / <code>Blue</code> → 다음 방부터 파랑 사용</li>
+<li>맵 끝에서 가진 필터를 한 번에 반납: <a href="#returntable">3-4 반납 테이블</a></li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 3-4 반납 테이블 ===================== -->
+<details class="chapter" id="returntable"><summary><span class="chapter-number">3-4</span>BP_FilterReturn — 필터 반납 테이블 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>맵 끝에 놓는 테이블입니다. 플레이어가 바라보고 <strong>F</strong>를 누르면 <strong>지금 가진 필터를 전부</strong> 반납하고, 연결한 장치에 신호(켜짐)를 <strong>한 번</strong> 보냅니다. 주로 "필터를 반납해야 출구가 열린다"는 스테이지 마무리에 씁니다.</p>
+<details class="node" id="returntable-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>SignalTargets</code></td><td>반납했을 때 신호를 보낼 장치와 채널 (버튼·발판과 같은 방식, <a href="#signal-connect">연결하는 방법</a> 참고)</td><td>비어 있음</td></tr>
+</tbody></table></div>
+<p>설정할 것은 이것 하나입니다. 어떤 색을 반납할지는 정하지 않습니다 (가진 필터 전부).</p>
+</div></details>
+<details class="node" id="returntable-behavior"><summary>동작</summary><div class="node-body">
+<ul>
+<li><strong>필터가 1개 이상</strong> 있어야 반납됩니다. 하나도 없으면 F를 눌러도 아무 일이 없습니다 (빈손으로 출구가 열리지 않게).</li>
+<li>반납하면: 손전등이 꺼짐 → 가진 필터가 모두 빠짐(그 색 키를 못 씀) → 테이블 위 그 색 자리에 필터가 나타남 → <code>SignalTargets</code>에 신호.</li>
+<li>손전등 자체는 반납하지 않습니다. 흰 빛(<code>1</code>)은 계속 쓸 수 있습니다.</li>
+<li><strong>1회성</strong>: 반납한 테이블은 다시 반납되지 않고 F 대상에서도 빠집니다. 반납 기록은 레벨을 옮겨도 남아서, 같은 맵을 다시 열면 테이블이 반납이 끝난 상태로 시작하고 <code>SignalTargets</code>에 신호를 다시 보냅니다 (열렸던 출구는 다시 열리고, 잠근 문은 다시 잠김). 이때 테이블 위 필터 모양은 보이지 않습니다.</li>
+<li>테이블마다 따로 기록됩니다. 한 맵에 테이블을 여러 개 놓아도 됩니다.</li>
+<li>안내 문구(나중에 화면 UI에 표시): 필터가 있으면 "필터 반납", 없으면 "반납할 필터가 없습니다", 반납 후에는 없음.</li>
+<li>테스트용 GameMode 맵에서도 반납하려면 필터를 <strong>실제로 주워야</strong> 합니다 (테스트 모드의 "전부 사용 가능"은 반납 대상이 아님).</li>
+</ul>
+<p class="note bad">레벨에 놓은 테이블을 지우고 다시 놓으면 내부 이름이 바뀌어 예전 반납 기록과 연결이 끊깁니다. 저장 기능이 생긴 뒤에는 배포한 맵의 테이블을 다시 놓지 말고 옮기기만 하세요.</p>
+</div></details>
+<details class="node" id="returntable-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>스테이지 출구: 테이블 <code>SignalTargets</code> = 출구 문 Channel 0 → 필터를 반납해야 출구가 열림</li>
+<li>뒤로 못 가게: 같은 테이블에 지나온 입구 문 Channel 1(<a href="#door-lock">강제 닫기</a>)도 추가 → 반납과 동시에 입구가 잠김</li>
+<li>다음 맵 준비: 반납 후 통로의 <a href="#trigger">BP_Trigger</a>로 다음 레벨 이동 → 다음 맵에서 필터를 다시 주움</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 4 문 ===================== -->
+<details class="chapter" id="door"><summary><span class="chapter-number">4</span>BP_Door / BP_Door2 — 문 <span class="tag recv">수신</span></summary><div class="chapter-body">
+<p>신호를 받으면 좌우로 벌어지며 열리는 미닫이 문입니다.</p>
+<p class="note good"><code>BP_Door2</code>는 외형(메시)만 다른 문입니다. 설정, 채널, 동작은 BP_Door와 똑같습니다.</p>
+<details class="node" id="door-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0번 = 열기, 1번 = 강제 닫기). 2 이상이면 AND</td><td><code>0 → 1</code>, <code>1 → 1</code></td></tr>
+<tr><td><code>StartOpen</code></td><td>켜면 열린 채로 시작. 신호가 켜지면 닫히고 꺼지면 다시 열림 (반대 동작). 에디터에서도 열린 모습으로 보임</td><td>꺼짐</td></tr>
+</tbody></table></div>
+<ul>
+<li>열리는 거리와 시간은 모든 문이 같은 고정값입니다.</li>
+<li>신호가 꺼지면 열린 만큼 거꾸로 닫힙니다. 열리는 도중에 꺼져도 자연스럽게 되돌아갑니다.</li>
+<li>1번 신호는 <strong>강제 닫기(잠금)</strong>입니다. 아래 "강제 닫기" 참고.</li>
+</ul>
+</div></details>
+<details class="node" id="door-lock" open><summary><span class="tag">Channel 1</span>강제 닫기 (잠금)</summary><div class="node-body">
+<p>문을 <strong>강제로 닫고 다시는 열리지 않게</strong> 하는 기능입니다. 지나온 문을 막아 되돌아가지 못하게 할 때 씁니다.</p>
+<div class="scroll"><table><thead><tr><th>상황</th><th>결과</th></tr></thead><tbody>
+<tr><td>1번 신호가 켜짐</td><td>문이 닫히고 <strong>영구히 잠김</strong> (열려 있었으면 닫히는 동작, 이미 닫혀 있으면 그대로)</td></tr>
+<tr><td>잠긴 뒤 0번(열기) 신호가 켜짐</td><td>열리지 않음</td></tr>
+<tr><td>잠긴 뒤 1번 신호가 꺼짐</td><td>풀리지 않음 (계속 잠김)</td></tr>
+<tr><td><code>StartOpen</code> 문을 잠금</td><td>닫힌 채로 유지</td></tr>
+</tbody></table></div>
+<p><strong>설정 방법</strong></p>
+<ol>
+<li>문을 잠글 송신 장치(통과 트리거, 버튼, 줍기 아이템 등)를 선택합니다.</li>
+<li><code>SignalTargets</code>(트리거는 <code>Targets</code>)에 칸을 추가하고, <code>Target</code> = 그 문, <strong><code>Channel</code> = 1</strong>로 적습니다.</li>
+<li>같은 송신 장치에 다른 칸을 더 넣으면, 한 번에 "다음 문 열기(Channel 0) + 지나온 문 강제 닫기(Channel 1)"를 함께 할 수 있습니다.</li>
+</ol>
+<ul>
+<li>한 번 잠긴 문은 그 판에서 다시 열 방법이 없습니다. 레벨을 다시 시작하면 처음 상태로 돌아옵니다.</li>
+<li>1번 신호에는 "꺼짐"이 의미가 없으므로, 한 번 켜고 끝나는 송신 장치(통과 트리거, 줍기 아이템, <code>JustOn</code> 버튼)와 함께 쓰는 것이 자연스럽습니다.</li>
+</ul>
+</div></details>
+<details class="node" id="door-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>타임어택 문: <code>Timed</code> 버튼 연결 → 버튼을 누르고 제한 시간 안에 통과</li>
+<li>AND 문: 버튼 1개 + 발판 1개를 모두 연결하고 <code>ChannelRequired</code>의 <code>0 → 2</code></li>
+<li>되돌아갈 수 없는 문: 버튼 → 문 Channel 0 (열기) + 문을 지난 곳의 BP_Trigger → 같은 문 Channel 1 (강제 닫기, <a href="#trigger">3-1</a> 참고)</li>
+<li>아이템을 주우면 갇힘: 방 안 BP_Pickup의 <code>SignalTargets</code>에 들어온 문 Channel 1 → 손전등을 줍는 순간 입구가 닫힘</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 5 맵 광원 ===================== -->
+<details class="chapter" id="light"><summary><span class="chapter-number">5</span>BP_Light / BP_Light2 — 맵 광원 <span class="tag recv">수신</span></summary><div class="chapter-body">
+<p>레벨에 배치하는 광원입니다. 비추는 블록에 색을 더해 줍니다. 수신 장치이기도 해서 버튼·발판·트리거 신호로 켜고 끄기(0), 색 바꾸기(1), 헤드 위아래(2), 좌우 회전(3), 이동(4)을 할 수 있습니다.</p>
+<p class="note good">맵 광원만으로도 블록 능력이 발동합니다. 손전등과 같이 비추면 두 빛의 색이 합쳐집니다. 예: 맵 광원 <span class="c-red">빨강</span> + 손전등 <span class="c-blue">파랑</span> = <span class="c-purple">보라</span>.<br>단, 플레이어가 <code>PlayerRange</code>(8000) 밖에 있으면 맵 광원은 판정을 하지 않으므로 멀리 있는 블록은 플레이어가 다가가야 발동합니다.</p>
+<details class="node" id="light-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0 전원, 1 색, 2 위아래 꺾기, 3 좌우 돌리기, 4 이동). 2 이상이면 AND</td><td><code>0~4 → 1</code></td></tr>
+<tr><td><code>LightColor</code></td><td>광원의 기본 색 (Red / Blue / Green). 에디터에서 바로 미리보기됨</td><td><code>Red</code></td></tr>
+<tr><td><code>StartOn</code></td><td>켜진 채로 시작. 끄면 꺼진 채 시작 (에디터에서도 빛이 꺼져 보임). 0번 신호는 반대로 동작 (아래 "전원" 표)</td><td>켜짐</td></tr>
+<tr><td><code>ChangeColor</code></td><td>1번 채널 신호를 받았을 때 바꿀 색 (아래 표)</td><td><code>Rotate</code></td></tr>
+<tr><td><code>LightLength</code></td><td>빛 판정 거리</td><td>5000</td></tr>
+</tbody></table></div>
+<p>SpotLight 컴포넌트 설정도 판정에 영향을 줍니다. Outer Cone Angle = 빛 원뿔 각도 = 판정 범위. 각도를 바꾸면 판정도 자동으로 따라갑니다.</p>
+</div></details>
+<details class="node" id="light-power"><summary><span class="tag">Channel 0</span>전원 (StartOn + 0번 채널)</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>하고 싶은 것</th><th>설정</th></tr></thead><tbody>
+<tr><td>항상 켜진 광원</td><td><code>StartOn</code> 켬, 0번 채널에 아무것도 연결 안 함</td></tr>
+<tr><td>평소 꺼져 있고 신호 동안 켜짐</td><td><code>StartOn</code> 끔 + 송신 장치 Channel 0</td></tr>
+<tr><td>평소 켜져 있고 신호 동안 꺼짐</td><td><code>StartOn</code> 켬 + 송신 장치 Channel 0</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="light-color"><summary><span class="tag">Channel 1</span>ChangeColor</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>값</th><th>동작</th></tr></thead><tbody>
+<tr><td><code>Red</code> / <code>Green</code> / <code>Blue</code></td><td>신호가 켜지면 그 색으로, 꺼지면 원래 색(<code>LightColor</code>)으로 복귀</td></tr>
+<tr><td><code>Rotate</code></td><td>신호가 켜질 때마다 빨강 → 초록 → 파랑 → 빨강 순으로 회전. 꺼짐 신호는 무시 (<code>ReOn</code> 버튼과 함께 사용)</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="light-rotate"><summary><span class="tag">Channel 2 · 3</span>회전 (2번 위아래, 3번 좌우)</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th></tr></thead><tbody>
+<tr><td><code>PitchAngle</code></td><td>2번 신호가 켜지면 헤드를 위아래로 꺾는 각도. 부호로 방향을 정함 (예: 30 / -30)</td></tr>
+<tr><td><code>YawAngle</code></td><td>3번 신호가 켜지면 광원 전체를 좌우로 돌리는 각도. 부호로 방향을 정함</td></tr>
+</tbody></table></div>
+<ul>
+<li>신호가 꺼지면 처음 배치한 각도로 천천히 돌아갑니다. 도는 도중에 꺼져도 그 자리에서 되돌아옵니다.</li>
+<li>시작 조준은 레벨에서 직접 맞춥니다: 위아래는 <code>HeadPivot</code> 컴포넌트를 돌리고, 좌우는 광원 액터 자체를 돌리세요. 회전은 이 각도를 기준으로 더해집니다.</li>
+<li>빛 판정(원뿔, 감지 박스)도 헤드와 함께 돌아갑니다.</li>
+</ul>
+</div></details>
+<details class="node" id="light-move"><summary><span class="tag">Channel 4</span>이동 (4번)</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th></tr></thead><tbody>
+<tr><td><code>MoveOffset</code></td><td>4번 신호가 켜지면 이동할 위치. 광원 기준 좌표라서 광원을 돌려 배치하면 방향도 따라 돕니다 (예: (300,0,0) = 광원 정면으로 300)</td></tr>
+</tbody></table></div>
+<ul>
+<li>광원을 선택하면 <code>MoveOffset</code> 위치에 마름모 핸들이 보입니다. 끌어서 도착 지점을 정할 수 있습니다. (<code>MoveOffset</code>이 (0,0,0)이면 핸들이 광원 안에 숨어 보이지 않습니다)</li>
+<li>이동 속도는 거리와 상관없이 일정합니다. 멀리 보낼수록 오래 걸립니다.</li>
+<li>신호가 꺼지면 처음 위치로 돌아옵니다. 이동 중에 꺼져도 그 자리에서 되돌아옵니다.</li>
+<li>회전·이동은 신호로만 동작합니다. "처음부터 꺾인/이동한 상태로 시작" 설정은 없습니다.</li>
+</ul>
+</div></details>
+<details class="node" id="light2"><summary><span class="tag">BP_Light2</span>상자형 광원 (상자에서 레일 따라 내려오는 광원)</summary><div class="node-body">
+<p>광원이 상자 안에 들어 있다가 4번 신호를 받으면 아래쪽 레일을 따라 내려오는 맵 광원입니다. 설정 변수와 채널 번호(0 전원 / 1 색 / 2 위아래 / 3 좌우 / 4 이동)는 <code>BP_Light</code>와 같습니다.</p>
+<div class="scroll"><table><thead><tr><th>채널</th><th><code>BP_Light</code></th><th><code>BP_Light2</code> (상자형)</th></tr></thead><tbody>
+<tr><td class="ch">4</td><td>광원 액터 전체가 <code>MoveOffset</code>으로 이동</td><td><strong>광원 헤드와 연결부만</strong> <code>MoveOffset</code>만큼 레일을 따라 내려감. 상자와 레일은 고정. 꺼지면 다시 올라가 상자로 들어감</td></tr>
+<tr><td class="ch">3</td><td>광원 액터 전체가 좌우로 돎</td><td><strong>내려온 광원 부분만</strong> 좌우로 돎. 상자는 그대로</td></tr>
+<tr><td class="ch">2</td><td colspan="2">헤드만 위아래로 꺾임 (같음)</td></tr>
+</tbody></table></div>
+<ul>
+<li><code>MoveOffset</code>은 레일 방향에 맞춰 적습니다. 예: 아래로 200 내려오려면 (0,0,-200). 상자 기준 좌표라서 상자를 돌려 배치하면 레일 방향도 같이 돕니다.</li>
+<li>4번과 3번을 같이 켜도 됩니다. 내려온 위치에서 좌우로 돌고, 꺼지면 각각 원래대로 돌아옵니다.</li>
+<li>시작 조준은 상자 액터를 돌려 맞춥니다. 빛 판정은 내려간 위치·돌아간 방향을 그대로 따라갑니다.</li>
+</ul>
+</div></details>
+<details class="node" id="light-judge"><summary>판정 방식 (알아두면 좋은 것)</summary><div class="node-body">
+<ul>
+<li>빛 원뿔 안의 블록마다 중심 + 꼭짓점 8곳으로 직접 검사합니다. 먼 거리의 작은 블록도 놓치지 않습니다.</li>
+<li>벽에 완전히 가려진 블록은 비춰지지 않고, 반쯤 가려진 블록은 비춰집니다.</li>
+<li>광원이 꺼져 있거나, 플레이어가 멀거나, 범위 안에 블록이 없으면 검사를 아예 하지 않습니다. 광원을 많이 배치해도 괜찮습니다.</li>
+</ul>
+</div></details>
+<details class="node" id="light-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>색 섞기 퍼즐: 빨강 맵 광원이 비추는 블록에 손전등 파랑을 더해 보라(통과) 능력 발동</li>
+<li>스위치 조명: <code>StartOn</code> 끔 + <code>Togle</code> 버튼(Channel 0) → 버튼으로 조명을 켜야 색 조합이 완성됨</li>
+<li>발판 조명: <code>StartOn</code> 끔 + 발판(Channel 0) → 블록을 발판에 올려둬야 불이 켜짐</li>
+<li>끄는 스위치: <code>StartOn</code> 켬 + <code>Togle</code> 버튼(Channel 0) → 버튼으로 조명을 꺼야 블록 능력이 멈춤</li>
+<li>색 회전 퍼즐: <code>ChangeColor = Rotate</code> + <code>ReOn</code> 버튼(Channel 1) → 원하는 색이 될 때까지 버튼을 누름</li>
+<li>일시 변색: <code>ChangeColor = Green</code> + <code>Timed</code> 버튼(Channel 1) → 몇 초 동안만 초록으로 바뀜</li>
+<li>조명 돌리기: <code>YawAngle = 90</code> + <code>Togle</code> 버튼(Channel 3) → 버튼으로 빛을 다른 블록 쪽으로 돌림</li>
+<li>따라오는 조명: <code>MoveOffset</code> 설정 + 발판(Channel 4) → 발판을 밟는 동안 조명이 다른 자리로 옮겨 감</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 5-1 거울 ===================== -->
+<details class="chapter" id="mirror"><summary><span class="chapter-number">5-1</span>BP_Mirror — 거울</summary><div class="chapter-body">
+<p>빛을 받아 반사 빔으로 튕겨 내는 거울입니다. 손전등, 맵 광원, 다른 거울의 빔을 모두 반사합니다. 반사 빔에 맞은 블록은 그 빛의 색으로 능력이 발동합니다.</p>
+<details class="node" id="mirror-place" open><summary>배치</summary><div class="node-body">
+<ul>
+<li><strong>앞면 = 액터의 초록 화살표(Y) 방향</strong>입니다. 앞면으로 들어온 빛만 반사하고, 뒷면은 빛을 막기만 합니다.</li>
+<li>거울판 크기는 Scale로 조절합니다: <strong>X = 가로, Z = 세로</strong>, Y = 두께. 반사 빔의 굵기 = 거울판 크기 그대로입니다 (판 모양 그대로의 사각 기둥).</li>
+<li>방향은 액터를 돌려서 맞춥니다.</li>
+<li>설정 변수는 없습니다. 빔 길이(3000)는 BP 내부 고정값입니다.</li>
+</ul>
+</div></details>
+<details class="node" id="mirror-rules"><summary>반사 규칙</summary><div class="node-body">
+<ul>
+<li><strong>정면 기준 60° 안</strong>으로 들어온 빛만 반사합니다. 너무 비스듬히 스치는 빛은 반사하지 않습니다.</li>
+<li>반사 방향은 거울에 들어온 각도 그대로 꺾입니다 (입사각 = 반사각).</li>
+<li><strong>빛마다 빔이 따로</strong> 나갑니다. 손전등과 맵 광원이 함께 비추면 각자 들어온 방향에 맞게 두 갈래로 반사됩니다. 한 거울에서 최대 3개까지입니다.</li>
+<li>빔 색 = 그 빛의 색. 흰 손전등 빛은 흰 빔으로 보이며, 블록에는 흰 빛 규칙 그대로 전달됩니다 (색을 더하지 않고 <code>OwnColor</code> 고유색만 발동).</li>
+<li>두 빔이 겹치는 곳은 안개 속에서 섞인 색으로 보입니다 (빨강 + 초록 → 노랑). 보이는 것만 그렇고, 블록 판정은 각 빔의 색 그대로입니다.</li>
+<li>한 블록에 빔 여러 개가 닿으면 색이 합쳐집니다 (빨강 빔 + 파랑 빔 = 보라).</li>
+<li>빔이 벽이나 물체에 가려지면 그 뒤로는 닿지 않습니다. 거울판 일부만 가려지면 남은 부분으로 나간 빛은 닿습니다.</li>
+</ul>
+</div></details>
+<details class="node" id="mirror-chain"><summary>거울에서 거울로</summary><div class="node-body">
+<ul>
+<li>반사 빔이 다른 거울의 앞면에 닿으면 다시 반사됩니다 (연쇄 반사).</li>
+<li>두 거울이 서로 마주 보고 있어도 빛이 무한히 오가지 않습니다. 나를 비추는 거울에는 내가 다시 빛을 보내지 않습니다.</li>
+<li>거울 3개 이상을 삼각형처럼 서로 이어지게 배치하는 것은 피하세요. 광원을 꺼도 빛이 남아 있을 수 있습니다 (아직 막지 않음).</li>
+</ul>
+</div></details>
+<details class="node" id="mirror-notes"><summary>알아둘 점</summary><div class="node-body">
+<ul>
+<li>빔은 레벨에 <strong>Volumetric Fog(안개)</strong>가 있어야 눈에 보입니다. 안개가 없어도 판정은 정상입니다.</li>
+<li>빨강·파랑 능력의 기준은 거울입니다 (거울 위치에서 밀려남, 거울 쪽으로 끌려옴). 플레이어 손전등이 함께 비추면 플레이어가 우선입니다.</li>
+<li>회전·이동 신호는 없습니다. 방향과 위치는 배치할 때 액터를 돌리고 옮겨서 정합니다.</li>
+</ul>
+</div></details>
+<details class="node" id="mirror-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>모퉁이 너머 비추기: 맵 광원 → 거울 → 벽 뒤의 블록</li>
+<li>색 모으기: 빨강 맵 광원과 파랑 손전등을 각각 거울로 반사해 한 블록에 모으면 보라</li>
+<li>거울 길: 거울 두세 개로 빛을 꺾어 멀리 있는 블록까지 전달</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 6 능력 블록 ===================== -->
+<details class="chapter" id="block"><summary><span class="chapter-number">6</span>BP_AvilityBlock — 능력 블록 <span class="tag recv">수신</span></summary><div class="chapter-body">
+<p>빛을 받으면 색이 바뀌고, 그 색의 능력이 발동하는 블록입니다. <code>ColorMode</code>로 아무 색에나 반응할지, 특정 색에만 반응할지, 고유 색을 품고 있다가 들어온 빛과 섞을지 고릅니다. 수신 장치이기도 해서, 신호를 받으면 이동을 시작하게 할 수 있습니다. 외형을 바꾸면 움직이는 발판이나 벽으로도 쓸 수 있습니다.</p>
+<details class="node" id="block-settings" open><summary>6-1. 공통 설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0번 = <code>WaitTrigger</code> 이동 시작/정지). 2 이상이면 AND</td><td><code>0 → 1</code></td></tr>
+<tr><td><code>ColorMode</code></td><td>색 반응 방식 (아래 표)</td><td><code>Default</code></td></tr>
+<tr><td><code>UseColor</code></td><td><code>ColorMode</code>에서 쓰는 색 (All / Red / Blue / Green / Purple / Yello / SkyBlue / None)</td><td><code>All</code></td></tr>
+<tr><td><code>Move</code></td><td>이동 방식 (아래 표). 능력 효과도 이 값에 따라 달라짐</td><td><code>Fixed</code></td></tr>
+<tr><td><code>MovePoint</code></td><td>Patrol 경유지 목록 (블록 기준 상대 좌표). 뷰포트에서 위젯을 끌어서 편집. 아래 "MovePoint 설정 방법" 참고</td><td>비어 있음</td></tr>
+<tr><td><code>MoveSpeed</code></td><td>Patrol 이동 속도</td><td>500</td></tr>
+<tr><td><code>WaitTrigger</code></td><td>켜면 신호를 받을 때까지 Patrol을 시작하지 않음. 신호가 꺼지면 그 자리에서 멈춤</td><td>꺼짐</td></tr>
+<tr><td><code>StartMoving</code></td><td><code>WaitTrigger</code> 켬일 때 켜면 반대로 동작: 처음부터 Patrol 이동, 신호가 켜지면 그 자리에서 멈추고 꺼지면 다시 출발</td><td>꺼짐</td></tr>
+<tr><td><code>IsUserStaticMesh</code></td><td>켜면 아래 메시로 외형 교체</td><td>꺼짐</td></tr>
+<tr><td><code>UserStaticMesh</code></td><td>사용할 메시 (발판, 벽 등)</td><td>없음</td></tr>
+<tr><td><code>CanGrab</code></td><td>켜면 플레이어가 F로 들고 놓을 수 있음. <code>Move = Physics</code>일 때만 적용</td><td>꺼짐</td></tr>
+<tr><td><code>CanGrabSkyBlue</code></td><td>켜면 SkyBlue 능력으로 작아진 동안 들 수 있음. <code>CanGrab</code>이 꺼져 있어 평소엔 못 드는 블록도 작아지면 들 수 있게 됨. 끄면 작아져도 못 듦. <code>Move = Physics</code>일 때만 적용</td><td>켜짐</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="block-grab"><summary>들기 (CanGrab)</summary><div class="node-body">
+<ul>
+<li>들 수 있는 조건: <code>Move = Physics</code> + <code>CanGrab</code> 켜짐 (Details에서 체크하면 됨). 바라보면 상호작용 문구가 뜨고 F로 들기 / 놓기.</li>
+<li><code>Move</code>가 <code>Physics</code>가 아니면 <code>CanGrab</code>·<code>CanGrabSkyBlue</code>를 켜도 들 수 없습니다.</li>
+<li>든 블록은 플레이어가 보는 방향을 따라 돌고, 잡는 순간 수평·정면으로 정렬됩니다 (위아래를 봐도 기울지 않음).</li>
+<li>능력이 발동한 동안은 색에 따라 들기가 막힙니다. 들고 있는 중에 막히는 능력이 발동하면 자동으로 손에서 놓습니다.</li>
+</ul>
+<div class="scroll"><table><thead><tr><th>능력</th><th>발동 중 들기</th></tr></thead><tbody>
+<tr><td><span class="c-red">Red</span> / <span class="c-blue">Blue</span></td><td>가능 (그대로)</td></tr>
+<tr><td><span class="c-green">Green</span> (정지)</td><td>불가</td></tr>
+<tr><td><span class="c-yellow">Yello</span> (커짐)</td><td>불가</td></tr>
+<tr><td><span class="c-purple">Purple</span> (반투명)</td><td>불가</td></tr>
+<tr><td><span class="c-skyblue">SkyBlue</span> (작아짐)</td><td><code>CanGrabSkyBlue</code>를 따름 (<code>CanGrab</code>이 꺼져 있어도 켜져 있으면 가능)</td></tr>
+</tbody></table></div>
+<p class="note good">예: 평소엔 못 드는 큰 상자(<code>CanGrab</code> 끔, <code>CanGrabSkyBlue</code> 켬, <code>Physics</code>) → 하늘색으로 작게 만들어야 들고 옮길 수 있음.</p>
+</div></details>
+<details class="node" id="block-colormode"><summary>ColorMode</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>값</th><th>동작</th><th>크리스탈 색</th><th>기본 메시</th></tr></thead><tbody>
+<tr><td><code>Default</code></td><td>비춰진 색 그대로 능력 발동. <code>UseColor</code> 무시</td><td>흰색</td><td><code>SM_Element_Plain</code></td></tr>
+<tr><td><code>ReactOnly</code></td><td>비춰진 색(섞인 결과)이 <code>UseColor</code>와 같을 때만 발동. <code>UseColor = All</code>이면 아무 색이나</td><td><code>UseColor</code>의 연한 색</td><td><code>SM_Element_Chain</code></td></tr>
+<tr><td><code>OwnColor</code></td><td>블록이 <code>UseColor</code>를 품고 있음. 빛이 들어오면 그 빛과 합친 색으로 발동 (예: 고유 Red + 파랑 빛 = Purple). 빛이 없으면 아무것도 안 함</td><td><code>UseColor</code>의 진한 색</td><td><code>SM_Element_Chain</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>색 합치기는 빛의 삼원색(R/G/B)을 더하는 방식입니다. 고유색과 들어온 빛에 같은 성분이 있으면 한 번만 셉니다 (고유 Red + 빨강 빛 = Red).</li>
+<li><code>OwnColor</code>에 섞인 색도 넣을 수 있습니다. 고유 Yello(R+G) + 파랑 빛 = R+G+B → 흰색이라 능력이 없습니다.</li>
+<li><code>OwnColor</code>에서 <code>UseColor</code>가 <code>All</code>이나 <code>None</code>이면 고유색이 없는 것과 같아 <code>Default</code>처럼 동작합니다.</li>
+<li><code>IsUserStaticMesh</code>를 켜면 메시는 <code>UserStaticMesh</code>로 바뀌고 크리스탈 색 칠하기는 건너뜁니다.</li>
+<li>크리스탈은 평소에도 아주 살짝 빛납니다 (<code>M_BlockBase</code> 머티리얼 설정).</li>
+</ul>
+</div></details>
+<details class="node" id="block-move"><summary>Move · 이동 표시등</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>값</th><th>동작</th></tr></thead><tbody>
+<tr><td><code>Fixed</code></td><td>제자리 고정</td></tr>
+<tr><td><code>Physics</code></td><td>물리 적용. 떨어지고 밀리고 잡을 수 있음</td></tr>
+<tr><td><code>PatrolReturn</code></td><td>경유지를 끝까지 간 뒤 역순으로 되돌아옴 (A→B→C→B→A)</td></tr>
+<tr><td><code>PatrolRotation</code></td><td>마지막 경유지 다음 첫 경유지로 이어서 순환 (A→B→C→A)</td></tr>
+<tr><td><code>PatrolRestart</code></td><td>마지막 경유지에서 처음 위치로 순간이동 후 다시 시작</td></tr>
+</tbody></table></div>
+<p><code>Move</code>가 Patrol 계열이면 블록 아래 <code>SM_Floor_Plain_Light</code>(표시등)가 보입니다. <code>Fixed</code>/<code>Physics</code>면 숨겨집니다. 움직이는 블록인지 한눈에 알 수 있게 하는 표시입니다.</p>
+</div></details>
+<details class="node" id="block-movepoint"><summary>MovePoint 설정 방법</summary><div class="node-body">
+<p><code>Move</code>가 Patrol 계열일 때 블록이 지나갈 경유지 목록입니다.</p>
+<ol>
+<li>블록을 선택하고 Details의 <code>MovePoint</code> 배열에서 + 를 눌러 경유지를 추가합니다.</li>
+<li>뷰포트에 경유지마다 작은 다이아몬드 모양 위젯이 나타납니다. 이것을 끌어서 위치를 잡습니다. (Details에서 X/Y/Z 숫자를 직접 입력해도 됩니다.)</li>
+<li>블록은 배열 순서(0 → 1 → 2 …)대로 이동합니다. 순서를 바꾸려면 배열 칸을 위아래로 옮기세요.</li>
+</ol>
+<ul>
+<li>좌표는 블록 기준 상대 위치입니다. (0, 0, 300)은 "블록에서 위로 300". 그래서 블록을 옮기면 경로도 같이 따라 움직입니다.</li>
+<li>블록을 회전하거나 크기를 바꾸면 경로도 같이 회전·확대됩니다. 게임 시작 시 한 번 월드 좌표로 바꿔 두기 때문에, 이동 중에는 경로가 블록을 따라가지 않습니다.</li>
+<li>속도는 <code>MoveSpeed</code>(초당 이동 거리)로 일정하게 움직입니다. 경유지 사이가 멀수록 오래 걸립니다.</li>
+<li><code>Move</code>가 <code>Fixed</code>나 <code>Physics</code>면 <code>MovePoint</code>는 무시됩니다.</li>
+</ul>
+</div></details>
+<details class="node" id="block-abilities"><summary>6-2. 색별 능력</summary><div class="node-body">
+<p><strong>능력 발동 흐름 (공통)</strong></p>
+<ol>
+<li>빛을 계속 비추면 게이지가 차오름 (색마다 충전 시간이 다름. Green은 0.2초로 빠름)</li>
+<li>다 차면 능력 시작</li>
+<li>빛이 떠나면 일정 시간 유지되다 종료 → 쿨타임</li>
+</ol>
+<p class="note">충전 / 유지 / 쿨타임 시간은 각 블록마다 바꿀 수 없고, <code>AvilityConfig</code> 함수에 색별로 고정되어 있습니다.</p>
+
+<h3 class="c-red">Red — 폭발 (즉시 발동, 유지 없음)</h3>
+<ul>
+<li><code>Physics</code>: 블록 자신이 튕겨 나감. 방향은 <strong>빛을 쏜 쪽의 반대편</strong> (플레이어가 비추고 있으면 플레이어 기준 우선, 맵 광원만 비추면 그 광원 기준)</li>
+<li>그 외: 주변 물체와 플레이어를 밀어냄</li>
+</ul>
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>InnerRadius</code></td><td>이 반경 안은 폭발력 100%</td><td>200</td></tr>
+<tr><td><code>OuterRadius</code></td><td>이 반경 밖은 0% (사이는 거리에 따라 감쇠)</td><td>1250</td></tr>
+<tr><td><code>ExplosionForce</code></td><td>주변 물체를 밀어내는 힘 (<code>Physics</code>가 아닐 때)</td><td>2500</td></tr>
+<tr><td><code>PushForce</code></td><td>블록 자신이 밀려나는 힘 (<code>Physics</code>일 때)</td><td>2000</td></tr>
+<tr><td><code>Exp_PlayerForce</code></td><td>플레이어에게 적용되는 힘</td><td>2000</td></tr>
+</tbody></table></div>
+
+<h3 class="c-blue">Blue — 당기기 (즉시 발동, 유지 없음)</h3>
+<ul>
+<li><code>Physics</code>: 블록이 <strong>빛을 쏜 쪽 앞</strong>으로 끌려옴 (플레이어가 비추고 있으면 플레이어 우선, 맵 광원만 비추면 그 광원 앞으로)</li>
+<li>그 외: 플레이어가 블록 쪽으로 끌려감. 단 <strong>플레이어가 손전등으로 그 블록을 비추고 있는 동안만</strong> (맵 광원만 비출 때는 안 끌려감)</li>
+</ul>
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>MaxPullSpeed</code></td><td>블록이 끌려오는 최대 속도 (<code>Physics</code>일 때)</td><td>3000</td></tr>
+<tr><td><code>PlayerMaxPullSpeed</code></td><td>플레이어가 끌려가는 최대 속도 (<code>Physics</code>가 아닐 때)</td><td>2000</td></tr>
+</tbody></table></div>
+
+<h3 class="c-green">Green — 정지</h3>
+<ul>
+<li><code>Physics</code>: 물리를 꺼서 공중에서도 멈춤</li>
+<li>Patrol: 이동을 멈춤</li>
+<li>튜닝 변수 없음</li>
+</ul>
+
+<h3><span class="c-yellow">Yello</span> / <span class="c-skyblue">SkyBlue</span> — 크기 변화</h3>
+<ul>
+<li>충전이 끝난 뒤부터 서서히 커지거나(Yello) 작아지고(SkyBlue), 끝나면 서서히 원래 크기로</li>
+<li>작아진 동안 들기는 <code>CanGrabSkyBlue</code>를 따릅니다 (<a href="#block-grab">들기</a> 참고). 커진 동안(Yello)은 들 수 없습니다.</li>
+</ul>
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ChangeSpeed</code></td><td>크기 변화 속도 (공통)</td><td>0.3</td></tr>
+<tr><td><code>UpScale</code></td><td>Yello: 몇 배로 커질지</td><td>2</td></tr>
+<tr><td><code>DownScale</code></td><td>SkyBlue: 몇 분의 1로 작아질지 (2 = 절반)</td><td>2</td></tr>
+</tbody></table></div>
+
+<h3 class="c-purple">Purple — 반투명 통과</h3>
+<ul>
+<li>서서히 반투명해지며 플레이어와 물체가 통과 가능. <code>Physics</code> 블록은 바닥·벽은 계속 막음 (떨어지지 않게)</li>
+<li>반투명일 때는 빛(그림자)도 통과합니다</li>
+<li>능력이 끝날 때 플레이어가 블록 안에 있으면 나갈 때까지 통과 상태를 유지합니다 (끼임 방지)</li>
+<li>블록끼리 겹친 채로 끝나면 천천히 밀려나며 분리됩니다</li>
+<li>튜닝 변수 없음</li>
+</ul>
+<div class="note"><strong>보라 <code>Physics</code> 블록을 바닥 아래로 떨어뜨리고 싶을 때</strong>
+<ul>
+<li>보라 상태의 <code>Physics</code> 블록은 일반 메시(Static Mesh Actor)로 만든 바닥과 벽은 통과하지 못합니다. 월드 바닥을 뚫고 끝없이 떨어지지 않게 막아 둔 것입니다.</li>
+<li>대신 다른 능력 블록은 통과합니다. 그래서 블록이 빠져나가야 하는 바닥은 일반 메시로 깔지 말고, 능력 블록에 바닥 메시를 덮어 씌워서 깔아야 합니다.</li>
+<li>만드는 법: <code>BP_AvilityBlock</code> 배치 → <code>IsUserStaticMesh</code> 켜기 + <code>UserStaticMesh</code>에 바닥 메시 → <code>Move = Fixed</code></li>
+<li>주의: 이 바닥도 능력 블록이라 빛을 받으면 능력이 발동합니다. <code>ColorMode = ReactOnly</code> + <code>UseColor</code>를 퍼즐에서 쓰지 않는 색으로 두면 바닥이 엉뚱하게 반응하는 일을 줄일 수 있습니다.</li>
+<li>예: 일반 바닥 위에 이렇게 만든 "능력 블록 바닥" 구간을 두면, 보라가 된 상자는 그 구간에서만 아래층으로 떨어집니다.</li>
+</ul></div>
+</div></details>
+<details class="node" id="block-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>움직이는 발판: <code>IsUserStaticMesh</code> + 발판 메시, <code>Move = PatrolReturn</code>, <code>MovePoint</code>로 왕복 경로 지정</li>
+<li>버튼으로 움직이는 발판: 위에 더해 <code>WaitTrigger</code> 켜기 + 버튼의 SignalTargets에 이 블록 추가 → 버튼을 눌러야 출발</li>
+<li>발판을 밟는 동안만 움직이는 벽: 벽 메시 + <code>WaitTrigger</code> + 발판 연결 → 발판에서 내려오면 그 자리에서 멈춤</li>
+<li>멈춰서 올라타는 발판: <code>WaitTrigger</code> + <code>StartMoving</code> + 버튼(<code>Togle</code>) → 계속 움직이다가 버튼을 켜면 멈춤</li>
+<li>초록으로 멈추는 발판: <code>ColorMode = ReactOnly</code> + <code>UseColor = Green</code> + Patrol 발판 → 원하는 위치에서 손전등으로 멈춰 올라탐</li>
+<li>보라 벽: <code>ColorMode = ReactOnly</code> + <code>UseColor = Purple</code> + <code>Fixed</code> + 벽 메시 → 빨강 맵 광원 + 파랑 손전등을 섞어야 통과</li>
+<li>노란 계단: <code>ColorMode = ReactOnly</code> + <code>UseColor = Yello</code> + <code>UpScale = 3</code> → 블록을 키워서 높은 곳에 올라감</li>
+<li>파란 운반 퍼즐: <code>ColorMode = ReactOnly</code> + <code>UseColor = Blue</code> + <code>Physics</code> → 블록을 당겨와서 발판 위에 올리기</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 7 다락문 ===================== -->
+<details class="chapter" id="hatch"><summary><span class="chapter-number">7</span>BP_Hatch — 다락문 <span class="tag recv">수신</span></summary><div class="chapter-body">
+<p>한쪽 모서리를 경첩으로 삼아 90도 회전하며 열리고 닫히는 판입니다. 바닥 뚜껑, 다락문, 들리는 다리 등에 씁니다. 빛이나 색 능력에는 반응하지 않습니다. 능력 블록과는 별개의 장치입니다.</p>
+<details class="node" id="hatch-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0번 = 열기). 2 이상이면 AND</td><td><code>0 → 1</code></td></tr>
+<tr><td><code>WaitTrigger</code></td><td>켜면 신호형: 신호가 켜지면 열리고 꺼지면 닫힘. 끄면 반복형: 게임 시작부터 혼자 열림 → 대기 → 닫힘 → 대기를 반복 (신호 무시)</td><td>꺼짐</td></tr>
+<tr><td><code>IsDown</code></td><td>켜면 반대 방향(아래쪽)으로 열림</td><td>꺼짐</td></tr>
+<tr><td><code>StartOpen</code></td><td>신호형(<code>WaitTrigger</code> 켬)에서 켜면 열린 채로 시작. 신호가 켜지면 닫히고 꺼지면 다시 열림 (반대 동작). 에디터에서도 열린 모습으로 보임. 반복형에서는 무시</td><td>꺼짐</td></tr>
+<tr><td><code>UseUserStaticMesh</code> + <code>UserStaticMesh</code></td><td>켜면 <code>UserStaticMesh</code>로 외형 교체</td><td>꺼짐 / 없음</td></tr>
+<tr><td><code>OpenTime</code></td><td>열리는 데 걸리는 시간(초). 닫히는 시간도 같음</td><td>1</td></tr>
+<tr><td><code>HatchWait</code></td><td>반복형에서 끝까지 열리거나 닫힌 뒤 기다리는 시간(초)</td><td>2</td></tr>
+</tbody></table></div>
+<ul>
+<li>여는 각도는 90도로 고정입니다. 방향만 <code>IsDown</code>으로 고릅니다.</li>
+<li>신호형은 열리는 도중에 신호가 꺼지면 그 각도에서 바로 닫히는 쪽으로 되돌아갑니다.</li>
+</ul>
+</div></details>
+<details class="node" id="hatch-hinge"><summary>경첩 위치와 여는 방향</summary><div class="node-body">
+<ul>
+<li>경첩은 메시의 −X 쪽 모서리(높이 가운데)에 있고, 메시의 Y축을 기준으로 회전합니다.</li>
+<li>경첩이 어느 변에 올지는 액터를 Z축으로 회전시켜 정합니다. 예: Z 180이면 반대쪽 변이 경첩이 됩니다.</li>
+<li>외형은 <code>UseUserStaticMesh</code>를 켜고 <code>UserStaticMesh</code>에 메시를 넣어 바꿉니다. 경첩 위치는 그 메시의 크기를 기준으로 자동 계산됩니다.</li>
+<li>레벨에는 액터를 닫힌 기준으로 배치하세요. <code>StartOpen</code>을 켜면 열린 모습은 자동으로 보여 줍니다(액터 자체를 돌려서 열린 모양을 만들지 마세요).</li>
+</ul>
+</div></details>
+<details class="node" id="hatch-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>발판으로 여는 뚜껑: 발판의 SignalTargets에 다락문 추가 → 발판을 밟는 동안 열림</li>
+<li>함정 바닥: <code>IsDown</code> 켜기 + 버튼(<code>JustOn</code>) 연결 → 버튼을 누르면 바닥이 아래로 열려 떨어짐</li>
+<li>타이밍 통로: <code>WaitTrigger</code> 끔 → 혼자 열리고 닫히는 문 사이로 타이밍 맞춰 통과</li>
+<li>AND 다리: <code>ChannelRequired</code> <code>0 → 2</code> + 버튼(<code>Togle</code>) + 발판 → 둘 다 켜야 다리가 내려옴</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 8 조합 예시 ===================== -->
+<details class="chapter" id="examples"><summary><span class="chapter-number">8</span>조합 예시 모음</summary><div class="chapter-body">
+<div class="scroll"><table><thead><tr><th>퍼즐</th><th>구성</th></tr></thead><tbody>
+<tr><td>기본 문</td><td>버튼(<code>Togle</code>) → 문</td></tr>
+<tr><td>타임어택</td><td>버튼(<code>Timed</code>, 3초) → 문</td></tr>
+<tr><td>두 사람 몫</td><td>발판 A + 발판 B → 문(<code>ChannelRequired</code> <code>0 → 2</code>). 하나는 플레이어, 하나는 블록</td></tr>
+<tr><td>조명 켜고 색 섞기</td><td>버튼(<code>Togle</code>) → 빨강 광원(<code>StartOn</code> 끔). 광원 아래 <code>ReactOnly</code> + <code>UseColor = Purple</code> 벽. 조명을 켜고 파랑 손전등으로 비춰 통과</td></tr>
+<tr><td>색 금고</td><td>버튼(<code>ReOn</code>) → 광원(<code>ChangeColor</code> / <code>Rotate</code>). 광원이 초록일 때 손전등 빨강을 더하면 노랑 → 블록이 커져서 길이 열림</td></tr>
+<tr><td>고유색 블록</td><td>능력 블록(<code>OwnColor</code>, <code>UseColor = Red</code>). 파랑으로 비추면 보라(통과), 초록으로 비추면 노랑(커짐) → 같은 블록을 손전등 색으로 다르게 사용</td></tr>
+<tr><td>출발하는 엘리베이터</td><td>발판 → 능력 블록(발판 메시, <code>PatrolReturn</code>, <code>WaitTrigger</code>). 발판을 누르는 동안 위아래 왕복</td></tr>
+<tr><td>함정 바닥</td><td>버튼(<code>JustOn</code>) → 다락문(<code>IsDown</code>, <code>WaitTrigger</code>). 누르면 바닥이 아래로 열림</td></tr>
+<tr><td>한 번에 여러 장치</td><td>버튼 하나의 SignalTargets에 문 + 광원 + 움직이는 벽을 모두 넣기</td></tr>
+<tr><td>스테이지 넘어가기</td><td>통로의 트리거① → 출구 문 Channel 1(강제 닫기) + 입구 문 Channel 0(열기), 입구 안쪽 트리거② → 입구 문 Channel 1(강제 닫기)</td></tr>
+<tr><td>다음 맵으로</td><td>끝 통로의 트리거(<code>NextLevel</code> = 다음 맵) → 지나가면 화면이 어두워지며 다음 맵의 PlayerStart에서 시작</td></tr>
+<tr><td>모퉁이 너머</td><td>맵 광원 → 거울 → 벽 뒤 블록. 거울 각도를 맞춰야 블록이 발동</td></tr>
+<tr><td>첫 손전등</td><td>본 게임용 맵(<code>BP_RealGameMode</code>), 어두운 방 책상에 BP_Pickup(<code>Flashlight</code>, SignalTargets = 방 문 Channel 0). 주워야 빛을 켤 수 있고 문도 열림</td></tr>
+<tr><td>낙하 구덩이</td><td>구덩이 아래 BP_Respawn(<code>ResetBlock</code> + <code>ResetPlayer</code>, 소환 위치 = 구덩이 앞). 떨어진 블록은 제자리로, 플레이어는 구덩이 앞으로</td></tr>
+</tbody></table></div>
+</div></details>
+
+<!-- ===================== 9 설정·주의 ===================== -->
+<details class="chapter" id="settings"><summary><span class="chapter-number">9</span>프로젝트 설정 / 주의사항</summary><div class="chapter-body">
+<details class="node" id="settings-required" open><summary>반드시 있어야 하는 설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>위치</th><th>설정</th><th>없으면</th></tr></thead><tbody>
+<tr><td><code>Config/DefaultEngine.ini</code></td><td>콜리전 Object Channel <code>LightCencer</code> (기본 응답 Overlap)</td><td>맵 광원 감지 박스가 동작하지 않음</td></tr>
+<tr><td><code>Config/DefaultEngine.ini</code></td><td><code>r.VolumetricFog.HistoryWeight=0</code></td><td>빛이 움직일 때 안개 잔상</td></tr>
+<tr><td><code>Config/DefaultEngine.ini</code> (Project Settings → Maps &amp; Modes → Game Instance Class)</td><td><code>BP_GameInstance</code></td><td>손전등·필터 획득이 저장되지 않아 본 게임용 맵에서 빛을 아예 못 씀</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="settings-gamemode" open><summary>맵마다 고를 GameMode (World Settings → GameMode Override)</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>GameMode</th><th>용도</th><th>손전등·필터</th></tr></thead><tbody>
+<tr><td><code>BP_TestGameMode</code></td><td>기능 테스트 맵</td><td>줍지 않아도 전부 사용 (1~4 키 바로 사용)</td></tr>
+<tr><td><code>BP_RealGameMode</code></td><td>실제 스테이지 맵</td><td><code>BP_Pickup</code>으로 주워야 사용. 빛 꺼진 채 시작</td></tr>
+</tbody></table></div>
+<ul>
+<li>Override를 비워 두면 프로젝트 기본 GameMode로 시작해 다른 플레이어가 나올 수 있습니다. 맵마다 반드시 둘 중 하나를 지정하세요.</li>
+<li>예전 이름 <code>BP_GameMode</code>는 <code>BP_TestGameMode</code>로 바뀌었습니다. 예전 이름으로 지정된 맵도 지금은 자동으로 <code>BP_TestGameMode</code>로 연결되지만, 곧 옛 이름을 정리할 예정이니 직접 다시 지정해 두세요.</li>
+<li>다음 맵으로 넘어갈 때(BP_Trigger <code>NextLevel</code>) 도착 맵에도 PlayerStart와 GameMode Override가 필요합니다.</li>
+</ul>
+</div></details>
+<details class="node" id="settings-mistakes"><summary>흔한 실수</summary><div class="node-body">
+<dl class="pins">
+<dt>맵 광원만 비췄는데 능력이 안 나가요</dt><dd>플레이어가 광원 근처(<code>PlayerRange</code> 8000 안)에 있는지, 블록 <code>ColorMode</code>/<code>UseColor</code>가 광원 색과 맞는지 확인하세요.</dd>
+<dt>버튼을 두 번 눌러야 색이 바뀌어요</dt><dd>Rotate 광원에는 <code>Togle</code>이 아니라 <code>ReOn</code> 버튼을 쓰세요.</dd>
+<dt>버튼이 안 눌려요</dt><dd><code>UseStaticMesh</code>로 바꾼 메시에 콜리전이 있는지 확인하세요.</dd>
+<dt>맵 광원이 블록을 못 잡아요</dt><dd>블록 메시의 Generate Overlap Events가 켜져 있는지, <code>PlayerRange</code>가 0이 아닌지 확인하세요.</dd>
+<dt>새 블록 메시가 투명하게 안 보여요</dt><dd>그 메시의 Nanite를 끄세요.</dd>
+<dt>1~4 키를 눌러도 빛이 안 켜져요</dt><dd>그 맵의 GameMode가 <code>BP_RealGameMode</code>이면 손전등(·필터)을 주워야 합니다. 테스트 중이면 <code>BP_TestGameMode</code>로 지정하세요. Game Instance Class가 <code>BP_GameInstance</code>인지도 확인하세요.</dd>
+<dt>F로 아이템이 안 주워져요</dt><dd>BP_Pickup 메시의 콜리전이 Visibility를 Block하는지 확인하세요. 아이템을 다른 물체 안에 묻어 두면 겨눌 수 없습니다.</dd>
+<dt>레벨을 이동했더니 다른 캐릭터로 시작해요</dt><dd>도착 맵의 GameMode Override와 PlayerStart를 확인하세요.</dd>
+<dt>콜리전 Visibility 채널</dt><dd>건드리지 마세요. 빛 판정 레이가 이 채널을 씁니다.</dd>
+</dl>
+</div></details>
+<details class="node" id="settings-editor"><summary>에디터에서 범위 확인</summary><div class="node-body">
+<ul>
+<li>맵 광원을 선택하면 주황색 상자(감지 박스)가 보입니다. 판정 범위를 확인할 때 쓰세요.</li>
+<li>뷰포트에서 Alt + C를 누르면 콜리전 표시를 켜고 끌 수 있습니다.</li>
+</ul>
+</div></details>
+</div></details>
+</main>
+
+<footer><div class="wrap">GaesinLight 레벨 제작 가이드 · 로컬 HTML · 인터넷/서버 없이 열람 가능 · 장 제목을 눌러 펼치고, 위 검색창으로 접힌 내용까지 찾을 수 있습니다.</div></footer>
+<script src="assets/guide.js"></script>
+</body></html>
