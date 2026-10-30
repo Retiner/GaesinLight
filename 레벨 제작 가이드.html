@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>레벨 제작 가이드 · GaesinLight</title><link rel="stylesheet" href="assets/guide.css"></head>
+<title>레벨 제작 가이드 · GaesinLight</title><link rel="stylesheet" href="Docs/assets/guide.css"></head>
 <body>
 <div class="rgb-bar"></div>
 <header><div class="wrap">
@@ -37,24 +37,40 @@
 <!-- ===================== 신호 채널 ===================== -->
 <details class="chapter" id="channels" open><summary><span class="chapter-number">★</span>신호 채널 한눈에 보기 (현재 버전)</summary><div class="chapter-body">
 <p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>)의 <code>SignalTargets</code>(트리거는 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
-<div class="scroll"><table><thead><tr><th>받는 장치</th><th>Channel</th><th>기능</th><th>신호 켜짐</th><th>신호 꺼짐</th></tr></thead><tbody>
-<tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">0</td><td>열기</td><td>열림</td><td>닫힘</td></tr>
-<tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">1</td><td><a href="#door-lock">강제 닫기 (잠금)</a></td><td>닫히고 영구히 잠김. 이후 0번 신호가 와도 안 열림</td><td>아무 일 없음 (잠금 유지)</td></tr>
-<tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">0</td><td>열기 (<code>WaitTrigger</code> 켬일 때만)</td><td>열림</td><td>닫힘</td></tr>
-<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td></tr>
-<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">0</td><td>전원</td><td>켜짐</td><td>꺼짐</td></tr>
-<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">1</td><td>색 바꾸기 (<code>ChangeColor</code> 설정대로)</td><td><code>Red</code>/<code>Green</code>/<code>Blue</code>면 그 색, <code>Rotate</code>면 빨강→초록→파랑 순서로 다음 색</td><td>원래 색(<code>LightColor</code>)으로 복귀. <code>Rotate</code>는 무시</td></tr>
-<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">2</td><td>헤드 위아래로 꺾기</td><td><code>PitchAngle</code>만큼 꺾임</td><td>원래 각도로 복귀</td></tr>
-<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">3</td><td>좌우로 돌리기</td><td><code>YawAngle</code>만큼 돌아감</td><td>원래 방향으로 복귀</td></tr>
-<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">4</td><td>이동</td><td><code>MoveOffset</code> 위치로 이동</td><td>원래 위치로 복귀</td></tr>
+<div class="scroll"><table><thead><tr><th>받는 장치</th><th>Channel</th><th>기능</th><th>신호 켜짐</th><th>신호 꺼짐</th><th>추천 버튼 모드</th></tr></thead><tbody>
+<tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">0</td><td>열기</td><td>열림</td><td>닫힘</td><td><code>Togle</code> (열고 닫기) / <code>JustOn</code> (한 번 열면 끝) / <code>Timed</code> (시간 제한)</td></tr>
+<tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">1</td><td><a href="#door-lock">강제 닫기 (잠금)</a></td><td>닫히고 영구히 잠김. 이후 0번 신호가 와도 안 열림</td><td>아무 일 없음 (잠금 유지)</td><td><code>JustOn</code> (보통은 통과 트리거로 연결)</td></tr>
+<tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">0</td><td>열기 (<code>WaitTrigger</code> 켬일 때만)</td><td>열림</td><td>닫힘</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
+<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td><td><code>Togle</code> (출발·정지) / <code>JustOn</code> (출발만) / <code>Timed</code> (잠깐만 움직임)</td></tr>
+<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">1</td><td><a href="#block-move">처음으로</a> (Patrol 계열만, <code>ReOn</code> 버튼 권장)</td><td>처음 위치로 순간이동 → <code>RestartDelay</code>초 뒤 다시 출발</td><td>아무 일 없음</td><td><strong><code>ReOn</code></strong></td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">0</td><td>전원</td><td>켜짐</td><td>꺼짐</td><td><code>Togle</code> (스위치) / <code>Timed</code> (잠깐 켜짐)</td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">1</td><td>색 바꾸기 (<code>ChangeColor</code> 설정대로)</td><td><code>Red</code>/<code>Green</code>/<code>Blue</code>면 그 색, <code>Rotate</code>면 빨강→초록→파랑 순서로 다음 색</td><td>원래 색(<code>LightColor</code>)으로 복귀. <code>Rotate</code>는 무시</td><td><code>Rotate</code>면 <strong><code>ReOn</code></strong> / 그 외는 <code>Togle</code>·<code>Timed</code></td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">2</td><td>헤드 위아래로 꺾기</td><td><code>PitchAngle</code>만큼 꺾임 (<code>RotateTime</code>초 동안)</td><td>원래 각도로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">3</td><td>좌우로 돌리기</td><td><code>YawAngle</code>만큼 돌아감 (<code>RotateTime</code>초 동안)</td><td>원래 방향으로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
+<tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">4</td><td>이동</td><td><code>MoveOffset</code> 위치로 이동 (<code>MoveSpeed</code> 속도)</td><td>원래 위치로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
 </tbody></table></div>
 <ul>
+<li><strong>추천 버튼 모드 고르는 법</strong>: 신호가 켜져 있는 동안 상태가 유지되는 기능(열기·출발·전원·회전·이동)은 <code>Togle</code>(켰다 껐다) / <code>JustOn</code>(한 번 켜면 끝) / <code>Timed</code>(시간 제한) 중에서 고릅니다. 여기에 <code>ReOn</code>을 쓰면 켜지자마자 꺼져서 열리자마자 닫히거나 움직이자마자 되돌아옵니다. 반대로 <strong>누를 때마다 한 번씩 일어나는 기능</strong>(블록 1번 "처음으로", 광원 1번 <code>Rotate</code>)은 <code>ReOn</code>이 맞습니다. <code>JustOn</code>은 처음 한 번만 반응하고, <code>Togle</code>은 두 번 눌러야 한 번 반응합니다. 발판은 "밟고 있는 동안 켜짐"이라 <code>Togle</code>처럼 쓰입니다. 버튼 모드 설명은 <a href="#button-mode">1장 ButtonMode</a>.</li>
 <li>상자형 광원 <code>BP_Light2</code>는 번호와 기능이 <code>BP_Light</code>와 같습니다. 다른 점: 4번은 광원이 상자에서 레일을 따라 내려가고(꺼지면 올라가 상자로 들어감), 3번은 상자는 그대로 두고 광원 부분만 좌우로 돕니다. <a href="#light2">5장 상자형 광원</a> 참고.</li>
 <li>신호를 받지 않는 장치: 거울 <code>BP_Mirror</code>(회전·이동 신호 없음, 액터를 돌려 배치), 되돌리기 구역 <code>BP_Respawn</code>. 플레이어와 송신 장치도 신호를 받지 않습니다.</li>
 <li>표에 없는 번호로 보내면 아무 일도 일어나지 않습니다.</li>
 <li>채널 번호는 받는 장치 안에서만 의미가 있습니다. 문의 1번(강제 닫기)과 광원의 1번(색)은 서로 다른 기능입니다.</li>
 <li>"시작부터 켜진 상태" 설정(문·다락문 <code>StartOpen</code>, 능력 블록 <code>StartMoving</code>, 광원 <code>StartOn</code>)을 켜면 <strong>0번 채널</strong>의 켜짐/꺼짐이 반대로 동작합니다. 예: <code>StartOpen</code> 문은 신호가 켜지면 닫히고, 꺼지면 다시 열립니다. 광원의 1~4번과 문의 1번(강제 닫기)은 반대가 되지 않습니다.</li>
 <li>몇 개의 신호가 모여야 켜지는지는 받는 장치의 <code>ChannelRequired</code>로 정합니다(기본 1개, 2 이상이면 AND). 자세한 연결 방법은 <a href="#signal">0. 기본 개념</a>을 보세요.</li>
+</ul>
+</div></details>
+
+<!-- ===================== 최근 변경 ===================== -->
+<details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
+<p><strong>2026-10-30</strong></p>
+<ul>
+<li>신호 채널 표에 <strong>추천 버튼 모드</strong> 열 추가: 기능마다 어떤 <code>ButtonMode</code>가 어울리는지. <a href="#channels">신호 채널 한눈에 보기</a></li>
+<li>능력 블록 <code>BP_AvilityBlock</code>: 새 이동 모드 <code>PatrolOnce</code>(끝까지 한 번 가고 멈춤)와 <strong>1번 채널 "처음으로"</strong>(처음 위치로 순간이동 후 <code>RestartDelay</code>초 뒤 재출발). 버튼은 <code>ReOn</code> 모드로 연결하는 것이 좋음. <a href="#block-move">6장 Move</a></li>
+<li>문 <code>BP_Door</code> / <code>BP_Door2</code>: <code>OpenTime</code>(열리고 닫히는 시간, 초)을 문마다 설정 가능. 열리는 거리(100)는 고정. <a href="#door-settings">4장 설정</a></li>
+<li>맵 광원 <code>BP_Light</code>: <code>RotateTime</code>(2·3번 회전 시간, 초), <code>MoveSpeed</code>(4번 이동 속도, 초당 거리)를 광원마다 설정 가능. <a href="#light-rotate">5장 회전</a> · <a href="#light-move">이동</a></li>
+<li>맵 광원 빛 범위: <code>SpotLight</code>의 <code>Outer Cone Angle</code>로 굵기, <code>LightLength</code>로 거리 조절. <a href="#light-settings">5장 설정</a></li>
+<li>능력 블록 <code>BP_AvilityBlock</code>: <code>ReactOnly</code> 메시가 <code>SM_Element_Trick</code>으로 바뀜. 크리스탈 색은 <code>ReactOnly</code>·<code>OwnColor</code> 모두 <code>UseColor</code> 색. Patrol 표시등은 Patrol 블록(사용자 메시 아님)에만 붙음.</li>
+<li>README.md는 없앴고, 이 가이드를 저장소 맨 위 폴더로 옮겼습니다.</li>
 </ul>
 </div></details>
 
@@ -68,7 +84,7 @@
 
 <details class="node" id="signal-connect" open><summary>연결하는 방법</summary><div class="node-body">
 <ol>
-<li>레벨에서 송신 장치(버튼, 발판, 트리거, 줍기 아이템)를 선택합니다.</li>
+<li>레벨에서 송신 장치(버튼, 발판, 트리거, 줍기 아이템, 반납 테이블)를 선택합니다.</li>
 <li>Details의 <code>SignalTargets</code> 배열에서 + 를 눌러 칸을 추가합니다. (BP_Trigger만 이름이 <code>Targets</code>입니다.)</li>
 <li>칸을 펼쳐 <code>Target</code> 옆 스포이드 아이콘을 누르고, 뷰포트에서 수신 장치(문, 다락문, 광원, 블록)를 클릭합니다.</li>
 <li><code>Channel</code>에 몇 번 채널로 보낼지 적습니다. 보통은 <code>0</code>(그 장치의 기본 기능) 그대로 두면 됩니다.</li>
@@ -153,10 +169,10 @@
 </div></details>
 <details class="node" id="button-mode"><summary>ButtonMode</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>모드</th><th>동작</th><th>어울리는 수신 장치</th></tr></thead><tbody>
-<tr><td><code>JustOn</code></td><td>한 번 누르면 켜진 채로 고정. 다시 눌러도 변화 없음</td><td>한 번 열리면 끝나는 문</td></tr>
-<tr><td><code>Togle</code></td><td>누를 때마다 켜짐 ↔ 꺼짐</td><td>열고 닫을 수 있는 문, 광원 전원(0번)</td></tr>
-<tr><td><code>ReOn</code></td><td>누를 때마다 켜짐 → 즉시 꺼짐 신호를 한 번에 보냄 (펄스)</td><td>Rotate 광원 (누를 때마다 색 한 칸씩 회전)</td></tr>
-<tr><td><code>Timed</code></td><td>누르면 켜지고 <code>TimedDuration</code>초 뒤 자동으로 꺼짐</td><td>시간 제한 문</td></tr>
+<tr><td><code>JustOn</code></td><td>한 번 누르면 켜진 채로 고정. 다시 눌러도 변화 없음</td><td>한 번 열리면 끝나는 문, 문 1번 잠금, 한 번만 출발하는 블록(0번)·광원 회전·이동</td></tr>
+<tr><td><code>Togle</code></td><td>누를 때마다 켜짐 ↔ 꺼짐</td><td>열고 닫을 수 있는 문·다락문, 광원 전원(0번)·고정 색(1번)·회전·이동(2~4번), 블록 출발/정지(0번)</td></tr>
+<tr><td><code>ReOn</code></td><td>누를 때마다 켜짐 → 즉시 꺼짐 신호를 한 번에 보냄 (펄스)</td><td>Rotate 광원 (누를 때마다 색 한 칸씩 회전), 능력 블록 1번 "처음으로" (누를 때마다 처음 위치로)</td></tr>
+<tr><td><code>Timed</code></td><td>누르면 켜지고 <code>TimedDuration</code>초 뒤 자동으로 꺼짐</td><td>시간 제한 문·다락문, 잠깐 켜지는 광원, 잠깐만 움직이는 블록·광원</td></tr>
 </tbody></table></div>
 <p class="note"><code>ReOn</code>은 "톡 치는" 신호라서 문에 쓰면 열리자마자 닫힙니다. 누를 때마다 한 번 반응하는 장치 전용입니다. (예: 라이트 색 변경)</p>
 </div></details>
@@ -164,6 +180,7 @@
 <ul>
 <li><code>JustOn</code> + 문: 한 번 열면 계속 열려 있는 출구</li>
 <li><code>ReOn</code> + Rotate 광원: 버튼을 누를 때마다 빛 색이 빨강 → 초록 → 파랑으로 바뀌는 색 맞추기 퍼즐</li>
+<li><code>ReOn</code> + 능력 블록(Channel 1 "처음으로"): 버튼을 누를 때마다 움직이는 발판이 처음 위치로 돌아가 다시 출발. 이 기능은 <strong><code>ReOn</code>으로 연결하는 것이 좋습니다</strong> (<code>JustOn</code>/<code>Togle</code>은 처음 한 번만 반응)</li>
 <li><code>Timed</code>(5초) + 문: 버튼을 누르고 5초 안에 문을 통과해야 하는 타임어택</li>
 </ul>
 </div></details>
@@ -332,9 +349,10 @@
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
 <tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0번 = 열기, 1번 = 강제 닫기). 2 이상이면 AND</td><td><code>0 → 1</code>, <code>1 → 1</code></td></tr>
 <tr><td><code>StartOpen</code></td><td>켜면 열린 채로 시작. 신호가 켜지면 닫히고 꺼지면 다시 열림 (반대 동작). 에디터에서도 열린 모습으로 보임</td><td>꺼짐</td></tr>
+<tr><td><code>OpenTime</code></td><td>열리는 데 걸리는 시간(초). 닫히는 시간도 같음</td><td>1</td></tr>
 </tbody></table></div>
 <ul>
-<li>열리는 거리와 시간은 모든 문이 같은 고정값입니다.</li>
+<li>열리는 거리(문짝 이동 거리 100)는 모든 문이 같은 고정값입니다.</li>
 <li>신호가 꺼지면 열린 만큼 거꾸로 닫힙니다. 열리는 도중에 꺼져도 자연스럽게 되돌아갑니다.</li>
 <li>1번 신호는 <strong>강제 닫기(잠금)</strong>입니다. 아래 "강제 닫기" 참고.</li>
 </ul>
@@ -381,6 +399,14 @@
 <tr><td><code>LightLength</code></td><td>빛 판정 거리</td><td>5000</td></tr>
 </tbody></table></div>
 <p>SpotLight 컴포넌트 설정도 판정에 영향을 줍니다. Outer Cone Angle = 빛 원뿔 각도 = 판정 범위. 각도를 바꾸면 판정도 자동으로 따라갑니다.</p>
+<p><strong>빛 범위(굵기) 바꾸는 법</strong></p>
+<ol>
+<li>레벨에서 광원(<code>BP_Light</code> / <code>BP_Light2</code>)을 선택합니다.</li>
+<li>Details 패널 위쪽 컴포넌트 목록에서 <code>SpotLight</code>를 클릭합니다.</li>
+<li>Light 항목의 <code>Outer Cone Angle</code>을 바꿉니다. 클수록 넓게 퍼집니다. (가장자리를 부드럽게 하는 <code>Inner Cone Angle</code>은 Outer보다 작게 둡니다)</li>
+<li>빛이 닿는 거리는 광원 액터의 <code>LightLength</code>로 바꿉니다. 같은 각도라도 멀리 갈수록 빛 원이 커집니다.</li>
+</ol>
+<p>판정용 감지 박스와 원뿔 계산은 이 두 값으로 자동 계산되므로 따로 맞출 것이 없습니다.</p>
 </div></details>
 <details class="node" id="light-power"><summary><span class="tag">Channel 0</span>전원 (StartOn + 0번 채널)</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>하고 싶은 것</th><th>설정</th></tr></thead><tbody>
@@ -399,6 +425,7 @@
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th></tr></thead><tbody>
 <tr><td><code>PitchAngle</code></td><td>2번 신호가 켜지면 헤드를 위아래로 꺾는 각도. 부호로 방향을 정함 (예: 30 / -30)</td></tr>
 <tr><td><code>YawAngle</code></td><td>3번 신호가 켜지면 광원 전체를 좌우로 돌리는 각도. 부호로 방향을 정함</td></tr>
+<tr><td><code>RotateTime</code></td><td>회전하는 데 걸리는 시간(초). 위아래·좌우 모두 같은 값, 돌아올 때도 같음</td></tr>
 </tbody></table></div>
 <ul>
 <li>신호가 꺼지면 처음 배치한 각도로 천천히 돌아갑니다. 도는 도중에 꺼져도 그 자리에서 되돌아옵니다.</li>
@@ -409,10 +436,11 @@
 <details class="node" id="light-move"><summary><span class="tag">Channel 4</span>이동 (4번)</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th></tr></thead><tbody>
 <tr><td><code>MoveOffset</code></td><td>4번 신호가 켜지면 이동할 위치. 광원 기준 좌표라서 광원을 돌려 배치하면 방향도 따라 돕니다 (예: (300,0,0) = 광원 정면으로 300)</td></tr>
+<tr><td><code>MoveSpeed</code></td><td>이동 속도 (초당 이동 거리). 돌아올 때도 같은 속도</td></tr>
 </tbody></table></div>
 <ul>
 <li>광원을 선택하면 <code>MoveOffset</code> 위치에 마름모 핸들이 보입니다. 끌어서 도착 지점을 정할 수 있습니다. (<code>MoveOffset</code>이 (0,0,0)이면 핸들이 광원 안에 숨어 보이지 않습니다)</li>
-<li>이동 속도는 거리와 상관없이 일정합니다. 멀리 보낼수록 오래 걸립니다.</li>
+<li>이동 속도는 거리와 상관없이 <code>MoveSpeed</code>로 일정합니다. 멀리 보낼수록 오래 걸립니다.</li>
 <li>신호가 꺼지면 처음 위치로 돌아옵니다. 이동 중에 꺼져도 그 자리에서 되돌아옵니다.</li>
 <li>회전·이동은 신호로만 동작합니다. "처음부터 꺾인/이동한 상태로 시작" 설정은 없습니다.</li>
 </ul>
@@ -501,12 +529,13 @@
 <p>빛을 받으면 색이 바뀌고, 그 색의 능력이 발동하는 블록입니다. <code>ColorMode</code>로 아무 색에나 반응할지, 특정 색에만 반응할지, 고유 색을 품고 있다가 들어온 빛과 섞을지 고릅니다. 수신 장치이기도 해서, 신호를 받으면 이동을 시작하게 할 수 있습니다. 외형을 바꾸면 움직이는 발판이나 벽으로도 쓸 수 있습니다.</p>
 <details class="node" id="block-settings" open><summary>6-1. 공통 설정</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
-<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0번 = <code>WaitTrigger</code> 이동 시작/정지). 2 이상이면 AND</td><td><code>0 → 1</code></td></tr>
+<tr><td><code>ChannelRequired</code></td><td>채널별 필요 신호 수 (0번 = <code>WaitTrigger</code> 이동 시작/정지, 1번 = 처음으로). 2 이상이면 AND</td><td><code>0 → 1</code>, <code>1 → 1</code></td></tr>
 <tr><td><code>ColorMode</code></td><td>색 반응 방식 (아래 표)</td><td><code>Default</code></td></tr>
 <tr><td><code>UseColor</code></td><td><code>ColorMode</code>에서 쓰는 색 (All / Red / Blue / Green / Purple / Yello / SkyBlue / None)</td><td><code>All</code></td></tr>
 <tr><td><code>Move</code></td><td>이동 방식 (아래 표). 능력 효과도 이 값에 따라 달라짐</td><td><code>Fixed</code></td></tr>
 <tr><td><code>MovePoint</code></td><td>Patrol 경유지 목록 (블록 기준 상대 좌표). 뷰포트에서 위젯을 끌어서 편집. 아래 "MovePoint 설정 방법" 참고</td><td>비어 있음</td></tr>
 <tr><td><code>MoveSpeed</code></td><td>Patrol 이동 속도</td><td>500</td></tr>
+<tr><td><code>RestartDelay</code></td><td>1번 채널 "처음으로"로 처음 위치에 돌아간 뒤 다시 출발하기까지 기다리는 시간(초)</td><td>0.5</td></tr>
 <tr><td><code>WaitTrigger</code></td><td>켜면 신호를 받을 때까지 Patrol을 시작하지 않음. 신호가 꺼지면 그 자리에서 멈춤</td><td>꺼짐</td></tr>
 <tr><td><code>StartMoving</code></td><td><code>WaitTrigger</code> 켬일 때 켜면 반대로 동작: 처음부터 Patrol 이동, 신호가 켜지면 그 자리에서 멈추고 꺼지면 다시 출발</td><td>꺼짐</td></tr>
 <tr><td><code>IsUserStaticMesh</code></td><td>켜면 아래 메시로 외형 교체</td><td>꺼짐</td></tr>
@@ -534,8 +563,8 @@
 <details class="node" id="block-colormode"><summary>ColorMode</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>값</th><th>동작</th><th>크리스탈 색</th><th>기본 메시</th></tr></thead><tbody>
 <tr><td><code>Default</code></td><td>비춰진 색 그대로 능력 발동. <code>UseColor</code> 무시</td><td>흰색</td><td><code>SM_Element_Plain</code></td></tr>
-<tr><td><code>ReactOnly</code></td><td>비춰진 색(섞인 결과)이 <code>UseColor</code>와 같을 때만 발동. <code>UseColor = All</code>이면 아무 색이나</td><td><code>UseColor</code>의 연한 색</td><td><code>SM_Element_Chain</code></td></tr>
-<tr><td><code>OwnColor</code></td><td>블록이 <code>UseColor</code>를 품고 있음. 빛이 들어오면 그 빛과 합친 색으로 발동 (예: 고유 Red + 파랑 빛 = Purple). 빛이 없으면 아무것도 안 함</td><td><code>UseColor</code>의 진한 색</td><td><code>SM_Element_Chain</code></td></tr>
+<tr><td><code>ReactOnly</code></td><td>비춰진 색(섞인 결과)이 <code>UseColor</code>와 같을 때만 발동. <code>UseColor = All</code>이면 아무 색이나</td><td><code>UseColor</code> 색</td><td><code>SM_Element_Trick</code></td></tr>
+<tr><td><code>OwnColor</code></td><td>블록이 <code>UseColor</code>를 품고 있음. 빛이 들어오면 그 빛과 합친 색으로 발동 (예: 고유 Red + 파랑 빛 = Purple). 빛이 없으면 아무것도 안 함</td><td><code>UseColor</code> 색</td><td><code>SM_Element_Chain</code></td></tr>
 </tbody></table></div>
 <ul>
 <li>색 합치기는 빛의 삼원색(R/G/B)을 더하는 방식입니다. 고유색과 들어온 빛에 같은 성분이 있으면 한 번만 셉니다 (고유 Red + 빨강 빛 = Red).</li>
@@ -552,7 +581,14 @@
 <tr><td><code>PatrolReturn</code></td><td>경유지를 끝까지 간 뒤 역순으로 되돌아옴 (A→B→C→B→A)</td></tr>
 <tr><td><code>PatrolRotation</code></td><td>마지막 경유지 다음 첫 경유지로 이어서 순환 (A→B→C→A)</td></tr>
 <tr><td><code>PatrolRestart</code></td><td>마지막 경유지에서 처음 위치로 순간이동 후 다시 시작</td></tr>
+<tr><td><code>PatrolOnce</code></td><td>처음 위치에서 마지막 경유지까지 한 번만 가고 그 자리에서 멈춤 (A→B→C 멈춤). 다시 보내려면 1번 채널 "처음으로" 신호</td></tr>
 </tbody></table></div>
+<p><strong>1번 채널 "처음으로"</strong>: 신호가 오면 블록이 처음 위치로 순간이동하고 <code>RestartDelay</code>초 기다린 뒤 다시 출발합니다. 모든 Patrol 모드에 쓸 수 있습니다 (이동 중이어도 바로 처음으로).</p>
+<ul>
+<li><strong>버튼은 <code>ReOn</code> 모드로 연결하는 것이 좋습니다.</strong> 1번 채널은 신호가 "켜질 때"만 반응하는데, <code>ReOn</code>은 누를 때마다 켜졌다 바로 꺼져서 매번 반응합니다. <code>JustOn</code>은 처음 한 번만, <code>Togle</code>은 두 번 눌러야 한 번 반응합니다.</li>
+<li>예: <code>PatrolOnce</code> + <code>ReOn</code> 버튼(Channel 1) → 끝까지 가서 멈춘 엘리베이터를 버튼으로 처음 층에 불러와 다시 올려 보냄.</li>
+<li>0번(<code>WaitTrigger</code> 출발/정지)과 같이 써도 서로 방해하지 않습니다. <code>Fixed</code>/<code>Physics</code> 블록에 보내면 아무 일도 일어나지 않습니다.</li>
+</ul>
 <p><code>Move</code>가 Patrol 계열이면 블록 아래 <code>SM_Floor_Plain_Light</code>(표시등)가 보입니다. <code>Fixed</code>/<code>Physics</code>면 숨겨집니다. 움직이는 블록인지 한눈에 알 수 있게 하는 표시입니다.</p>
 </div></details>
 <details class="node" id="block-movepoint"><summary>MovePoint 설정 방법</summary><div class="node-body">
@@ -749,5 +785,5 @@
 </main>
 
 <footer><div class="wrap">GaesinLight 레벨 제작 가이드 · 로컬 HTML · 인터넷/서버 없이 열람 가능 · 장 제목을 눌러 펼치고, 위 검색창으로 접힌 내용까지 찾을 수 있습니다.</div></footer>
-<script src="assets/guide.js"></script>
+<script src="Docs/assets/guide.js"></script>
 </body></html>

@@ -1,7 +1,7 @@
 # GaesinLight 블루프린트 구조 정리
 
 BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함수·흐름을 먼저 확인하고 작업합니다.
-- 기능이 바뀔 때마다 이 문서를 같이 갱신합니다 (README = 레벨 제작자용 사용법, CLAUDE.md = 설계 결정·작업 기록, 이 문서 = BP 내부 구조).
+- 기능이 바뀔 때마다 이 문서를 같이 갱신합니다 (`레벨 제작 가이드.html` = 레벨 제작자용 사용법, CLAUDE.md = 설계 결정·작업 기록, 이 문서 = BP 내부 구조).
 - 근거: 사용자가 붙여 넣은 그래프(K2Node 텍스트), 작업 기록, .uasset의 컴포넌트 이름. **(미확인)** 표시는 그래프를 직접 보지 못하고 기록만으로 적은 부분입니다.
 - 표기: `A → B` = 실행 순서, `[I]` = Instance Editable(레벨에서 설정), `(내부)` = 런타임 계산용.
 
@@ -203,7 +203,8 @@ OnComponentBeginOverlap(Box)
 | 변수 | 설명 |
 |---|---|
 | `StartOpen` [I] | 열린 채 시작(0번 반전) |
-| `OpenDistance`(100), `OpenTime`(1) | 고정값 |
+| `OpenTime` [I](1) | 열리는 시간 (2026-10-30 인스턴스 설정으로 변경, BP_Door2도 같음) |
+| `OpenDistance`(100) | 고정값 |
 | `LeftCloseLocation` / `RightCloseLocation` (내부) | 닫힌 위치(Construction에서 저장) |
 | `Lock` (내부) | 채널 1로 잠겼는지 |
 | `DoorTimeLine` | Alpha 0→1 |
@@ -243,7 +244,8 @@ DefaultSceneRoot
 |---|---|
 | `LightColor` [I], `StartOn` [I], `ChangeColor` [I], `LightLength` [I](5000) | README 5장 |
 | `PitchAngle` [I], `YawAngle` [I], `MoveOffset` [I](3D Widget) | 회전·이동 신호 값 |
-| `RotateTime`, `MoveSpeed`, `PlayerRange`(8000), `ScanInterval`(0.1) | 고정값 |
+| `RotateTime` [I], `MoveSpeed` [I] | 회전 시간(초), 이동 속도(초당 거리) (2026-10-30 인스턴스 설정으로 변경) |
+| `PlayerRange`(8000), `ScanInterval`(0.1) | 고정값 |
 | `LightColorValue` / `FirstColorValue` (내부) | 현재 색 / 원래 색 |
 | `TurnOn` (내부) | 켜짐 상태 |
 | `SpreadRadius` (내부) | `LightLength × DegTan(OuterConeAngle)` |
@@ -283,9 +285,11 @@ DefaultSceneRoot
 - Pitch Update → BP_Light와 같음(`HeadPivot.SetRelativeRotation`).
 
 ### BP_AvilityBlock (능력 블록)
-**구성요소**: `DefaultSceneRoot` → `StaticMesh`(본체, Physics 시뮬레이션·잡기 대상), `SM_Floor_Plain_Light`(Patrol 표시등, NoCollision). 크기 변화용 Timeline.
+**구성요소**: `DefaultSceneRoot` → `StaticMesh`(본체, Physics 시뮬레이션·잡기 대상), `SM_Floor_Plain_Light`(Patrol 표시등, NoCollision, StaticMesh의 형제). 크기 변화용 Timeline.
 
-**인스턴스 설정** [I]: `ColorMode`, `UseColor`, `Move`, `MovePoint`(3D Widget 배열, 로컬), `MoveSpeed`, `WaitTrigger`, `StartMoving`, `IsUserStaticMesh` + `UserStaticMesh`, `CanGrab`, `CanGrabSkyBlue`, 색별 튜닝값(README 6장).
+**Construction Script** (2026-10-30 붙여넣기 기준): `CanGrab2 = CanGrab` → Switch(ColorMode) → StaticMesh.SetStaticMesh(Default `SM_Element_Plain` / OwnColor `SM_Element_Chain` / ReactOnly `SM_Element_Trick`) → Switch(Move): Fixed·Physics → 표시등 SetStaticMesh(None) / Patrol 3종 → Branch(IsUserStaticMesh) True → SetStaticMesh(None), False → SetStaticMesh(SM_Floor_Plain_Light) → Branch(IsUserStaticMesh) True → SetStaticMesh(UserStaticMesh) 끝 / False → GetMaterialIndex("crystal") → CreateDynamicMaterialInstance(M_BlockBase) → `BlockMID` → AvilityConfig(UseColor) → Select(ColorMode: Default 흰색 / OwnColor·ReactOnly `Lerp(TargetColor, 흰색, 0.05)`) → SetVectorParameterValue("BlockColor") → `StartColor`. 표시등을 SetVisibility로 숨기지 않고 메시를 비우는 이유: 숨긴 컴포넌트도 GetActorBounds(맵 광원 IsLit 표본점, 보라 SafeReset)에 포함되고, 표시등은 StaticMesh의 형제라 Physics 블록이 움직여도 처음 자리에 남아 Bounds가 늘어남 (2026-10-30).
+
+**인스턴스 설정** [I]: `ColorMode`, `UseColor`, `Move`(Fixed / Physics / PatrolReturn / PatrolRotation / PatrolRestart / PatrolOnce), `MovePoint`(3D Widget 배열, 로컬), `MoveSpeed`, `RestartDelay`(0.5, 채널 1 재출발 대기), `WaitTrigger`, `StartMoving`, `IsUserStaticMesh` + `UserStaticMesh`, `CanGrab`, `CanGrabSkyBlue`, 색별 튜닝값(README 6장).
 
 | 내부 변수 | 설명 |
 |---|---|
@@ -297,6 +301,8 @@ DefaultSceneRoot
 | `BaseSize` | BeginPlay StaticMesh 스케일 |
 | `WorldPatrolPoints` / `PatrolIndex` | Patrol 경로(월드) |
 | `TriggerPaused` | WaitTrigger 대기 중 |
+| `PatrollCount` | 경유지 진행 방향 (+1 / -1, PatrolReturn이 끝에서 × -1) |
+| `RestartWaiting` | 채널 1로 처음 위치에 돌아가 `RestartDelay` 동안 기다리는 중 (Tick 이동 전체 스킵) |
 | `PurpleResetPending` | 보라 복구 대기 |
 | `ResetLocation` / `ResetRotation` | BeginPlay StaticMesh 월드 위치·회전 (BP_Respawn용) |
 
@@ -316,11 +322,13 @@ DefaultSceneRoot
 | `SetMove` | BeginPlay 첫 노드 (Move 설정 적용) |
 | `CanInteract` (인터페이스) | `Move == Physics AND CanGrab2` |
 | `ResetToStart` | Branch(Move == Physics) → 플레이어 HeldBlock == Self면 `DropBlock` → `StaticMesh.SetWorldLocationAndRotation(Reset*, Teleport)` → 선속도·각속도 0 |
-| `OnChannelActive/Deactive` | Switch 0 → `TriggerPaused = false / true` |
+| `OnChannelActive/Deactive` | Switch 0 → `TriggerPaused = false / true`. Active만 Switch 1 → `RestartFromStart` |
+| `RestartFromStart` (Custom Event) | Branch(Length(WorldPatrolPoints) > 0) → `PatrolIndex = 0` → `PatrollCount = 1` → `SetActorLocation(WorldPatrolPoints[0], Teleport)` → `RestartWaiting = true` → `Retriggerable Delay(RestartDelay)` → `RestartWaiting = false` |
 | `IsStartOn` | 0 → `StartMoving` |
 
 - BeginPlay: `SetMove` → `BaseSize = StaticMesh.GetComponentScale` → `TriggerPaused = WaitTrigger AND NOT StartMoving` → `ResetLocation` → `ResetRotation` (+ WorldPatrolPoints 변환, 미확인 위치).
 - Construction: ColorMode로 메시 → Move로 표시등 → UserStaticMesh면 교체 후 종료, 아니면 `BlockMID` 생성 → 크리스탈 색.
+- Tick (2026-10-30): `AvilityTick` → Branch(`RestartWaiting`) F → Branch(`WaitTrigger`) → (T면 Branch(`TriggerPaused`) F) → Switch(`Move`). Patrol 핀마다 `Branch(MoveCheck)` → `SetActorLocation(Movelocation(DeltaTime))` → `Branch(getDistance)`(경유지 도착) → `Branch(CheckChange)`(마지막 경유지): Return T → `PatrollCount × -1` → `PatrolIndex += PatrollCount` / Rotation T → `PatrolIndex = 0` / Restart T → `PatrolIndex = 0` → `SetActorLocation(WorldPatrolPoints[0], Teleport)` / **Once T → 없음(끝에서 멈춤)** / 모두 F → `PatrolIndex += PatrollCount`.
 
 ### BP_Mirror (거울)
 **구성요소**:
@@ -453,3 +461,5 @@ CapsuleComponent (루트, Character 기본)
 | 2026-10-24 | BP_Pickup 추가 (작업 6 완료) |
 | 2026-10-25 | BP_Light2 상자형 광원 추가 (Carriage 이동, PartRotate 좌우). BP_Mirror 회전·이동 신호 안 함 |
 | 2026-10-25 | BP_FilterReturn 추가 (작업 14 완료). GI MarkReturned / IsReturned, S_PlayerProgress.CompletedReturns |
+| 2026-10-30 | BP_AvilityBlock Construction: ReactOnly 메시 SM_Element_Trick, 표시등은 숨김 대신 SetStaticMesh(None). BP_Door·BP_Door2 `OpenTime`, BP_Light `RotateTime`·`MoveSpeed` 인스턴스 설정으로 |
+| 2026-10-30 | BP_AvilityBlock `PatrolOnce` 모드(EN_BlockMove 추가), 채널 1 "처음으로"(`RestartFromStart`, `RestartWaiting`, `RestartDelay`), Tick 앞 Branch(RestartWaiting) |
