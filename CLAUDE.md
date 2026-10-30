@@ -1,7 +1,7 @@
 # GaesinLight 프로젝트 — AI 작업 컨텍스트
 
 RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작할 것.
-레벨 제작자용 상세 매뉴얼은 **`Docs/레벨 제작 가이드.html`**(2026-10-25 README에서 이전, 로그라이크 프로젝트 가이드 형식: 장·항목 `details` 접이식, `assets/guide.css`·`guide.js`). README.md는 그 HTML을 가리키는 짧은 안내만 둠. (이 파일은 AI / 개발 이어가기용 요약 + 구현 메모)
+레벨 제작자용 상세 매뉴얼은 **`레벨 제작 가이드.html`**(저장소 맨 위. 2026-10-30 Docs에서 꺼냄, CSS·JS는 그대로 `Docs/assets/`. README.md는 2026-10-30 사용자 요청으로 삭제 — VS Code가 옛 README 미저장 버퍼를 계속 보여 줘서. 맨 위 `#channels` 채널 표, `#changes` 최근 변경 절을 매번 갱신)(2026-10-25 README에서 이전, 로그라이크 프로젝트 가이드 형식: 장·항목 `details` 접이식, `assets/guide.css`·`guide.js`). README.md는 그 HTML을 가리키는 짧은 안내만 둠. (이 파일은 AI / 개발 이어가기용 요약 + 구현 메모)
 **BP 내부 구조(구성요소·변수·함수·흐름)는 `BP_STRUCTURE.md`** — BP 수정 안내 전에 먼저 읽고, 구조가 바뀌면 같은 턴에 갱신(2026-10-23 사용자 지시).
 
 ---
@@ -11,7 +11,7 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 ### 1-0. 신호 구조
 - 송신: BP_Button, BP_PressurePlate, BP_Trigger(1-3-1) → `SignalTargets`(`S_SignalTarget` 배열: Target Actor + Channel Int, 기본 0)마다 `BPI_Activatable`의 `Activate(Channel)` / `Deactivate(Channel)` 메시지 전송. 상태가 바뀔 때만 보냄. 인터페이스 메시지라 BPI_Activatable 미구현 액터나 None이 들어 있어도 오류 없이 무시됨.
 - 수신: BP_Activate를 부모로 하는 BP_Door, BP_Light, BP_AvilityBlock, BP_Hatch.
-- 공통 수신 설정: 채널별로 켜진 신호 수(`ChannelCount`)가 필요 개수 이상이면 `OnChannelActive(Channel)`, 아래로 내려가면 `OnChannelDeactive(Channel)`. 필요 개수 = `Max(Map_Find(ChannelRequired, Channel), 1)` (Map 채널→개수, 없으면 1). 2 이상이면 AND. `RequiredCount`는 2026-10-05 삭제(ChannelRequired로 통합). 각 BP Class Defaults에 받는 채널을 `→ 1`로 미리 넣어 둠(문 `0`·`1`, 다락문/블록 `0`, 광원 `0~4`). 모든 수신 장치가 `OnChannelActive`/`OnChannelDeactive`를 직접 오버라이드(`OnActive`/`OnDeactive`/`IsActive`/`ActiveCount`는 2026-10-05 삭제). 채널 번호는 수신 장치 안에서만 의미가 있음. 수신 장치의 기능→채널 번호표는 BP에 고정(인스턴스 설정 아님, 2026-10-04 사용자 결정: 송신 쪽 Channel로 기능을 고르므로 수신 쪽까지 바꿀 수 있으면 중복). 현재 번호표: 문 0=열기 / 1=잠금(Lock, 영구), 다락문 0=열기, 능력 블록 0=이동(WaitTrigger), 맵 광원 0=전원(TurnOn+SetVisibility) / 1=색(ChangeColor: R/G/B 켜짐→그 색, 꺼짐→FirstColorValue, Rotate는 `==` 비교로 R→G→B 순환, 꺼짐 무시) / 2=상하 회전 / 3=좌우 회전 / 4=이동(작업 4). `Docs/레벨 제작 가이드.html` 맨 위 "신호 채널 한눈에 보기"(#channels)에 표로 정리.
+- 공통 수신 설정: 채널별로 켜진 신호 수(`ChannelCount`)가 필요 개수 이상이면 `OnChannelActive(Channel)`, 아래로 내려가면 `OnChannelDeactive(Channel)`. 필요 개수 = `Max(Map_Find(ChannelRequired, Channel), 1)` (Map 채널→개수, 없으면 1). 2 이상이면 AND. `RequiredCount`는 2026-10-05 삭제(ChannelRequired로 통합). 각 BP Class Defaults에 받는 채널을 `→ 1`로 미리 넣어 둠(문 `0`·`1`, 다락문/블록 `0`, 광원 `0~4`). 모든 수신 장치가 `OnChannelActive`/`OnChannelDeactive`를 직접 오버라이드(`OnActive`/`OnDeactive`/`IsActive`/`ActiveCount`는 2026-10-05 삭제). 채널 번호는 수신 장치 안에서만 의미가 있음. 수신 장치의 기능→채널 번호표는 BP에 고정(인스턴스 설정 아님, 2026-10-04 사용자 결정: 송신 쪽 Channel로 기능을 고르므로 수신 쪽까지 바꿀 수 있으면 중복). 현재 번호표: 문 0=열기 / 1=잠금(Lock, 영구), 다락문 0=열기, 능력 블록 0=이동(WaitTrigger) / 1=처음으로(RestartFromStart, 2026-10-30), 맵 광원 0=전원(TurnOn+SetVisibility) / 1=색(ChangeColor: R/G/B 켜짐→그 색, 꺼짐→FirstColorValue, Rotate는 `==` 비교로 R→G→B 순환, 꺼짐 무시) / 2=상하 회전 / 3=좌우 회전 / 4=이동(작업 4). `Docs/레벨 제작 가이드.html` 맨 위 "신호 채널 한눈에 보기"(#channels)에 표로 정리(2026-10-30 "추천 버튼 모드" 열 추가: 유지형 기능 = Togle/JustOn/Timed, 펄스형(블록 1 처음으로, 광원 1 Rotate) = ReOn).
 - 시작 상태 반전(2026-10-05): 각 장치에 단순 bool(문/다락문 `StartOpen`, 블록 `StartMoving`, 광원 `StartOn` 완료. 광원 회전·이동의 시작 상태 반전은 만들지 않기로 함(2026-10-08 사용자 결정)). 부모 순수 함수 `IsStartOn(Channel)→bool`(기본 false)을 자식이 Switch on Int로 오버라이드해 채널별 bool 반환. true면 부모가 Active/Deactive 호출을 서로 바꿈 → 신호 켜짐 = 꺼짐 동작. 장치는 BeginPlay/Construction에서 스스로 "켜진 상태"로 시작해야 함. (Set<채널> 방식은 레벨 제작자 부담이라 사용자가 거절)
 - 버튼과 발판은 같은 신호를 보내므로 한 수신 장치에 섞어서 연결 가능(합산). 예: 문 `ChannelRequired 0→2` + Togle 버튼 + 발판 = 버튼 켜고 발판 밟아야 열림. AND에 `ReOn`은 즉시 꺼져서 사용 불가.
 
@@ -70,7 +70,7 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 | `ChannelRequired` | 채널별 필요 신호 수 | `0 → 1` |
 | `StartOpen` | 열린 채 시작, 신호 켜짐=닫힘 (IsStartOn 0 → StartOpen) | 꺼짐 |
 - 잠금(채널 1, 2026-10-08): 변수 `Lock`. OnChannelActive Switch 1 → `CloseDoor` → `Lock = true`. Switch 0 → Branch(`Lock`) False → `OpenDoor`. OnChannelDeactive는 그대로(잠긴 뒤 0번 꺼짐 = 닫기 재호출, 무해). 1번 꺼짐은 무시 → 영구 잠금. ChannelRequired `1 → 1`.
-- `OpenDistance`(문짝 이동 거리, 100), `OpenTime`(열리는 시간, 1초)은 BP 내부 고정값.
+- `OpenTime`(열리는 시간, 1초)은 인스턴스 설정(2026-10-30, BP_Door·BP_Door2). `OpenDistance`(문짝 이동 거리, 100)는 BP 내부 고정값.
 - 좌우 문(LeftDoor/RightDoor) + DoorFrame, Timeline Play/Reverse라 도중에 꺼져도 자연스럽게 되돌아감.
 - StartOpen 구현: Construction에서 `Left/RightCloseLocation` = 문짝 RelativeLocation 저장 → StartOpen이면 문짝을 열린 위치(±OpenDistance Y)로 SetRelativeLocation. BeginPlay: SetPlayRate(1/OpenTime) → StartOpen이면 `DoorTimeLine.SetNewTime(GetTimelineLength)` (빠지면 Reverse가 0에서 시작해 애니메이션 없이 즉시 닫힘).
 
@@ -83,6 +83,8 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 | `ChannelRequired` | 채널별 필요 신호 수 | `0 → 1` |
 | `LightLength` | 판정 거리 | 5000 |
 | SpotLight `Outer Cone Angle` | 판정 원뿔 각도 (SpreadRadius / 감지 박스 자동 계산) | 컴포넌트 값 |
+| `PitchAngle` / `YawAngle` / `MoveOffset` | 2·3·4번 신호 회전 각도 / 이동 위치 | - |
+| `RotateTime` / `MoveSpeed` | 회전 시간(초) / 이동 속도(초당 거리). 2026-10-30 인스턴스 설정으로 변경 | BP 기본값 |
 - `PlayerRange`(8000, 플레이어가 이 거리 안일 때만 판정), `ScanInterval`(0.1초, 판정 주기)은 BP 내부 고정값.
 - 맵 광원만으로도 능력 발동 (2026-10-02 변경: `ReCalculate`에서 `Map_Contains(ActiveContributions, PlayerCharacter)` + Select 제거, `CurrentColor`를 Switch on Int에 직접 연결). 단 PlayerRange 밖이면 판정 안 함.
 - 예시: 빨강 광원 + 파랑 손전등 = 보라 통과 / StartOn 끔+Togle 버튼(Ch 0) = 스위치 조명 / ChangeColor Rotate + ReOn 버튼 = 색 금고.
@@ -92,7 +94,8 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 |---|---|---|
 | `ColorMode` | `Default`(비춘 색 그대로, UseColor 무시) / `ReactOnly`(합친 색 == UseColor일 때만, All이면 전부) / `OwnColor`(UseColor를 고유색으로 품고 들어온 빛과 OR 합성) | `Default` |
 | `UseColor` | All / Red / Blue / Green / Purple / Yello / SkyBlue / None (예전 `ReactColor`를 이름 변경) | `All` |
-| `Move` | Fixed / Physics / PatrolReturn / PatrolRotation / PatrolRestart | `Fixed` |
+| `Move` | Fixed / Physics / PatrolReturn / PatrolRotation / PatrolRestart / PatrolOnce(끝에서 멈춤, 2026-10-30) | `Fixed` |
+| `RestartDelay` | 채널 1 "처음으로" 후 재출발 대기(초) | 0.5 |
 | `MovePoint`, `MoveSpeed` | Patrol 경유지, 속도 | 비어 있음 / 500 |
 | `WaitTrigger` | 켜면 신호 받을 때까지 Patrol 대기, 신호 꺼지면 그 자리에서 멈춤 | 꺼짐 |
 | `StartMoving` | WaitTrigger에서 처음부터 이동, 신호 켜짐=정지 (IsStartOn 0 → StartMoving) | 꺼짐 |
@@ -164,7 +167,7 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 - 색 합성 (`ReCalculate`): ActiveContributions 합 → 비트 인코딩(R≥0.5 → 1, G → +2, B → +4)으로 `CurrentColor`. Sequence then_3에서 `ColorMode == OwnColor AND CurrentColor != 0`이면 `CurrentColor = CurrentColor | Select(UseColor)`(All 0, Red 1, Green 2, Yello 3, Blue 4, Purple 5, SkyBlue 6, None 0). 빛이 없으면(0) 고유색만으로는 발동 안 함. (단 흰 손전등 (0,0,0)으로는 고유색이 발동하는 것을 사용자가 확인함 — 실제 조건은 기여 존재 여부 기준일 수 있으니 수정 시 BP 확인) 이후 Switch on Int(0/7 → None, 1 Red, 2 Green, 3 Yello, 4 Blue, 5 Purple, 6 SkyBlue).
 - 빛 주체 판정 `GetLightSource`(Pure, 2026-10-06): 출력 `actor`/`IsPlayer`/`Found`. `ActiveContributions.Contains(GetPlayerCharacter)`면 플레이어, 아니면 `Length>0`이면 `Keys[0]`(첫 광원), 없으면 None/false/false. 빨강 `Push`(Physics 자기 밀기)와 파랑 `BlockPull`(Physics 끌어오기, 목표 = Source 위치 + Source.ForwardVector × `Front`)이 `Select(Found ? actor : GetPlayerCharacter)`로 기준 액터를 정함. 광원 기준이면 광원 액터 Forward를 쓰므로 SpotLight가 액터 정면을 향해야 함. 바로 위에서 비추는 광원은 XY 차이가 0이라 위쪽(UpForce)으로만 힘이 감.
 - `ColorCheck` 매크로: `IsLit = (ColorMode != ReactOnly) OR (UseColor == All) OR (색 == UseColor)`.
-- Construction Script: ColorMode Switch로 메시(Default `SM_Element_Plain`, 나머지 `SM_Element_Chain`) → Move Switch로 `SM_Floor_Plain_Light` 표시(Patrol만, NoCollision) → `IsUserStaticMesh`면 UserStaticMesh 후 종료, 아니면 crystal 슬롯에 `M_BlockBase` MID 생성(`BlockMID`) → 크리스탈 색 Select(ColorMode): Default 흰색 / ReactOnly `Lerp(TargetColor, 흰색, 0.3)` / OwnColor `TargetColor` → `BlockColor` + `StartColor`. MID는 모드와 상관없이 항상 만들어야 함(런타임 색 변경·보라 Opacity가 BlockMID 사용).
+- Construction Script: ColorMode Switch로 메시(Default `SM_Element_Plain`, OwnColor `SM_Element_Chain`, ReactOnly `SM_Element_Trick`) → Move Switch로 `SM_Floor_Plain_Light` 표시(Patrol AND NOT IsUserStaticMesh면 SetStaticMesh(SM_Floor_Plain_Light), 나머지는 SetStaticMesh(None). NoCollision. 2026-10-30 SetVisibility 숨김에서 변경: 숨겨도 컴포넌트가 GetActorBounds에 포함돼 Physics 블록이 처음 자리에서 멀어지면 맵 광원 IsLit 표본점이 어긋나기 때문. 테스트 대기) → `IsUserStaticMesh`면 UserStaticMesh 후 종료, 아니면 crystal 슬롯에 `M_BlockBase` MID 생성(`BlockMID`) → 크리스탈 색 Select(ColorMode): Default 흰색 / ReactOnly·OwnColor 둘 다 `Lerp(TargetColor, 흰색, 0.05)` (2026-10-30 붙여넣기 기준, 예전 ReactOnly 0.3 / OwnColor TargetColor에서 바뀜 — 모드 구분은 메시로) → `BlockColor` + `StartColor`. MID는 모드와 상관없이 항상 만들어야 함(런타임 색 변경·보라 Opacity가 BlockMID 사용).
 - 발광: `M_BlockBase` Emissive = BlockColor × Texture × `Lerp(0.05, 3, GlowAmount)`. 현재 `GlowAmount`는 BP에서 안 건드림(기본 0 → 은은한 기본 발광만). 충전 비례 발광은 사용자가 보류.
 - Trigger: `AvilityTick`에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵. BeginPlay에서 `TriggerPaused = WaitTrigger AND NOT StartMoving`, `OnChannelActive` Switch 0 → false, `OnChannelDeactive` Switch 0 → true.
 - Yellow/SkyBlue: `BaseSize × Lerp(1, UpScale 또는 1/DownScale, Alpha)`. 독립 Timeline(0→0.4초)을 `Grow`(Play) / `Y_Reset`·`SB_Reset`(Reverse)로 구동. ChargeAlpha를 직접 쓰면 차징 중에 커지는 문제가 있어서 분리함.
@@ -197,13 +200,14 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 - `Config/DefaultEngine.ini`에서 공유해야 하는 것: `r.VolumetricFog.HistoryWeight=0`(안개 잔상 방지), `LightCencer` 콜리전 채널(맵 광원 감지), `GameInstanceClass=BP_GameInstance`(작업 6). **2026-10-24 사용자: 다음 커밋에 Config 포함**(Game Instance Class 줄 때문).
 - 커밋 전엔 항상 `git status`로 의도치 않은 변경(에디터 자동저장 애셋 등) 확인.
 - 사용자가 커밋을 원하지 않을 때가 많음 — 명시적으로 요청할 때만 커밋.
-- 기능·설정·채널·컴포넌트 구조가 바뀌거나 설계 결정이 나면, 묻지 않고 그 턴에 **모든 문서**를 반영: `Docs/레벨 제작 가이드.html`(맨 위 `#channels` 채널 표 포함), `README.md`(안내 내용이 낡으면), BP_STRUCTURE.md(BP 구조 + 갱신 기록), CLAUDE.md(작업 표·메모), 필요하면 `Docs/assets/guide.css`·`guide.js`. 답변 끝에 고친 문서를 한 줄로 알림(2026-10-23 사용자 지시, 2026-10-25 "리드미랑 HTML 다른 문서도 다 자동으로"로 확대). 새 장치는 `<details class="chapter" id=…>` + 목차 링크(`nav.local-toc`) 추가. 커밋은 여전히 요청 시에만.
+- 기능·설정·채널·컴포넌트 구조가 바뀌거나 설계 결정이 나면, 묻지 않고 그 턴에 **모든 문서**를 반영: `레벨 제작 가이드.html`(저장소 맨 위. `#channels` 채널 표 + `#changes` 최근 변경 절에 날짜별 한 줄씩 매번 추가. README.md는 2026-10-30 삭제됨 — 다시 만들지 말 것), BP_STRUCTURE.md(BP 구조 + 갱신 기록), CLAUDE.md(작업 표·메모), 필요하면 `Docs/assets/guide.css`·`guide.js`. 답변 끝에 고친 문서를 한 줄로 알림(2026-10-23 사용자 지시, 2026-10-25 "리드미랑 HTML 다른 문서도 다 자동으로"로 확대). 새 장치는 `<details class="chapter" id=…>` + 목차 링크(`nav.local-toc`) 추가. 커밋은 여전히 요청 시에만.
 - 커밋/PR에 `Co-Authored-By: Claude` 등 Claude 표기 금지 (2026-10-05: GitHub 기여자에 claude가 떠서 사용자가 제거 요청).
 
 ## 4. 작업 스타일
 
 - 사용자는 Blueprint를 배우는 중 — 직접 그래프를 만들고 K2Node 텍스트를 붙여넣어 검증받는 방식. 대신 만들어주지 말 것.
 - 설명은 목적 → 노드 역할 → 구체적 행동 순서, 이유 포함, 한 번에 한 단계(하위 단계로 쪼개서). 세션이 길어져도 설명을 압축하지 말 것.
+  - 형식(2026-10-30 사용자 예시): 확인한 것/못 한 것 한 줄 → `작업. BP: 기능` 제목 → **1부. 쓰는 것** 표(이름 | 출처: 어디서 어떻게 찾는지 | 역할: 여기서 하는 일 + 이유) → **2부. 순서** ①②③(`진입 → Branch(Condition ← …)`, `True → …`처럼 정확한 연결 + 바로 아래 짧은 이유·주의점) → 완성 흐름 간단 그림 → 값 표(임시 표시, 순서·값 이유) → **테스트** 표(# | 확인 | 정상 결과) + "번호로 알려 주세요" + "N번이 안 되면 ○○ 그래프 붙여 주세요". 노드는 약어 말고 실제 이름으로.
 - 사용자가 스스로 변형(더 나은 방식)을 설계하는 경우가 많음 — 타당하면 받아들이고 검증.
 - 한국어로 대화.
 
@@ -229,6 +233,10 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 | 16 | ~~`BP_Light2` 상자형 맵 광원~~ ✅ 완료 (2026-10-25 — 가이드 #light2·채널 표·BP_STRUCTURE 반영. 파일 이름 BP_Light2, BP_Light1은 이전 복사본) | BP_Light와 채널·기능 동일(0 전원 / 1 색 / 2 위아래 / 3 좌우 / 4 이동). 차이: 광원이 상자 안에 들어 있고, **4번(이동) 켜짐 → 상자에서 아래쪽 레일(트레일)을 따라 내려감, 꺼짐 → 다시 올라가 상자로 들어감**. 현재 BP_Light 복사본 + `SM_Sliding_Door` / `SM_Sliding_Hatch` 메시 추가 상태(10-24). **2026-10-25 사용자 결정**: 레일 직선 / 움직이는 부분 = 광원 헤드 + 연결부, 통로(상자·레일)는 고정, 문 연출 없음 / 회전(2·3번)은 내려온 광원만(상자 고정). 구현: `Carriage`(Scene) 아래에 연결부·HeadPivot을 두고, 이동은 SetActorLocation 대신 `Carriage.SetRelativeLocation(Lerp(기준, 기준+MoveOffset))`, 좌우 회전도 액터 대신 컴포넌트 회전. 기존 MoveTimeline·YawTimeLine 재사용. 진행(2026-10-25): BeginPlay `MoveStartLoc = Carriage.RelativeLocation`, `MoveEndLoc = MoveOffset + MoveStartLoc` ✅ / 이동 Update `Carriage.SetRelativeLocation(VLerp)` ✅ / 좌우 Update는 사용자가 새 컴포넌트 `PartRotate`에 `SetRelativeRotation(MakeRotator(Roll·Pitch = 기준, Yaw = 기준.Yaw + YawAngle×Alpha))`로 구현 — **기준 `ActorRotateBase`가 아직 Carriage.RelativeRotation에서 저장됨 → PartRotate.RelativeRotation으로 바꾸라고 안내(미확인)**, 이후 테스트. 완성 후 가이드 HTML `#channels` 표·맵 광원 장, BP_STRUCTURE에 `BP_Light2` 추가 | 중 |
 | 17 | 빛 나오는 부분 발광 (2026-10-25 추가, 나중에) | 빛을 쏘는 장치의 **빛 나오는 부분이 지금 빛 색으로 빛나게**: 맵 광원 `BP_Light`/`BP_Light2` 헤드 렌즈, 거울 `BP_Mirror` 유리(반사 중), 필요하면 손전등. 꺼지면 발광 0. 기존 설계(2026-10-07 거울 보류안) 재사용: 머티리얼에 `GlowColor`(Vector)·`GlowStrength`(Scalar) 파라미터 → Emissive, BeginPlay에서 MID 생성, 슬롯 번호 변수 `GlowSlotIndex`. 광원 = 켜짐 + `LightColorValue`(색 바꾸기·전원 신호 때 갱신), 거울 = 빔 색(빔 여러 개면 합친 색, 흰 손전등 빔은 흰색). 머티리얼은 아트 담당이 파라미터를 넣어 준다고 가정(MI 부모가 엔진 기본이라 직접 수정 금지, 파라미터 없으면 Set…Parameter는 조용히 무시됨) | 소~중 |
 | 18 | 필터 색별 중간 머티리얼 (2026-10-25 추가, 나중에) | 필터 메시의 **중간(유리) 부분 머티리얼이 필터 색에 따라 바뀌게**. 대상: `BP_Pickup`(PickupType=Filter일 때 `FilterColor`로), `BP_FilterReturn` 자리 메시(RedSlot/GreenSlot/BlueSlot), 작업 7 손전등 필터 메시. 방법 후보: Construction에서 `Select(FilterColor)` → 색별 머티리얼 3개 중 하나를 `SetMaterial(중간 슬롯 Index 또는 Slot Name)` / 또는 머티리얼 하나 + MID `SetVectorParameterValue(Color)`. 슬롯 번호·머티리얼은 아트 메시 확인 후 결정(작업 17 발광과 같은 MID 방식으로 묶을 수 있음) | 소 |
+| 19 | 배경음악(BGM) (2026-10-28 추가) | 게임에 BGM 넣기. 맵(스테이지)별 곡, 레벨 이동 시 끊김/이어짐 처리, 설정창(작업 10) 볼륨과 연결 예정. 방법 후보: 맵마다 Ambient Sound / Level BP에서 Spawn Sound 2D, 또는 GameInstance가 Audio Component를 들고 레벨 이동에도 이어 재생. Sound Class(Music)로 묶어 볼륨 조절 | 소~중 |
+| 20 | 3D 위젯(마름모) 크기 독립 (2026-10-28 추가). | 블록 `MovePoint`, BP_Respawn `PlayerRespawnLocation`, 광원 `MoveOffset` 등 Show 3D Widget 벡터는 **액터 로컬 좌표라 액터 Scale을 키우면 마름모 위치(거리)와 크기가 같이 커짐**(현재 계산 `TransformLocation(GetActorTransform, 점)`도 Scale을 곱함). 목표: 블록·구역 크기와 상관없이 같은 거리·크기. 방법 후보 ① 크기는 액터 Scale 대신 메시/Box 컴포넌트 Scale(또는 Box Extent 변수)로 조절 → 액터 Scale 1 유지(위젯·좌표 모두 해결, 레벨 제작 방식 변경 필요) ② 계산만 Scale 제외: `GetActorLocation + RotateVector(점, GetActorRotation)`(좌표 거리만 해결, 에디터 마름모 표시는 여전히 Scale 따라감). 사용자와 방식 결정 필요 | 소~중 |
+| 22 | ~~능력 블록 이동 추가~~ ✅ 완료 (2026-10-30 사용자 "잘 되") — `PatrolOnce` 모드(CheckChange True 비움 = 끝에서 멈춤) + 채널 1 "처음으로"(`RestartFromStart`: PatrolIndex 0, PatrollCount 1, WorldPatrolPoints[0] Teleport, `RestartWaiting` + Retriggerable Delay(`RestartDelay`[I] 0.5)), Tick 앞 Branch(RestartWaiting). 가이드 #block-move·채널 표, BP_STRUCTURE 반영 | ① 새 Move 모드(가칭 `PatrolOnce`): 시작 → 끝까지 한 번 가고 멈춤 ② "처음으로 되돌리기": 이동 중/끝에서 신호가 오면 처음 위치로 즉시 순간이동 후 다시 진행. 제안: ②는 모드가 아니라 **채널 1(신호)** — 모든 Patrol 모드에 공통 적용되고 모드 수가 곱으로 늘지 않음. ① + 채널 1 = "끝에서 멈춤 → 버튼 → 처음으로 가서 다시 끝까지". 펄스라 `ReOn` 버튼 필요. 기존 PatrolRestart의 처음 위치 순간이동 로직 재사용 | 중 |
+| 21 | 능력 블록 중력·무게 (2026-10-28 추가) | Physics 능력 블록이 중력이 약해 보임(천천히 떨어짐) → **기본 Physics 큐브와 같게**. 확인할 것: StaticMesh Physics의 Mass(kg) Override·Mass Scale, Linear/Angular Damping(기본 0.01 / 0), Enable Gravity, Max Depenetration Velocity(보라 분리용 100 — 낙하와 무관해야 함), 크기 능력(노랑/하늘)으로 바뀐 Scale에 따른 질량 변화, 매 틱 힘을 주는 코드(Push/BlockPull/잡기 Physics Handle) 남아 있는지. 기본 큐브와 Details 값을 나란히 비교해서 차이만 맞춤 | 소 |
 
 - 작업 4 광원 회전 (2026-10-06 설계 확정, 사용자 결정 — 오프셋/Step/PingPong/Loop/방향키 연속 회전안 모두 폐기):
   - 컴포넌트: `Root → BaseMesh` / `HeadPivot(Scene, 관절 위치) → HeadMesh + SpotLight → LightSencer`, 전부 Movable. 헤드 회전 시 빛·감지 박스·IsLit 판정이 따라가는 것 확인함.
