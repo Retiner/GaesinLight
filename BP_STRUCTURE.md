@@ -267,7 +267,7 @@ DefaultSceneRoot
 - `IsStartOn`: 0 → `StartOn`.
 
 ### BP_Light2 (상자형 맵 광원, 2026-10-25 완료)
-BP_Light 복사본. 변수·LightScan·IsLit·채널 번호·OnChannelActive/Deactive는 BP_Light와 같음. 차이는 움직이는 대상(액터 → 컴포넌트)뿐. (`BP_Light1`은 이전 복사본, 사용 안 함)
+BP_Light 복사본. 변수·LightScan·IsLit·채널 번호·OnChannelActive/Deactive는 BP_Light와 같음. 차이는 움직이는 대상(액터 → 컴포넌트)뿐. (`BP_Light1`은 BP_Light2로 가는 리다이렉터 — 이름 변경 흔적, 에디터에서 안 보임, 그냥 둠)
 
 **구성요소**:
 ```
