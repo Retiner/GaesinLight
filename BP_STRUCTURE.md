@@ -484,7 +484,7 @@ OnComponentBeginOverlap(Box) → Branch(OtherActor == GetPlayerCharacter)
                  Level = String to Name(맵 이름),
                  SpawnTransform = MakeTransform(TransformLocation(GetActorTransform, PlayerSpawnLocation), GetActorRotation, Scale 1))
 ```
-- 2026-11-01 변경(테스트 전): Branch True 뒤에 `Cast To BP_RealGameMode(GetGameMode)` 성공일 때만 진행 → 테스트 모드 맵은 저장 안 함.
+- 2026-11-01 변경(그래프 확인): Branch True 뒤에 `Cast To BP_RealGameMode(GetGameMode)` 성공일 때만 진행, Cast Failed 비움 → 테스트 모드 맵은 저장 안 함.
 - 들어올 때마다 저장(한 번만 bool 없음). 마지막에 지난 체크포인트가 기준.
 - 위치 복원은 BP_Charactor `MoveToCheckpoint`.
 
