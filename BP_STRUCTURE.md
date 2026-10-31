@@ -60,7 +60,7 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 | 이름 | 위치 | 내용 |
 |---|---|---|
 | `S_PlayerProgress` | `Content/BluePrint/` | `HasFlashlight`(Bool), `UnlockedColors`(Set<EN_LightColor>), `CompletedReturns`(Set<Name>, 반납 끝난 테이블 키 — 작업 14), `CheckpointLevel`(Name, 비면 None = 체크포인트 없음), `CheckpointTransform`(Transform, 다시 시작할 월드 위치·회전 — 작업 12) — 진행 상태 한 덩어리. 저장은 이 구조체를 통째로 복사 |
-| `BP_SaveGame` | `Content/GameMode/` | 부모 SaveGame. 변수 `Progress`(S_PlayerProgress) 하나. 슬롯 파일 = `Saved/SaveGames/Save0.sav` (작업 11, 2026-11-01) |
+| `BP_SaveGame` | `Content/GameMode/` | 부모 SaveGame. 변수 `Progress`(S_PlayerProgress) 하나. 슬롯 파일 = `GaesinLight/Saved/SaveGames/Save0.sav`(에디터 Play 기준, 패키징 빌드는 `%LOCALAPPDATA%/GaesinLight/Saved/SaveGames`) (작업 11, 2026-11-01) |
 | `BP_GameInstance` | `Content/GameMode/` | 부모 GameInstance. Project Settings → Maps & Modes → Game Instance Class로 지정(Config). 레벨 이동에도 유지 |
 | `BP_TestGameMode` | `Content/GameMode/` | 옛 `BP_GameMode`의 새 이름(옛 이름은 리다이렉터). **테스트용**: `UnlockAllForTest` = 켜짐 |
 | `BP_RealGameMode` | `Content/GameMode/` | `BP_TestGameMode`의 자식. **본 게임용**: `UnlockAllForTest` = 꺼짐. 실제 스테이지 맵의 GameMode Override. Default Pawn Class = None(2026-11-01 안내, 테스트 전) → 맵에 놓은 BP_Charactor(Auto Possess Player 0)를 조종 |
@@ -89,7 +89,7 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 
 ### 기타
 - `BP_TestGameMode`(옛 BP_GameMode): LightTestMap의 GameMode Override. 플레이어는 GameMode가 스폰(레벨에 BP_Charactor 배치 없음, 15번에서 배치 방식으로 바꿀 예정).
-- `BP_PlayerController`, `IMC_Default` + `IA_*`(입력).
+- `BP_PlayerController`: Class Defaults `Should Perform Full Tick When Paused` 켬(2026-11-01, 리스폰 일시정지 중 카메라 암전 진행용). `IMC_Default` + `IA_*`(입력).
 - `BP_LightBlock`: BP_AvilityBlock 리다이렉터(사용 안 함).
 
 ---
@@ -351,18 +351,15 @@ DefaultSceneRoot
 | `ResetPlayer` [I] | Bool, 기본 켬 — 닿은 플레이어 소환 |
 | `PlayerRespawnLocation` [I] | Vector, 3D Widget, 로컬 |
 | `RespawnWorldLocation` | BeginPlay에서 고정한 월드 소환 위치 |
-| `FadeTime` | Float 0.5 |
-| `Respawning` | Bool, 중복 방지 |
 
 ```
 Event BeginPlay → Parent: BeginPlay (필수 — 없으면 WorldPatrolPoints 등 부모 준비가 빠져 안 움직임)
  → Set RespawnWorldLocation = TransformLocation(GetActorTransform, PlayerRespawnLocation)
-PressBox Begin Overlap → Branch(OtherActor != Self) → BP_Respawn 이벤트 줄 전체 복사:
- Cast To BP_AvilityBlock ├ 성공 → Branch(ResetBlock) → ResetToStart
-                         └ 실패 → Branch(OtherActor == GetPlayerCharacter AND ResetPlayer AND NOT Respawning) → Set Respawning(true)
- → Cast To BP_Charactor → (HeldBlock 있으면 DropBlock) → StartCameraFade(0→1, FadeTime, Hold) → Delay(FadeTime)
- → Teleport(GetPlayerCharacter, RespawnWorldLocation, 플레이어 회전) → StopMovementImmediately → StartCameraFade(1→0) → Set Respawning(false)
+PressBox Begin Overlap → Branch(OtherActor != Self) → Cast To BP_AvilityBlock(OtherActor)
+ ├ 성공 → Branch(ResetBlock) → ResetToStart
+ └ 실패 → Branch(OtherActor == GetPlayerCharacter AND ResetPlayer) → Cast To BP_Charactor → RespawnAt(RespawnWorldLocation)
 ```
+- 2026-11-01 작업 28: 암전·소환 노드와 `FadeTime`/`Respawning` 변수는 삭제하고 `BP_Charactor.RespawnAt`으로 옮김(아래 기록은 옮기기 전 내용).
 - 2026-11-01 사용자: 블록도 리셋 + 블록/플레이어 선택 → BP_Respawn 이벤트 줄 전체 복사, ResetBlock/ResetPlayer 변수(둘 다 기본 켬), 맨 앞 `OtherActor != Self`(자식이라 Cast To BP_AvilityBlock이 자신에게도 성공 → 자기 ResetToStart 방지).
 - Delay = `FadeTime + 0.2`(사용자: 완전 암전 0.2초 더 유지).
 - 자식 BP의 회색(비활성) `Event BeginPlay → Parent: BeginPlay`는 뒤에 노드를 이어야 활성화됨 — 이었더니 정상(처음엔 비활성이라 RespawnWorldLocation이 원점이었음).
@@ -464,7 +461,7 @@ OnComponentBeginOverlap(Box) → Cast To BP_AvilityBlock(OtherActor)
                  DestRotation = 플레이어 GetActorRotation)
       → CharacterMovement.StopMovementImmediately
 ```
-- 2026-11-01 암전 추가 안내(테스트 전): 변수 `FadeTime`(Float 0.5, 내부), `Respawning`(Bool). 플레이어 Branch에 `AND NOT Respawning` → `Set Respawning(true)` → (DropBlock 합류) → `GetPlayerCameraManager.StartCameraFade(0→1, FadeTime, Hold)` → `Delay(FadeTime)` → Teleport → StopMovementImmediately → `StartCameraFade(1→0, FadeTime)` → `Set Respawning(false)`.
+- 2026-11-01 암전: 처음엔 이 BP 안에 Fade·Delay·Respawning을 뒀으나 작업 28에서 BP_Charactor.RespawnAt으로 옮김 → 플레이어 쪽은 `Branch(OtherActor == Player AND ResetPlayer) → Cast To BP_Charactor → RespawnAt(RespawnWorldLocation)`만 남음.
 - 2026-11-01 프레스 안내(테스트 전): 변수 `RespawnWorldLocation`(Vector, 내부). `Event BeginPlay` → `Set RespawnWorldLocation = TransformLocation(GetActorTransform, PlayerRespawnLocation)`, Teleport DestLocation = `RespawnWorldLocation`(소환 때 계산하지 않음). 레벨에서 Outliner로 Patrol 능력 블록에 붙이면(Patrol은 SetActorLocation이라 자식 액터가 따라감) 구역만 움직이고 소환 위치는 시작 자리에 고정. 붙인 구역은 ResetBlock 끔(자기 블록과 겹침).
 - `==`의 A는 반드시 이벤트의 **Other Actor** (Cast 결과에 연결하면 Cast Failed 경로에서 None이라 항상 false — 실제로 겪음).
 - `Teleport`(K2_TeleportTo)는 겹치면 가까운 빈 자리로 비켜 놓음 → `SetActorLocation`보다 안전.
@@ -519,6 +516,7 @@ CapsuleComponent (루트, Character 기본)
 | Tick: 들기 | `IsValid(HeldBlock)` → `CanInteract`(Message) NOT이면 `DropBlock`, 아니면 `PhysicsHandle.SetTargetLocationAndRotation`(카메라 + Forward×HeldDistance, Yaw만) |
 | `IA_White` / `IA_Red` / `IA_Green` / `IA_Blue` | Started → `LightControll(LightColor)` (흰색 = (0,0,0)). 같은 키 다시 = 끄기 (LightControll 안에서 처리) |
 | BeginPlay 끝 (작업 6) | … → `Set CurrentColor` → `Cast To BP_GameInstance(GetGameInstance)` → `Set GI` → `Cast To BP_TestGameMode(GetGameMode)` → `Set UnlockAll(UnlockAllForTest)` → Branch(`UnlockAll`): False(및 GameMode Cast Failed) → `TurnOff` → `RefreshFlashlight` / True → `RefreshFlashlight`. 본 게임 모드는 항상 빛 꺼진 채 시작 |
+| `RespawnAt(Location)` (Custom Event, 작업 28 — 2026-11-01 동작 확인) | Branch(NOT `Respawning`) → `Respawning = true` → `Set Game Paused(true)` → IsValid(HeldBlock) → `DropBlock` / Is Not Valid → (둘 다) `StartCameraFade(0→1, FadeTime, Hold)` → `Delay(FadeTime + 0.2)` → `Teleport(Location, GetActorRotation)` → `CharacterMovement.StopMovementImmediately` → `StartCameraFade(1→0, FadeTime)` → `Set Game Paused(false)` → `Respawning = false`. BP_Respawn·BP_PressBlock이 호출. Class Defaults `Tick Even When Paused` 켬(멈춘 동안 Delay 진행), Event Tick 맨 앞 `Branch(Is Game Paused)` False만 원래 Tick. 일시정지 중 화면 암전은 `BP_PlayerController`의 `Should Perform Full Tick When Paused`가 켜져 있어야 진행됨. 변수 `Respawning`(Bool), `FadeTime`(0.5) |
 | BeginPlay 맨 끝 (작업 12) | `Branch(UnlockAll)` **False 쪽** `RefreshFlashlight`만 → `MoveToCheckpoint` → Branch(`Moved`) True → `Delay Until Next Tick` → `Set Control Rotation`(Target = `Get Player Controller`(0), `SpawnRotation`). 본 게임 모드에서만 복원(2026-11-01, 테스트 전) |
 | `MoveToCheckpoint → Moved, SpawnRotation` (작업 12) | `GetCurrentLevelName`(Remove Prefix) → Branch(`Break(GI.Progress).CheckpointLevel == String to Name(맵 이름)`) True → `Teleport`(Break Transform(CheckpointTransform) Location / Rotation) → Return(Moved = true, SpawnRotation = Rotation) / False → Return(Moved = false). 카메라 방향을 함수 밖에서 한 프레임 뒤에 넣는 이유: GameMode `FinishRestartPlayer`가 스폰·빙의 뒤 Control Rotation을 PlayerStart 회전으로 덮어씀(함수 안 Delay 불가). 2026-11-01 동작 확인 |
 | `CanUseFlashlight` (Pure) | `OR(UnlockAll, Break(GI.Progress).HasFlashlight)` |
@@ -571,6 +569,10 @@ CapsuleComponent (루트, Character 기본)
 | 2026-11-01 | BP_Respawn 암전 그래프 확인: 연결 순서(Respawning·NOT·AND C, 세 갈래 → StartCameraFade → Delay(FadeTime) → Teleport → Stop → StartCameraFade → Respawning false) 정상. 두 StartCameraFade 값이 전부 0 → 첫 번째 To 1·Duration FadeTime·Hold, 두 번째 From 1·Duration FadeTime으로 수정 안내, FadeTime 기본값 0.5 확인 요청 |
 | 2026-11-01 | BP_PressBlock 그래프 확인: 이벤트 줄 복사·ResetBlock/ResetPlayer·암전 값(첫 번째 0→1 Hold, 두 번째 1→0, Duration FadeTime) 정상, Delay = FadeTime + 0.2(사용자 변경, 어둠 유지). 빠진 것: Event BeginPlay·Parent: BeginPlay가 회색(자식 BP 기본 생성, 비활성)이고 Set RespawnWorldLocation 없음 → 원점 소환, OtherActor != Self 없음 → 수정 안내 |
 | 2026-11-01 | 사용자 확인: 체크포인트 저장(LightTestMap = BP_RealGameMode), BP_Respawn 암전, ResetToStart 컴파일 에러 없음, BP_LightSensor(작업 25), 앉기(24), 보라 SafeReset 불투명 복귀, 채널 2 방향 바꾸기(23), Physics 블록 낙하(물리 값 조정, 21), Patrol 표시등 메시 None 방식(2026-10-30 변경). 작업 20은 안 함(수동). 새 작업 26: 들기 거리 = HeldDistance + 블록 반 크기 안내 |
-| 2026-11-01 | 작업 26·27(들기 거리 = HeldDistance + 블록 반 크기, − Camera Up × HeldDownOffset 40) 사용자 수정 — 그래프·테스트 미확인 |
+| 2026-11-01 | 작업 26·27(들기 거리 = HeldDistance + 블록 반 크기, − Camera Up × HeldDownOffset 40) 사용자 수정 → 2026-11-01 동작 확인 |
+| 2026-11-01 | 작업 28 안내: 리스폰 연출을 BP_Charactor.RespawnAt(Location)으로 모으고 Set Game Paused로 세상 멈춤(캐릭터 Tick Even When Paused + Tick 앞 Is Game Paused 건너뛰기), BP_Respawn·BP_PressBlock은 호출만 — 미구현 |
+| 2026-11-01 | 작업 28 RespawnAt 그래프 확인: 순서 정상(NOT Respawning → Paused → DropBlock → Fade 0→1 Hold → Delay FadeTime+0.2 → Teleport(Location) → Stop → Fade 1→0 → Unpause → Respawning false). Is Valid의 Is Not Valid 미연결 → 블록 안 들면 일시정지 고착, 연결 안내. 두 번째 Fade의 Target 에러는 연결 전 컴파일 흔적으로 추정 |
+| 2026-11-01 | 작업 28 테스트: 일시정지 중 Camera Fade가 진행 안 됨(멈춤만 보이고 암전 거의 없음) → ① BP_PlayerController Class Defaults `Should Perform Full Tick When Paused` 체크(GameMode의 Player Controller Class 확인) 안내, 안 되면 ② 완전히 어두워진 뒤에만 Paused(Delay FadeTime → Paused → Teleport → Delay 0.2 → Unpause → Fade 1→0) |
+| 2026-11-01 | **작업 28 완료·동작 확인**: ①(BP_PlayerController Should Perform Full Tick When Paused)로 해결. BP_Respawn·BP_PressBlock은 Cast To BP_Charactor → RespawnAt(RespawnWorldLocation)만, 각자 암전 노드·Respawning·FadeTime 삭제 |
 | 2026-11-01 | **BP_PressBlock 동작 확인(사용자 "잘되")** — BeginPlay 활성화·Self 확인 반영. 가이드 #block-press-size(UserStaticMesh 때 PressBox만 크기 조절) 추가 |
 | 2026-11-01 | 사용자: 레벨 수동 부착 대신 블록 버전 따로 → `BP_PressBlock`(BP_AvilityBlock 자식, 복사 대신 자식 추천) 안내 — 미구현 |

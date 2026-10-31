@@ -68,10 +68,11 @@
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
 <p><strong>2026-11-01</strong></p>
 <ul>
-<li>블록 들기: 큰 블록도 시야를 덮지 않게 거리를 블록 앞면부터 재고, 화면 가운데보다 조금 아래에 들게 함 (테스트 결과 미확인). <a href="#block-grab">6장 들기</a></li>
+<li>리스폰(되돌리기 구역·프레스 블록) 동안 <strong>세상이 멈춤</strong>: 어둡고 소환되는 사이 움직이는 장치가 정지했다가 밝아질 때 다시 움직임. 소환 처리는 플레이어 한 곳(<code>BP_Charactor.RespawnAt</code>)으로 모음. <a href="#respawn-player">3-2장</a></li>
+<li>블록 들기: 큰 블록도 시야를 덮지 않게 거리를 블록 앞면부터 재고, 화면 가운데보다 조금 아래에 들게 함 (동작 확인). <a href="#block-grab">6장 들기</a></li>
 <li>능력 블록 <strong>2번 채널 "방향 바꾸기"</strong>: 신호 켜짐 → 그 자리에서 돌아서 반대 방향, 꺼짐 → 원래 방향. <code>Togle</code>·<code>Timed</code>·발판으로 연결. <a href="#block-reverse">6장</a></li>
 <li>보라 능력이 끝나면 크리스탈이 다시 불투명으로 돌아옴 (반투명은 보라 중에만). 빛 감지 장치·앉기·Physics 블록 낙하 속도(물리 값 조정)도 동작 확인.</li>
-<li><strong>저장·이어하기</strong>와 새 구역 <strong>체크포인트 <code>BP_Checkpoint</code></strong>: 지나가면 진행 상황(가진 손전등·필터, 반납 기록, 위치)을 파일에 저장하고, 게임을 다시 켜면 같은 맵의 지정 위치·방향에서 시작. 처음 상태로 테스트하려면 <code>Saved/SaveGames/Save0.sav</code> 삭제. <a href="#checkpoint">3-6장</a></li>
+<li><strong>저장·이어하기</strong>와 새 구역 <strong>체크포인트 <code>BP_Checkpoint</code></strong>: 지나가면 진행 상황(가진 손전등·필터, 반납 기록, 위치)을 파일에 저장하고, 게임을 다시 켜면 같은 맵의 지정 위치·방향에서 시작. 처음 상태로 테스트하려면 <code>GaesinLight/Saved/SaveGames/Save0.sav</code> 삭제. <a href="#checkpoint">3-6장</a></li>
 <li>저장·위치 복원은 본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서만. 테스트 맵은 저장 안 함. (동작 확인)</li>
 <li>본 게임용 맵은 <strong>맵에 직접 놓은 <code>BP_Charactor</code></strong>를 조종: <code>BP_RealGameMode</code>의 Default Pawn Class = None, 놓은 캐릭터의 <code>Auto Possess Player</code> = <code>Player 0</code>. 맵마다 캐릭터 하나 필수. 테스트 맵은 지금처럼 PlayerStart에 생성. <a href="#settings-gamemode">9장</a></li>
 <li>되돌리기 구역 <code>BP_Respawn</code> 플레이어 소환에 암전: 0.5초 어두워짐 → 소환 → 0.5초 밝아짐. 블록은 먼저 손에서 놓음. (같은 노드를 쓰는 프레스 블록에서 동작 확인) <a href="#respawn-player">3-2장</a></li>
@@ -295,7 +296,7 @@
 </div></details>
 <details class="node" id="respawn-player"><summary>플레이어 (<code>ResetPlayer</code> 켬)</summary><div class="node-body">
 <ul>
-<li>들어오면 화면이 0.5초 동안 어두워진 뒤 <code>PlayerRespawnLocation</code>으로 순간이동하고, 다시 0.5초 동안 밝아집니다 (맵 이동과 같은 암전, 2026-11-01 추가). 보던 방향은 그대로이고, 떨어지거나 날아가던 속도는 멈춥니다.</li>
+<li>들어오면 <strong>세상이 멈추고</strong>(움직이는 발판·블록·프레스·물리 정지) 화면이 0.5초 동안 어두워진 뒤 <code>PlayerRespawnLocation</code>으로 순간이동하고, 다시 0.5초 동안 밝아지면서 세상이 다시 움직입니다 (맵 이동과 같은 암전, 2026-11-01). 프레스 블록과 동시에 닿아도 한 번만 일어납니다. 보던 방향은 그대로이고, 떨어지거나 날아가던 속도는 멈춥니다.</li>
 <li>블록을 들고 있었다면 먼저 손에서 놓습니다 (블록을 들고 함께 이동할 수 없음).</li>
 <li>다이아몬드가 바닥에 조금 묻혀 있어도 겹치지 않는 가까운 자리로 소환됩니다.</li>
 </ul>
@@ -419,7 +420,7 @@
 <li>게임을 켜면 저장 파일을 자동으로 불러옵니다. 저장된 맵과 지금 맵이 같으면 그 위치로, 다르면 평소처럼 PlayerStart에서 시작합니다.</li>
 <li><strong>본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서만</strong> 저장하고 위치를 복원합니다. 테스트용(<code>BP_TestGameMode</code>) 맵에서는 지나가도 저장하지 않고, 항상 PlayerStart에서 시작합니다. (2026-11-01 변경)</li>
 </ul>
-<p class="note">테스트하다가 처음 상태로 돌아가려면 Play를 멈춘 상태에서 <code>프로젝트 폴더/Saved/SaveGames/Save0.sav</code> 파일을 지우면 됩니다. 이 파일이 있으면 모든 맵에서 "이미 주운 아이템"이 나타나지 않습니다. 새 게임 버튼은 시작 화면 작업 때 만들 예정입니다. 저장 파일은 PC마다 따로라 다른 팀원에게는 영향이 없습니다.</p>
+<p class="note">테스트하다가 처음 상태로 돌아가려면 Play를 멈춘 상태에서 <code>GaesinLight/Saved/SaveGames/Save0.sav</code>(프로젝트 폴더, <code>.uproject</code>가 있는 곳 기준) 파일을 지우면 됩니다. 이 경로는 에디터에서 Play할 때 기준이고, 패키징한 게임은 Windows 사용자 폴더(<code>%LOCALAPPDATA%/GaesinLight/Saved/SaveGames</code>)에 저장됩니다. 이 파일이 있으면 모든 맵에서 "이미 주운 아이템"이 나타나지 않습니다. 새 게임 버튼은 시작 화면 작업 때 만들 예정입니다. 저장 파일은 PC마다 따로라 다른 팀원에게는 영향이 없습니다.</p>
 <p class="note bad">맵 파일 이름을 바꾸면 그 이름으로 저장된 체크포인트와 연결이 끊깁니다 (PlayerStart에서 시작, 에러는 없음).</p>
 </div></details>
 <details class="node" id="checkpoint-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
@@ -639,7 +640,7 @@
 <li>들 수 있는 조건: <code>Move = Physics</code> + <code>CanGrab</code> 켜짐 (Details에서 체크하면 됨). 바라보면 상호작용 문구가 뜨고 F로 들기 / 놓기.</li>
 <li><code>Move</code>가 <code>Physics</code>가 아니면 <code>CanGrab</code>·<code>CanGrabSkyBlue</code>를 켜도 들 수 없습니다.</li>
 <li>든 블록은 플레이어가 보는 방향을 따라 돌고, 잡는 순간 수평·정면으로 정렬됩니다 (위아래를 봐도 기울지 않음).</li>
-<li>든 블록은 화면 가운데보다 조금 아래(<code>HeldDownOffset</code>, 기본 40)에 오고, 카메라와의 거리는 <strong>블록 앞면 기준</strong>(<code>HeldDistance</code>)이라 큰 블록을 들어도 시야를 덮지 않습니다. 두 값은 <code>BP_Charactor</code> 안 고정값입니다. (2026-11-01 수정, 테스트 결과 미확인)</li>
+<li>든 블록은 화면 가운데보다 조금 아래(<code>HeldDownOffset</code>, 기본 40)에 오고, 카메라와의 거리는 <strong>블록 앞면 기준</strong>(<code>HeldDistance</code>)이라 큰 블록을 들어도 시야를 덮지 않습니다. 두 값은 <code>BP_Charactor</code> 안 고정값입니다. (2026-11-01 동작 확인)</li>
 <li>능력이 발동한 동안은 색에 따라 들기가 막힙니다. 들고 있는 중에 막히는 능력이 발동하면 자동으로 손에서 놓습니다.</li>
 </ul>
 <div class="scroll"><table><thead><tr><th>능력</th><th>발동 중 들기</th></tr></thead><tbody>
@@ -875,6 +876,7 @@
 <tr><td><code>Config/DefaultEngine.ini</code></td><td>콜리전 Object Channel <code>LightCencer</code> (기본 응답 Overlap)</td><td>맵 광원 감지 박스가 동작하지 않음</td></tr>
 <tr><td><code>Config/DefaultEngine.ini</code></td><td><code>r.VolumetricFog.HistoryWeight=0</code></td><td>빛이 움직일 때 안개 잔상</td></tr>
 <tr><td><code>Config/DefaultEngine.ini</code> (Project Settings → Maps &amp; Modes → Game Instance Class)</td><td><code>BP_GameInstance</code></td><td>손전등·필터 획득이 저장되지 않아 본 게임용 맵에서 빛을 아예 못 씀</td></tr>
+<tr><td><code>BP_PlayerController</code> Class Defaults (GameMode의 Player Controller Class가 <code>BP_PlayerController</code>여야 함)</td><td><code>Should Perform Full Tick When Paused</code> 켬</td><td>리스폰 때 세상만 멈추고 화면이 어두워지지 않음</td></tr>
 </tbody></table></div>
 </div></details>
 <details class="node" id="settings-gamemode" open><summary>새 맵 준비: World Settings · GameMode · 플레이어 배치</summary><div class="node-body">
@@ -926,7 +928,7 @@
 <tr><td>테스트 맵에 <code>BP_Checkpoint</code></td><td>지나가도 저장 안 됨 (정상)</td><td>본 게임 맵에서 확인</td></tr>
 <tr><td>본 게임 맵의 파일 이름을 바꿈</td><td>그 이름으로 저장된 체크포인트와 연결이 끊겨 처음 자리에서 시작</td><td>배포 뒤에는 맵 이름을 바꾸지 않기</td></tr>
 <tr><td>배포한 맵의 <code>BP_FilterReturn</code>을 지우고 다시 놓음</td><td>내부 이름이 바뀌어 예전 반납 기록과 연결이 끊김 (<a href="#returntable">3-4장</a>)</td><td>지우지 말고 옮기기만</td></tr>
-<tr><td>예전 저장 파일이 남아 있음</td><td>모든 맵에서 이미 주운 아이템이 안 나타나고, 본 게임 맵은 체크포인트 자리에서 시작</td><td><code>Saved/SaveGames/Save0.sav</code> 삭제 (PC마다 따로라 팀원에게는 영향 없음)</td></tr>
+<tr><td>예전 저장 파일이 남아 있음</td><td>모든 맵에서 이미 주운 아이템이 안 나타나고, 본 게임 맵은 체크포인트 자리에서 시작</td><td><code>GaesinLight/Saved/SaveGames/Save0.sav</code> 삭제 (PC마다 따로라 팀원에게는 영향 없음)</td></tr>
 <tr><td>체크포인트 다이아몬드·리스폰 다이아몬드가 바닥이나 벽 속</td><td>가까운 빈 자리로 비켜서 소환되거나 실패</td><td>바닥 조금 위, 빈 공간에 두기</td></tr>
 </tbody></table></div>
 <p class="note">이 표의 본 게임 맵 항목(캐릭터 배치, 저장은 본 게임 모드에서만)은 2026-11-01에 바뀐 내용입니다 (LightTestMap = BP_RealGameMode + 놓은 캐릭터에서 동작 확인).</p>
@@ -939,7 +941,7 @@
 <dt>맵 광원이 블록을 못 잡아요</dt><dd>블록 메시의 Generate Overlap Events가 켜져 있는지, <code>PlayerRange</code>가 0이 아닌지 확인하세요.</dd>
 <dt>새 블록 메시가 투명하게 안 보여요</dt><dd>그 메시의 Nanite를 끄세요.</dd>
 <dt>1~4 키를 눌러도 빛이 안 켜져요</dt><dd>그 맵의 GameMode가 <code>BP_RealGameMode</code>이면 손전등(·필터)을 주워야 합니다. 테스트 중이면 <code>BP_TestGameMode</code>로 지정하세요. Game Instance Class가 <code>BP_GameInstance</code>인지도 확인하세요.</dd>
-<dt>주운 적 없는 아이템이 안 보이거나, 엉뚱한 위치에서 시작해요</dt><dd>예전에 저장된 진행 상황을 불러온 것입니다. <code>Saved/SaveGames/Save0.sav</code>를 지우면 처음 상태로 시작합니다. <a href="#checkpoint">3-6장</a></dd>
+<dt>주운 적 없는 아이템이 안 보이거나, 엉뚱한 위치에서 시작해요</dt><dd>예전에 저장된 진행 상황을 불러온 것입니다. <code>GaesinLight/Saved/SaveGames/Save0.sav</code>를 지우면 처음 상태로 시작합니다. <a href="#checkpoint">3-6장</a></dd>
 <dt>F로 아이템이 안 주워져요</dt><dd>BP_Pickup 메시의 콜리전이 Visibility를 Block하는지 확인하세요. 아이템을 다른 물체 안에 묻어 두면 겨눌 수 없습니다.</dd>
 <dt>레벨을 이동했더니 다른 캐릭터로 시작해요</dt><dd>도착 맵의 GameMode Override를 확인하고, 테스트 맵이면 PlayerStart, 본 게임 맵이면 놓아 둔 <code>BP_Charactor</code>를 확인하세요. <a href="#settings-gamemode">새 맵 준비</a></dd>
 <dt>Play 했는데 아무 조작도 안 돼요</dt><dd>본 게임 맵(<code>BP_RealGameMode</code>)인데 <code>BP_Charactor</code>가 없거나 <code>Auto Possess Player</code>가 Disabled입니다. <a href="#settings-placement">배치 주의사항</a></dd>
