@@ -23,6 +23,9 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 
 [구역]  BP_Respawn ─ (Cast) ─→ BP_AvilityBlock.ResetToStart
         BP_Trigger ─ OpenLevel(NextLevel)
+        BP_Checkpoint ─ GI.SetCheckpoint ─→ SaveProgress ─→ Save0.sav
+
+[저장]  GI Event Init ─ LoadProgress ← Save0.sav ;  BP_Charactor BeginPlay ─ MoveToCheckpoint(GI.Progress)
 ```
 
 - 송신 → 수신은 전부 **인터페이스 메시지**라 대상이 None이거나 인터페이스가 없어도 오류 없이 무시됩니다.
@@ -56,10 +59,11 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 ### 게임 전체 (작업 6, 2026-10-24)
 | 이름 | 위치 | 내용 |
 |---|---|---|
-| `S_PlayerProgress` | `Content/BluePrint/` | `HasFlashlight`(Bool), `UnlockedColors`(Set<EN_LightColor>), `CompletedReturns`(Set<Name>, 반납 끝난 테이블 키 — 작업 14) — 획득 상태 한 덩어리. 저장 기능은 이 구조체를 통째로 복사 |
+| `S_PlayerProgress` | `Content/BluePrint/` | `HasFlashlight`(Bool), `UnlockedColors`(Set<EN_LightColor>), `CompletedReturns`(Set<Name>, 반납 끝난 테이블 키 — 작업 14), `CheckpointLevel`(Name, 비면 None = 체크포인트 없음), `CheckpointTransform`(Transform, 다시 시작할 월드 위치·회전 — 작업 12) — 진행 상태 한 덩어리. 저장은 이 구조체를 통째로 복사 |
+| `BP_SaveGame` | `Content/GameMode/` | 부모 SaveGame. 변수 `Progress`(S_PlayerProgress) 하나. 슬롯 파일 = `Saved/SaveGames/Save0.sav` (작업 11, 2026-11-01) |
 | `BP_GameInstance` | `Content/GameMode/` | 부모 GameInstance. Project Settings → Maps & Modes → Game Instance Class로 지정(Config). 레벨 이동에도 유지 |
 | `BP_TestGameMode` | `Content/GameMode/` | 옛 `BP_GameMode`의 새 이름(옛 이름은 리다이렉터). **테스트용**: `UnlockAllForTest` = 켜짐 |
-| `BP_RealGameMode` | `Content/GameMode/` | `BP_TestGameMode`의 자식. **본 게임용**: `UnlockAllForTest` = 꺼짐. 실제 스테이지 맵의 GameMode Override |
+| `BP_RealGameMode` | `Content/GameMode/` | `BP_TestGameMode`의 자식. **본 게임용**: `UnlockAllForTest` = 꺼짐. 실제 스테이지 맵의 GameMode Override. Default Pawn Class = None(2026-11-01 안내, 테스트 전) → 맵에 놓은 BP_Charactor(Auto Possess Player 0)를 조종 |
 
 **BP_GameInstance**
 | 변수 / 함수 | 설명 |
@@ -72,7 +76,14 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 | `HasColor(Color) → Result` (Pure) | `Break(Progress).UnlockedColors.Contains(Color)` |
 | `MarkReturned(Key: Name)` | 로컬 `Returns = Break(Progress).CompletedReturns` → `Returns.Add(Key)` → `Set Members(Progress, CompletedReturns = Returns)` (작업 14) |
 | `IsReturned(Key) → Returned` (Pure) | `Break(Progress).CompletedReturns.Contains(Key)` (작업 14) |
-- `Make S_PlayerProgress`로 덮어쓰지 말 것: 고르지 않은 항목이 기본값으로 지워짐. 항상 `Set Members`.
+| `SlotName` | String, 기본 `Save0` — 저장 슬롯 이름 (작업 11) |
+| `SaveProgress` | `Create Save Game Object(BP_SaveGame)` → `Set Progress`(Target = 그 Return Value, 값 = GI Progress) → `Save Game to Slot(Return Value, SlotName, 0)`. Set의 Target을 저장 객체로 잡아야 함 — GI 쪽 Set(Target 숨김)을 쓰면 빈 SaveGame이 저장됨 |
+| `LoadProgress` | Branch(`Does Save Game Exist(SlotName, 0)`) True → `Load Game from Slot` → `Cast To BP_SaveGame` → GI `Set Progress = As BP Save Game.Progress` |
+| `DeleteProgress` | `Delete Game in Slot(SlotName, 0)` → `Set Progress = Make S_PlayerProgress`(빈 값, 여기만 의도적으로 Make). 아직 호출하는 곳 없음(새 게임 버튼 예정) |
+| `SetCheckpoint(Level: Name, SpawnTransform: Transform)` | `Set Members(Progress, CheckpointLevel = Level, CheckpointTransform = SpawnTransform)` → `SaveProgress` (작업 12) |
+| `Event Init` | → `LoadProgress`. 게임 실행 시 한 번, 첫 맵 액터 BeginPlay보다 먼저 → BP_Pickup·BP_FilterReturn이 불러온 기록으로 판단 |
+- `Make S_PlayerProgress`로 덮어쓰지 말 것: 고르지 않은 항목이 기본값으로 지워짐. 항상 `Set Members` (DeleteProgress만 예외).
+- 저장 시점은 체크포인트 통과뿐. 줍기·반납은 메모리(GI)만 바꾸고, 다음 체크포인트에서 함께 파일로 감.
 
 **BP_TestGameMode**: 변수 `UnlockAllForTest`(Bool, Class Default 켜짐). 자식 BP_RealGameMode는 꺼짐. 데이터(`Progress`)는 건드리지 않고 플레이어 검사에만 끼어듦.
 
@@ -312,7 +323,7 @@ DefaultSceneRoot
 | `ReCalculate` | 합친 색 → CurrentColor → (OwnColor면 `| Select(UseColor)`) → Switch on Int(0/7 None, 1 Red, 2 Green, 3 Yello, 4 Blue, 5 Purple, 6 SkyBlue) |
 | `ColorCheck` (매크로) | `(ColorMode != ReactOnly) OR (UseColor == All) OR (색 == UseColor)` |
 | `AvilityConfig` | 색별 충전·유지·쿨타임 고정값 |
-| `AvilityTick` / `AvilityStart` / `AvilityEnd` | 능력 진행. Tick에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵 |
+| `AvilityTick` / `AvilityStart` / `AvilityEnd` | 능력 진행(상태 흐름·발광 식은 CLAUDE.md 2-3, 2026-10-31 그래프 확인). Sequence then_0 = Switch(AvilityState) 충전/유지/쿨타임, then_1 = BlockColor·GlowAmount 갱신. Tick에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵 |
 | `GetLightSource` (Pure) | 출력 actor / IsPlayer / Found. 플레이어 기여 우선, 아니면 Keys[0] |
 | 빨강 `Push`, 폭발 | Select(Found ? actor : 플레이어) 기준 |
 | 파랑 `BlockPull`, `PlayerPull` | PlayerPull은 플레이어가 비출 때만(`ActiveContributions.Contains(GetPlayerCharacter)`) |
@@ -324,11 +335,39 @@ DefaultSceneRoot
 | `ResetToStart` | Branch(Move == Physics) → 플레이어 HeldBlock == Self면 `DropBlock` → `StaticMesh.SetWorldLocationAndRotation(Reset*, Teleport)` → 선속도·각속도 0 |
 | `OnChannelActive/Deactive` | Switch 0 → `TriggerPaused = false / true`. Active만 Switch 1 → `RestartFromStart` |
 | `RestartFromStart` (Custom Event) | Branch(Length(WorldPatrolPoints) > 0) → `PatrolIndex = 0` → `PatrollCount = 1` → `SetActorLocation(WorldPatrolPoints[0], Teleport)` → `RestartWaiting = true` → `Retriggerable Delay(RestartDelay)` → `RestartWaiting = false` |
+| `ReverseDirection` (Custom Event, 작업 23, 2026-10-31 그래프 확인) | Branch(Length(WorldPatrolPoints) > 1) → `PatrollCount = PatrollCount × -1` → `PatrolIndex = Clamp(PatrolIndex + 새 PatrollCount, 0, Length − 1)`. 채널 2 켜짐·꺼짐 모두 호출 예정(상태형, Togle용). CheckChange가 아직 마지막 경유지만 끝으로 봐서 거꾸로 가다 0번에 닿으면 Index −1 위험 → 22-3에서 방향 기준으로 수정 예정 |
 | `IsStartOn` | 0 → `StartMoving` |
 
 - BeginPlay: `SetMove` → `BaseSize = StaticMesh.GetComponentScale` → `TriggerPaused = WaitTrigger AND NOT StartMoving` → `ResetLocation` → `ResetRotation` (+ WorldPatrolPoints 변환, 미확인 위치).
 - Construction: ColorMode로 메시 → Move로 표시등 → UserStaticMesh면 교체 후 종료, 아니면 `BlockMID` 생성 → 크리스탈 색.
 - Tick (2026-10-30): `AvilityTick` → Branch(`RestartWaiting`) F → Branch(`WaitTrigger`) → (T면 Branch(`TriggerPaused`) F) → Switch(`Move`). Patrol 핀마다 `Branch(MoveCheck)` → `SetActorLocation(Movelocation(DeltaTime))` → `Branch(getDistance)`(경유지 도착) → `Branch(CheckChange)`(마지막 경유지): Return T → `PatrollCount × -1` → `PatrolIndex += PatrollCount` / Rotation T → `PatrolIndex = 0` / Restart T → `PatrolIndex = 0` → `SetActorLocation(WorldPatrolPoints[0], Teleport)` / **Once T → 없음(끝에서 멈춤)** / 모두 F → `PatrolIndex += PatrollCount`.
+
+### BP_PressBlock (프레스 블록, BP_AvilityBlock 자식 — 2026-11-01 완료·동작 확인)
+**구성요소**: 부모 것 + `PressBox`(Box Collision, DefaultSceneRoot 자식, Hidden in Game, Custom Query Only, Object Type `LightCencer`, WorldDynamic/PhysicsBody/Pawn Overlap·나머지 Ignore — BP_Respawn Box와 같음, Visibility Ignore 필수).
+
+| 변수 (카테고리 Press) | 설명 |
+|---|---|
+| `ResetBlock` [I] | Bool, 기본 켬 — 닿은 블록 ResetToStart |
+| `ResetPlayer` [I] | Bool, 기본 켬 — 닿은 플레이어 소환 |
+| `PlayerRespawnLocation` [I] | Vector, 3D Widget, 로컬 |
+| `RespawnWorldLocation` | BeginPlay에서 고정한 월드 소환 위치 |
+| `FadeTime` | Float 0.5 |
+| `Respawning` | Bool, 중복 방지 |
+
+```
+Event BeginPlay → Parent: BeginPlay (필수 — 없으면 WorldPatrolPoints 등 부모 준비가 빠져 안 움직임)
+ → Set RespawnWorldLocation = TransformLocation(GetActorTransform, PlayerRespawnLocation)
+PressBox Begin Overlap → Branch(OtherActor != Self) → BP_Respawn 이벤트 줄 전체 복사:
+ Cast To BP_AvilityBlock ├ 성공 → Branch(ResetBlock) → ResetToStart
+                         └ 실패 → Branch(OtherActor == GetPlayerCharacter AND ResetPlayer AND NOT Respawning) → Set Respawning(true)
+ → Cast To BP_Charactor → (HeldBlock 있으면 DropBlock) → StartCameraFade(0→1, FadeTime, Hold) → Delay(FadeTime)
+ → Teleport(GetPlayerCharacter, RespawnWorldLocation, 플레이어 회전) → StopMovementImmediately → StartCameraFade(1→0) → Set Respawning(false)
+```
+- 2026-11-01 사용자: 블록도 리셋 + 블록/플레이어 선택 → BP_Respawn 이벤트 줄 전체 복사, ResetBlock/ResetPlayer 변수(둘 다 기본 켬), 맨 앞 `OtherActor != Self`(자식이라 Cast To BP_AvilityBlock이 자신에게도 성공 → 자기 ResetToStart 방지).
+- Delay = `FadeTime + 0.2`(사용자: 완전 암전 0.2초 더 유지).
+- 자식 BP의 회색(비활성) `Event BeginPlay → Parent: BeginPlay`는 뒤에 노드를 이어야 활성화됨 — 이었더니 정상(처음엔 비활성이라 RespawnWorldLocation이 원점이었음).
+- 레벨에서 PressBox만 크기 조절: 액터 선택 → Details 컴포넌트 목록에서 PressBox → Box Extent(절반 크기)·Location Z. 액터 Scale은 메시·박스·다이아몬드 거리를 모두 키움.
+- 박스가 GetActorBounds에 포함돼 맵 광원 IsLit 표본점이 아래로 조금 넓어짐(얇게 두면 영향 작음).
 
 ### BP_Mirror (거울)
 **구성요소**:
@@ -382,6 +421,25 @@ MirrorScan:
 
 ---
 
+### BP_LightSensor (빛 감지 송신 장치, 작업 25 — 2026-10-31 진행 중)
+**구성요소**: `DefaultSceneRoot` → `SensorMesh`(Static Mesh, Custom: Object Type WorldDynamic, Visibility Block — 손전등·거울 트레이스와 맵 광원 LightSencer(WorldDynamic/PhysicsBody Overlap)에 잡히게). 부모 Actor(송신 장치). 인터페이스 `BPI_LightInteractable`.
+
+| 변수 | 설명 |
+|---|---|
+| `SignalTargets` [I] | `S_SignalTarget` 배열 |
+| `UseColor` [I] | `EN_ColorState`, 기본 All(아무 빛, 흰 손전등 포함) |
+| `ChargeTime` [I] | 계속 비춰야 켜지는 시간(초), 기본 1 (25-2에서 사용) |
+| `KeepOn` [I] | 한 번 켜지면 유지, 기본 끔 (25-3에서 사용) |
+| `ActiveContributions` | Map Actor → LinearColor, 광원별 빛 |
+
+- 25-1 완료(2026-10-31 붙여넣기 확인): 이벤트 `AddColorContribution` → `ActiveContributions.Add(Source, Color)`, 이벤트 `RemoveColorContribution` → `ActiveContributions.Remove(Source)`. (인터페이스 함수가 반환값이 없어 이벤트로 구현됨)
+- `GetColorCode` (Pure, 2026-10-31): 로컬 `Sum` = 0 → ForEach(`ActiveContributions` Values) Sum += 색 → **Completed** → Return `Code` = (R≥0.5 ? 1) + (G≥0.5 ? 2) + (B≥0.5 ? 4). 블록 ReCalculate와 같은 번호(흰 손전등 = 0). (2026-10-31 수정 확인: Return은 Completed에서, Break 입력은 Get Sum)
+- 25-2 (2026-10-31 붙여넣기 확인, 테스트 전): 변수 `Matching`(bool, 지난 판정) / `IsOn`(bool) / `ChargeTimer`(Timer Handle). `SendActivate`/`SendDeactivate`는 BP_PressurePlate에서 복사.
+  - `AddColorContribution` / `RemoveColorContribution` → Map Add/Remove → `UpdateSensor`.
+  - Custom Event `UpdateSensor`: NewMatch = `Length(ActiveContributions) > 0` AND (`UseColor == All` OR `GetColorCode == Select(UseColor: All 0 / Red 1 / Blue 4 / Green 2 / Purple 5 / Yello 3 / SkyBlue 6 / None 99)`) → Branch(NewMatch != `Matching`) True → Set Matching → Branch(Matching): True → Branch(`ChargeTime <= 0`) True → `ChargeDone` / False → `Set Timer by Event`(ChargeDone, ChargeTime, 반복 안 함) → Set `ChargeTimer`; False → `Clear and Invalidate Timer by Handle`(ChargeTimer) → Branch(`IsOn`) True → IsOn = false → `SendDeactivate`. (바뀔 때만 처리: 손전등이 매 틱 Add를 불러도 타이머가 다시 시작되지 않음. 타이머는 0초면 실행 안 돼서 0은 따로)
+  - Custom Event `ChargeDone`: IsOn = true → `SendActivate`.
+- 다음(25-3): KeepOn + 발광.
+
 ## 5. 구역
 
 ### BP_Respawn (블록·플레이어 되돌리기 구역)
@@ -406,8 +464,29 @@ OnComponentBeginOverlap(Box) → Cast To BP_AvilityBlock(OtherActor)
                  DestRotation = 플레이어 GetActorRotation)
       → CharacterMovement.StopMovementImmediately
 ```
+- 2026-11-01 암전 추가 안내(테스트 전): 변수 `FadeTime`(Float 0.5, 내부), `Respawning`(Bool). 플레이어 Branch에 `AND NOT Respawning` → `Set Respawning(true)` → (DropBlock 합류) → `GetPlayerCameraManager.StartCameraFade(0→1, FadeTime, Hold)` → `Delay(FadeTime)` → Teleport → StopMovementImmediately → `StartCameraFade(1→0, FadeTime)` → `Set Respawning(false)`.
+- 2026-11-01 프레스 안내(테스트 전): 변수 `RespawnWorldLocation`(Vector, 내부). `Event BeginPlay` → `Set RespawnWorldLocation = TransformLocation(GetActorTransform, PlayerRespawnLocation)`, Teleport DestLocation = `RespawnWorldLocation`(소환 때 계산하지 않음). 레벨에서 Outliner로 Patrol 능력 블록에 붙이면(Patrol은 SetActorLocation이라 자식 액터가 따라감) 구역만 움직이고 소환 위치는 시작 자리에 고정. 붙인 구역은 ResetBlock 끔(자기 블록과 겹침).
 - `==`의 A는 반드시 이벤트의 **Other Actor** (Cast 결과에 연결하면 Cast Failed 경로에서 None이라 항상 false — 실제로 겪음).
 - `Teleport`(K2_TeleportTo)는 겹치면 가까운 빈 자리로 비켜 놓음 → `SetActorLocation`보다 안전.
+
+### BP_Checkpoint (체크포인트, 작업 12 — 2026-11-01 완료)
+**구성요소**: `DefaultSceneRoot`, `Box`(Box Collision, Hidden in Game, OverlapAllDynamic). 크기 = 액터 Scale.
+
+| 변수 | 타입 | 설명 |
+|---|---|---|
+| `PlayerSpawnLocation` [I] | Vector, 3D Widget, 로컬 | 다시 시작할 위치. 방향은 액터 회전 |
+
+```
+OnComponentBeginOverlap(Box) → Branch(OtherActor == GetPlayerCharacter)
+ → True → Cast To BP_GameInstance(GetGameInstance)
+ → GetCurrentLevelName(Remove Prefix 켬)
+ → SetCheckpoint(Target = As BP Game Instance,
+                 Level = String to Name(맵 이름),
+                 SpawnTransform = MakeTransform(TransformLocation(GetActorTransform, PlayerSpawnLocation), GetActorRotation, Scale 1))
+```
+- 2026-11-01 변경(테스트 전): Branch True 뒤에 `Cast To BP_RealGameMode(GetGameMode)` 성공일 때만 진행 → 테스트 모드 맵은 저장 안 함.
+- 들어올 때마다 저장(한 번만 bool 없음). 마지막에 지난 체크포인트가 기준.
+- 위치 복원은 BP_Charactor `MoveToCheckpoint`.
 
 ---
 
@@ -440,12 +519,15 @@ CapsuleComponent (루트, Character 기본)
 | Tick: 들기 | `IsValid(HeldBlock)` → `CanInteract`(Message) NOT이면 `DropBlock`, 아니면 `PhysicsHandle.SetTargetLocationAndRotation`(카메라 + Forward×HeldDistance, Yaw만) |
 | `IA_White` / `IA_Red` / `IA_Green` / `IA_Blue` | Started → `LightControll(LightColor)` (흰색 = (0,0,0)). 같은 키 다시 = 끄기 (LightControll 안에서 처리) |
 | BeginPlay 끝 (작업 6) | … → `Set CurrentColor` → `Cast To BP_GameInstance(GetGameInstance)` → `Set GI` → `Cast To BP_TestGameMode(GetGameMode)` → `Set UnlockAll(UnlockAllForTest)` → Branch(`UnlockAll`): False(및 GameMode Cast Failed) → `TurnOff` → `RefreshFlashlight` / True → `RefreshFlashlight`. 본 게임 모드는 항상 빛 꺼진 채 시작 |
+| BeginPlay 맨 끝 (작업 12) | `Branch(UnlockAll)` **False 쪽** `RefreshFlashlight`만 → `MoveToCheckpoint` → Branch(`Moved`) True → `Delay Until Next Tick` → `Set Control Rotation`(Target = `Get Player Controller`(0), `SpawnRotation`). 본 게임 모드에서만 복원(2026-11-01, 테스트 전) |
+| `MoveToCheckpoint → Moved, SpawnRotation` (작업 12) | `GetCurrentLevelName`(Remove Prefix) → Branch(`Break(GI.Progress).CheckpointLevel == String to Name(맵 이름)`) True → `Teleport`(Break Transform(CheckpointTransform) Location / Rotation) → Return(Moved = true, SpawnRotation = Rotation) / False → Return(Moved = false). 카메라 방향을 함수 밖에서 한 프레임 뒤에 넣는 이유: GameMode `FinishRestartPlayer`가 스폰·빙의 뒤 Control Rotation을 PlayerStart 회전으로 덮어씀(함수 안 Delay 불가). 2026-11-01 동작 확인 |
 | `CanUseFlashlight` (Pure) | `OR(UnlockAll, Break(GI.Progress).HasFlashlight)` |
 | `CanUseColor(Color)` (Pure) | `AND(OR(GI.HasColor(Color), UnlockAll), CanUseFlashlight)` |
 | `RefreshFlashlight` | `SM_Flashlight.SetVisibility(CanUseFlashlight, Propagate 끔)` — 메시만. 빛은 LightControll/TurnOff 담당. BeginPlay와 손전등 줍기 직후 호출 |
 | 숫자 키 검사 (작업 6) | `IA_Red/Green/Blue` Started → Branch(`CanUseColor(Red/Green/Blue)`) → `LightControll(색)`. `IA_White` Started → Branch(`CanUseFlashlight`) → `LightControll((0,0,0))`. `IA_TurnOff`는 검사 없음. 검사를 LightControll 안이 아니라 키 쪽에 둔 이유: LightControll은 LinearColor를 받고 검사는 EN_LightColor로 묻기 때문 |
 | `IA_TurnOff` (E) | 끄기 |
 | `IA_Relation` (F) | 바라보는 대상 `Interact` 또는 블록 잡기/놓기 |
+| `IA_Crouch` (C, 2026-10-30) | Started → Branch(`Is Crouched`) True → `Un Crouch` / False → `Crouch`. CharacterMovement `Can Crouch` 켬, `Crouched Half Height`(기본 40)로 앉은 높이. 카메라는 캡슐에 붙은 SpringArm이라 캡슐이 낮아진 만큼 같이 내려감(`Crouched Eye Height`는 안 쓰임). 앉으면 점프 불가·`Max Walk Speed Crouched`(엔진 기본). 틈 아래 Un Crouch는 엔진이 공간 날 때까지 대기. 키 매핑 `IMC_Default` |
 | `GrabBlock` | `GrabComponentAtLocationWithRotation`(StaticMesh) → 메시 Pawn 응답 Ignore → `TurnOff` → HeldBlock 저장 |
 | `DropBlock` | 놓기 + Pawn 충돌 복구 |
 
@@ -463,3 +545,32 @@ CapsuleComponent (루트, Character 기본)
 | 2026-10-25 | BP_FilterReturn 추가 (작업 14 완료). GI MarkReturned / IsReturned, S_PlayerProgress.CompletedReturns |
 | 2026-10-30 | BP_AvilityBlock Construction: ReactOnly 메시 SM_Element_Trick, 표시등은 숨김 대신 SetStaticMesh(None). BP_Door·BP_Door2 `OpenTime`, BP_Light `RotateTime`·`MoveSpeed` 인스턴스 설정으로 |
 | 2026-10-30 | BP_AvilityBlock `PatrolOnce` 모드(EN_BlockMove 추가), 채널 1 "처음으로"(`RestartFromStart`, `RestartWaiting`, `RestartDelay`), Tick 앞 Branch(RestartWaiting) |
+| 2026-10-30 | BP_Charactor 앉기: `IA_Crouch`(C, `IMC_Default`), Branch(Is Crouched) → Crouch / Un Crouch, CharacterMovement Can Crouch |
+| 2026-10-31 | BP_LightSensor 추가(작업 25-1): 컴포넌트·변수·인터페이스 빛 기록 |
+| 2026-10-31 | BP_LightSensor 25-2: GetColorCode, UpdateSensor, ChargeDone, 발판 SendActivate/SendDeactivate 복사 |
+| 2026-10-31 | BP_LightSensor 25-3 설계: 타이머(ChargeDone·ChargeTimer) → Event Tick 충전/유지/감소(ChargeAlpha·HoldRemain·HoldTime), SensorMID(M_BlockBase) BlockColor·GlowAmount — 안내만, 미구현 |
+| 2026-10-31 | BP_LightSensor 25-3 변경: 색 판정을 enum으로(CurrentState·LitState = EN_ColorState, UseColor == CurrentState) — 안내만, 미구현 |
+| 2026-10-31 | BP_LightSensor: StateToColor(Pure) 함수, Construction StartColor = Lerp(StateToColor(UseColor), 흰색, 0.05) — 안내만, 미구현 |
+| 2026-10-31 | BP_LightSensor Construction 그래프 확인: CreateDynamicMaterialInstance(SensorMesh, 0, M_BlockBase) → Set SensorMID → Set StartColor(Lerp(StateToColor, 흰색, 0.05)) → SetVectorParameterValue(BlockColor). StateToColor의 State에 UseColor 미연결(항상 All=흰색) → 연결 안내 |
+| 2026-10-31 | BP_LightSensor 이벤트 그래프 확인: UpdateSensor(CurrentState = Select(GetColorCode), Matching = Length>0 AND (UseColor==All OR UseColor==CurrentState), Matching이면 LitState) ✅, Tick 충전·유지·감소(FClamp ± dt/FMax(ChargeTime,0.01), HoldRemain, Send) ✅, 외형 BlockColor = Lerp(StartColor, StateToColor(LitState), ChargeAlpha^0.25) ✅. 사용자 "색이 바로 바뀜" → ^0.25가 초반에 급히 오르는 곡선이 원인 → Exp 1(직선)로 안내. GlowAmount Set Scalar 빠짐 → 추가 안내 |
+| 2026-10-31 | BP_LightSensor: 비추는 중 색이 바뀌면(흰→빨) 즉시 바뀜 → 새 변수 `ShownColor`(LinearColor). Construction에서 ShownColor = StateToColor(UseColor), Tick then_1에서 ShownColor = CInterpTo(ShownColor, StateToColor(LitState), DeltaSeconds, 3) → BlockColor = Lerp(StartColor, ShownColor, ChargeAlpha) — 안내만 |
+| 2026-10-31 | BP_LightSensor: 사용자 "All일 때 한 종류 빛을 계속 받아야 켜지게" → LitState 설정을 UpdateSensor에서 Tick으로 이동. 꺼짐 상태: Matching AND (CurrentState == LitState OR ChargeAlpha <= 0)이면 LitState = CurrentState 후 충전, 다른 색이면 감소(다 빠진 뒤 새 색으로 다시 충전). 켜짐 상태: Matching이면 LitState = CurrentState(켜진 뒤엔 색이 바뀌어도 유지, ShownColor로 부드럽게) — 안내만 |
+| 2026-10-31 | BP_LightSensor 그래프 확인: 25-3-8 꺼짐 쪽(같은 색 OR Alpha<=0 → LitState 설정 후 충전, 아니면 감소) ✅, GlowAmount ✅, Exp 1. ShownColor(25-3-7)는 만들지 않음 → 불필요해짐. 사용자 변경: 켜진 뒤 색이 바뀌어도 빛 없음처럼 처리 → 켜짐 쪽 조건 (Matching AND CurrentState == LitState) OR KeepOn, 켜짐 쪽 Set LitState 삭제. 처음 충전 때 색이 살짝 먼저 보이게 Exp 0.5 — 안내만 |
+| 2026-10-31 | BP_LightSensor 그래프 확인: 켜짐 쪽 조건 (Matching AND CurrentState == LitState) OR KeepOn ✅, 켜짐 쪽 Set LitState 삭제 ✅, Exp 0.5 ✅. 25-3 그래프 전부 안내대로 완성(동작 테스트 결과 대기) |
+| 2026-10-31 | BP_AvilityBlock 보라 반투명 교체: AvilityStart 보라 경로 P_Collision → CreateDynamicMaterialInstance(MI_BlockBase_Translucent) → Set BlockMID → P_Silent 확인. 반투명 안 됨 → M_BlockBase Opacity 파라미터가 Opacity Mask에 연결된 것이 원인. 메시마다 crystal 슬롯 번호가 달라 `CrystalIndex` 변수(Construction에서 저장)로 Element Index 지정 안내 — 미확인 |
+| 2026-10-31 | 위 수정 후 보라 시작 반투명 동작 확인(사용자 "잘되"). 다음: SafeReset P_Reset 뒤 M_BlockBase로 BlockMID 되돌리기 |
+| 2026-10-31 | 작업 11·12 시작 안내: S_PlayerProgress에 `CheckpointLevel`(Name)·`CheckpointTransform`(Transform), 새 `BP_SaveGame`(SaveGame, 변수 Progress), GI `SlotName`·`SaveProgress`·`LoadProgress`(Event Init)·`DeleteProgress` — 안내만, 미구현 |
+| 2026-11-01 | GI `LoadProgress`·`DeleteProgress` 그래프 확인, `SaveProgress`는 Set Progress Target 수정 안내(미확인), `CheckpointTransform` Vector → Transform 안내. 임시 저장 키(K/L)는 빼기로 함(사용자: 키 저장은 나중) → 12-1 GI `SetCheckpoint(Level, SpawnTransform)`(Set Members → SaveProgress) + 12-2 `BP_Checkpoint`(Box, `PlayerSpawnLocation` 3D 위젯, 플레이어 겹침마다 저장) 안내 — 미구현 → **같은 날 완료·동작 확인**(아래) |
+| 2026-11-01 | BP_Checkpoint Event Graph·GI SetCheckpoint 그래프 확인(Set Members 뒤 Save Progress 미연결 → 연결 안내), 저장 동작 확인(사용자). 12-3 안내: BP_Charactor `MoveToCheckpoint`(같은 맵이면 Teleport + Set Control Rotation) + BeginPlay 끝에서 호출 — 미확인 |
+| 2026-11-01 | **작업 11(체크포인트 저장)·12 완료, 사용자 "잘 되는데" 동작 확인.** 구조 반영: S_PlayerProgress 필드, BP_SaveGame, GI 저장 함수·Event Init, 5장 BP_Checkpoint, BP_Charactor MoveToCheckpoint. MoveToCheckpoint `==`는 String to Name을 거쳐 Name끼리 비교(String을 바로 꽂았던 것 수정) |
+| 2026-11-01 | 방향이 항상 PlayerStart 방향 → GameMode FinishRestartPlayer가 Control Rotation을 덮어쓰는 것으로 추정. MoveToCheckpoint에 출력 Moved·SpawnRotation, Event Graph에서 Delay Until Next Tick 뒤 Set Control Rotation으로 옮기도록 안내 → **사용자 "방향 잘 되고" 확인**, 6장 표 갱신 |
+| 2026-11-01 | 사용자 요청: 저장은 본 게임 모드에서만 + 본 게임 모드는 맵에 놓은 캐릭터 빙의(작업 15). 안내: BP_Checkpoint Cast To BP_RealGameMode, BP_Charactor 복원은 UnlockAll False 쪽만, BP_RealGameMode Default Pawn Class None, 맵의 BP_Charactor Auto Possess Player 0 — 테스트 전 |
+| 2026-11-01 | BP_Respawn 플레이어 소환 암전 안내(FadeTime, Respawning, StartCameraFade 두 번 + Delay) — 테스트 전 |
+| 2026-11-01 | BP_Respawn 프레스 용도: RespawnWorldLocation(BeginPlay 고정) + Outliner로 Patrol 블록에 부착 안내 — 테스트 전 |
+| 2026-11-01 | BP_Respawn 그래프 확인: RespawnWorldLocation(BeginPlay 고정 → Teleport) 적용됨. 암전(StartCameraFade·Delay·Respawning)은 아직 없음. 붙여넣기에 ResetToStart 호출 노드 ErrorType=1 기록 — 컴파일 메시지 확인 요청. BP_PressBlock.uasset 생성됨(내용 미확인) |
+| 2026-11-01 | BP_Respawn 암전 그래프 확인: 연결 순서(Respawning·NOT·AND C, 세 갈래 → StartCameraFade → Delay(FadeTime) → Teleport → Stop → StartCameraFade → Respawning false) 정상. 두 StartCameraFade 값이 전부 0 → 첫 번째 To 1·Duration FadeTime·Hold, 두 번째 From 1·Duration FadeTime으로 수정 안내, FadeTime 기본값 0.5 확인 요청 |
+| 2026-11-01 | BP_PressBlock 그래프 확인: 이벤트 줄 복사·ResetBlock/ResetPlayer·암전 값(첫 번째 0→1 Hold, 두 번째 1→0, Duration FadeTime) 정상, Delay = FadeTime + 0.2(사용자 변경, 어둠 유지). 빠진 것: Event BeginPlay·Parent: BeginPlay가 회색(자식 BP 기본 생성, 비활성)이고 Set RespawnWorldLocation 없음 → 원점 소환, OtherActor != Self 없음 → 수정 안내 |
+| 2026-11-01 | 사용자 확인: 체크포인트 저장(LightTestMap = BP_RealGameMode), BP_Respawn 암전, ResetToStart 컴파일 에러 없음, BP_LightSensor(작업 25), 앉기(24), 보라 SafeReset 불투명 복귀, 채널 2 방향 바꾸기(23), Physics 블록 낙하(물리 값 조정, 21), Patrol 표시등 메시 None 방식(2026-10-30 변경). 작업 20은 안 함(수동). 새 작업 26: 들기 거리 = HeldDistance + 블록 반 크기 안내 |
+| 2026-11-01 | 작업 26·27(들기 거리 = HeldDistance + 블록 반 크기, − Camera Up × HeldDownOffset 40) 사용자 수정 — 그래프·테스트 미확인 |
+| 2026-11-01 | **BP_PressBlock 동작 확인(사용자 "잘되")** — BeginPlay 활성화·Self 확인 반영. 가이드 #block-press-size(UserStaticMesh 때 PressBox만 크기 조절) 추가 |
+| 2026-11-01 | 사용자: 레벨 수동 부착 대신 블록 버전 따로 → `BP_PressBlock`(BP_AvilityBlock 자식, 복사 대신 자식 추천) 안내 — 미구현 |

@@ -21,6 +21,8 @@
 <a href="#respawn">3-2 되돌리기 구역</a>
 <a href="#pickup">3-3 줍기</a>
 <a href="#returntable">3-4 반납 테이블</a>
+<a href="#lightsensor">3-5 빛 감지</a>
+<a href="#checkpoint">3-6 체크포인트</a>
 <a href="#door">4 문</a>
 <a href="#light">5 맵 광원</a>
 <a href="#mirror">5-1 거울</a>
@@ -28,6 +30,7 @@
 <a href="#hatch">7 다락문</a>
 <a href="#examples">8 조합 예시</a>
 <a href="#settings">9 설정·주의</a>
+<a href="#settings-gamemode">새 맵 준비</a>
 </div></nav>
 
 <main class="wrap">
@@ -36,13 +39,14 @@
 
 <!-- ===================== 신호 채널 ===================== -->
 <details class="chapter" id="channels" open><summary><span class="chapter-number">★</span>신호 채널 한눈에 보기 (현재 버전)</summary><div class="chapter-body">
-<p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>)의 <code>SignalTargets</code>(트리거는 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
+<p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>, 빛 감지 장치 <code>BP_LightSensor</code>)의 <code>SignalTargets</code>(트리거는 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
 <div class="scroll"><table><thead><tr><th>받는 장치</th><th>Channel</th><th>기능</th><th>신호 켜짐</th><th>신호 꺼짐</th><th>추천 버튼 모드</th></tr></thead><tbody>
 <tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">0</td><td>열기</td><td>열림</td><td>닫힘</td><td><code>Togle</code> (열고 닫기) / <code>JustOn</code> (한 번 열면 끝) / <code>Timed</code> (시간 제한)</td></tr>
 <tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">1</td><td><a href="#door-lock">강제 닫기 (잠금)</a></td><td>닫히고 영구히 잠김. 이후 0번 신호가 와도 안 열림</td><td>아무 일 없음 (잠금 유지)</td><td><code>JustOn</code> (보통은 통과 트리거로 연결)</td></tr>
 <tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">0</td><td>열기 (<code>WaitTrigger</code> 켬일 때만)</td><td>열림</td><td>닫힘</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
 <tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td><td><code>Togle</code> (출발·정지) / <code>JustOn</code> (출발만) / <code>Timed</code> (잠깐만 움직임)</td></tr>
 <tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">1</td><td><a href="#block-move">처음으로</a> (Patrol 계열만, <code>ReOn</code> 버튼 권장)</td><td>처음 위치로 순간이동 → <code>RestartDelay</code>초 뒤 다시 출발</td><td>아무 일 없음</td><td><strong><code>ReOn</code></strong></td></tr>
+<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">2</td><td><a href="#block-reverse">방향 바꾸기</a> (Patrol, 경유지 2개 이상)</td><td>그 자리에서 돌아서 반대 방향으로</td><td>다시 원래 방향으로</td><td><code>Togle</code> / <code>Timed</code> / 발판 (<code>ReOn</code> 불가)</td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">0</td><td>전원</td><td>켜짐</td><td>꺼짐</td><td><code>Togle</code> (스위치) / <code>Timed</code> (잠깐 켜짐)</td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">1</td><td>색 바꾸기 (<code>ChangeColor</code> 설정대로)</td><td><code>Red</code>/<code>Green</code>/<code>Blue</code>면 그 색, <code>Rotate</code>면 빨강→초록→파랑 순서로 다음 색</td><td>원래 색(<code>LightColor</code>)으로 복귀. <code>Rotate</code>는 무시</td><td><code>Rotate</code>면 <strong><code>ReOn</code></strong> / 그 외는 <code>Togle</code>·<code>Timed</code></td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">2</td><td>헤드 위아래로 꺾기</td><td><code>PitchAngle</code>만큼 꺾임 (<code>RotateTime</code>초 동안)</td><td>원래 각도로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
@@ -52,7 +56,7 @@
 <ul>
 <li><strong>추천 버튼 모드 고르는 법</strong>: 신호가 켜져 있는 동안 상태가 유지되는 기능(열기·출발·전원·회전·이동)은 <code>Togle</code>(켰다 껐다) / <code>JustOn</code>(한 번 켜면 끝) / <code>Timed</code>(시간 제한) 중에서 고릅니다. 여기에 <code>ReOn</code>을 쓰면 켜지자마자 꺼져서 열리자마자 닫히거나 움직이자마자 되돌아옵니다. 반대로 <strong>누를 때마다 한 번씩 일어나는 기능</strong>(블록 1번 "처음으로", 광원 1번 <code>Rotate</code>)은 <code>ReOn</code>이 맞습니다. <code>JustOn</code>은 처음 한 번만 반응하고, <code>Togle</code>은 두 번 눌러야 한 번 반응합니다. 발판은 "밟고 있는 동안 켜짐"이라 <code>Togle</code>처럼 쓰입니다. 버튼 모드 설명은 <a href="#button-mode">1장 ButtonMode</a>.</li>
 <li>상자형 광원 <code>BP_Light2</code>는 번호와 기능이 <code>BP_Light</code>와 같습니다. 다른 점: 4번은 광원이 상자에서 레일을 따라 내려가고(꺼지면 올라가 상자로 들어감), 3번은 상자는 그대로 두고 광원 부분만 좌우로 돕니다. <a href="#light2">5장 상자형 광원</a> 참고.</li>
-<li>신호를 받지 않는 장치: 거울 <code>BP_Mirror</code>(회전·이동 신호 없음, 액터를 돌려 배치), 되돌리기 구역 <code>BP_Respawn</code>. 플레이어와 송신 장치도 신호를 받지 않습니다.</li>
+<li>신호를 받지 않는 장치: 거울 <code>BP_Mirror</code>(회전·이동 신호 없음, 액터를 돌려 배치), 되돌리기 구역 <code>BP_Respawn</code>, 체크포인트 <code>BP_Checkpoint</code>. 플레이어와 송신 장치도 신호를 받지 않습니다.</li>
 <li>표에 없는 번호로 보내면 아무 일도 일어나지 않습니다.</li>
 <li>채널 번호는 받는 장치 안에서만 의미가 있습니다. 문의 1번(강제 닫기)과 광원의 1번(색)은 서로 다른 기능입니다.</li>
 <li>"시작부터 켜진 상태" 설정(문·다락문 <code>StartOpen</code>, 능력 블록 <code>StartMoving</code>, 광원 <code>StartOn</code>)을 켜면 <strong>0번 채널</strong>의 켜짐/꺼짐이 반대로 동작합니다. 예: <code>StartOpen</code> 문은 신호가 켜지면 닫히고, 꺼지면 다시 열립니다. 광원의 1~4번과 문의 1번(강제 닫기)은 반대가 되지 않습니다.</li>
@@ -62,8 +66,29 @@
 
 <!-- ===================== 최근 변경 ===================== -->
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
+<p><strong>2026-11-01</strong></p>
+<ul>
+<li>블록 들기: 큰 블록도 시야를 덮지 않게 거리를 블록 앞면부터 재고, 화면 가운데보다 조금 아래에 들게 함 (테스트 결과 미확인). <a href="#block-grab">6장 들기</a></li>
+<li>능력 블록 <strong>2번 채널 "방향 바꾸기"</strong>: 신호 켜짐 → 그 자리에서 돌아서 반대 방향, 꺼짐 → 원래 방향. <code>Togle</code>·<code>Timed</code>·발판으로 연결. <a href="#block-reverse">6장</a></li>
+<li>보라 능력이 끝나면 크리스탈이 다시 불투명으로 돌아옴 (반투명은 보라 중에만). 빛 감지 장치·앉기·Physics 블록 낙하 속도(물리 값 조정)도 동작 확인.</li>
+<li><strong>저장·이어하기</strong>와 새 구역 <strong>체크포인트 <code>BP_Checkpoint</code></strong>: 지나가면 진행 상황(가진 손전등·필터, 반납 기록, 위치)을 파일에 저장하고, 게임을 다시 켜면 같은 맵의 지정 위치·방향에서 시작. 처음 상태로 테스트하려면 <code>Saved/SaveGames/Save0.sav</code> 삭제. <a href="#checkpoint">3-6장</a></li>
+<li>저장·위치 복원은 본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서만. 테스트 맵은 저장 안 함. (동작 확인)</li>
+<li>본 게임용 맵은 <strong>맵에 직접 놓은 <code>BP_Charactor</code></strong>를 조종: <code>BP_RealGameMode</code>의 Default Pawn Class = None, 놓은 캐릭터의 <code>Auto Possess Player</code> = <code>Player 0</code>. 맵마다 캐릭터 하나 필수. 테스트 맵은 지금처럼 PlayerStart에 생성. <a href="#settings-gamemode">9장</a></li>
+<li>되돌리기 구역 <code>BP_Respawn</code> 플레이어 소환에 암전: 0.5초 어두워짐 → 소환 → 0.5초 밝아짐. 블록은 먼저 손에서 놓음. (같은 노드를 쓰는 프레스 블록에서 동작 확인) <a href="#respawn-player">3-2장</a></li>
+<li>9장 정리: <a href="#settings-gamemode">새 맵 준비</a>(World Settings → GameMode Override → 플레이어 배치 → 맵 이동까지 순서대로)와 <a href="#settings-placement">배치 주의사항</a>(캐릭터·PlayerStart 중복/누락, GameMode 비움, 맵 이름 변경, 저장 파일 등) 표 추가.</li>
+<li>되돌리기 구역 소환 위치는 게임 시작 때 자리에 고정 (구역이 움직여도 그대로). (동작 확인)</li>
+<li>새 블록 <strong>프레스 블록 <code>BP_PressBlock</code></strong> (능력 블록의 자식): 블록 아래 감지 박스가 함께 움직이다 닿으면 플레이어는 암전 후 레벨에서 정한 위치로 소환, Physics 블록은 시작 위치로(<code>ResetPlayer</code>/<code>ResetBlock</code>로 선택). 동작 확인. 메시를 바꿨을 때 감지 박스만 크기 맞추는 법: <a href="#block-press-size">6장</a></li>
+</ul>
+<p><strong>2026-10-31</strong></p>
+<ul>
+<li>능력 블록: 얇은 블록을 포개면 뒤 블록이 비쳐 보이던 문제 해결 — 평소엔 불투명(<code>M_BlockBase</code> Blend Mode Opaque, Opacity 파라미터는 <strong>Opacity</strong> 핀에 연결), 보라 능력 중에만 반투명 머티리얼 <code>MI_BlockBase_Translucent</code>(Blend Mode Override = Translucent)로 바뀜. 보라가 끝나면 원래 머티리얼로 되돌아감(2026-11-01 확인). 머티리얼은 git에 없으니 각자 같은 수정과 <code>Content/Assets/Materials/MI_BlockBase_Translucent</code> 생성이 필요합니다.</li>
+<li>능력 블록 발광: 빛을 받아 충전될수록 크리스탈이 확실히 밝아지도록 <code>M_BlockBase</code> 머티리얼 수정(평소 0.05 → 다 차면 10). 머티리얼은 git에 없으니 각자 같은 수정이 필요합니다.</li>
+<li>빛 감지 장치 <code>BP_LightSensor</code>: 능력 블록처럼 서서히 밝아지며 켜지고, 빛이 빠져도 <code>HoldTime</code>초 유지 후 서서히 꺼짐. 크리스탈 색이 들어온 빛 색으로 변함. 동작 확인. <a href="#lightsensor">3-5장</a></li>
+<li>새 송신 장치 <strong>빛 감지 장치 <code>BP_LightSensor</code></strong>: 정한 색(<code>UseColor</code>)의 빛이 <code>ChargeTime</code>초 동안 비추면 신호 켜짐, 빛이 빠지면 꺼짐. 손전등·맵 광원·거울 모두 감지. 동작 확인 (발광·유지는 아래 항목). <a href="#lightsensor">3-5장</a></li>
+</ul>
 <p><strong>2026-10-30</strong></p>
 <ul>
+<li>플레이어 <strong>앉기</strong>: <code>C</code> 키로 앉기 / 일어서기. 낮은 틈 통과용. 높이는 <code>Crouched Half Height</code>. <a href="#player-controls">1장 조작</a></li>
 <li>신호 채널 표에 <strong>추천 버튼 모드</strong> 열 추가: 기능마다 어떤 <code>ButtonMode</code>가 어울리는지. <a href="#channels">신호 채널 한눈에 보기</a></li>
 <li>능력 블록 <code>BP_AvilityBlock</code>: 새 이동 모드 <code>PatrolOnce</code>(끝까지 한 번 가고 멈춤)와 <strong>1번 채널 "처음으로"</strong>(처음 위치로 순간이동 후 <code>RestartDelay</code>초 뒤 재출발). 버튼은 <code>ReOn</code> 모드로 연결하는 것이 좋음. <a href="#block-move">6장 Move</a></li>
 <li>문 <code>BP_Door</code> / <code>BP_Door2</code>: <code>OpenTime</code>(열리고 닫히는 시간, 초)을 문마다 설정 가능. 열리는 거리(100)는 고정. <a href="#door-settings">4장 설정</a></li>
@@ -143,14 +168,16 @@
 
 <!-- ===================== 1 플레이어 ===================== -->
 <details class="chapter" id="player"><summary><span class="chapter-number">1</span>BP_Charactor — 플레이어</summary><div class="chapter-body">
-<p>손전등을 들고 다니는 플레이어입니다. 레벨에 직접 배치할 경우 Auto Possess Player = Player 0으로 설정하세요. (또는 PlayerStart + GameMode의 Default Pawn Class 사용)</p>
+<p>손전등을 들고 다니는 플레이어입니다. 맵에 어떻게 두는지는 그 맵의 GameMode에 따라 다릅니다: <strong>본 게임용(<code>BP_RealGameMode</code>)</strong>은 시작할 자리에 <code>BP_Charactor</code>를 <strong>하나</strong> 놓고(<code>Auto Possess Player = Player 0</code>, Class Defaults에서 정해 두면 따로 안 바꿔도 됨), <strong>테스트용(<code>BP_TestGameMode</code>)</strong>은 캐릭터를 놓지 않고 PlayerStart 하나만 둡니다. 자세한 순서와 주의사항은 <a href="#settings-gamemode">9장 새 맵 준비</a>.</p>
 <details class="node" id="player-controls" open><summary>조작</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>입력</th><th>동작</th></tr></thead><tbody>
 <tr><td><code>1</code></td><td>손전등 흰 빛: 색을 더하지 않는 빛. 다른 빛의 색을 바꾸지 않고(빨강 광원 + 흰 빛 = 빨강), <code>OwnColor</code> 블록의 고유색을 발동시킴</td></tr>
 <tr><td><code>2</code> / <code>3</code> / <code>4</code></td><td>손전등 색 전환 (<span class="c-red">빨강</span> / <span class="c-green">초록</span> / <span class="c-blue">파랑</span>)</td></tr>
 <tr><td>지금 색의 숫자 키 다시 누르기 / <code>E</code></td><td>손전등 끄기</td></tr>
 <tr><td><code>F</code></td><td>바라보는 대상과 상호작용 — 버튼이면 누르기, 블록이면 잡기 / 놓기, 아이템이면 줍기</td></tr>
+<tr><td><code>C</code></td><td>앉기 / 일어서기 (누를 때마다 전환). 앉으면 캡슐이 낮아져 낮은 틈(기본 높이 80 이상)을 지나갈 수 있고, 걷는 속도가 느려지며 점프가 안 됨. 틈 아래에서 일어서기를 누르면 공간이 생길 때까지 앉은 채로 있음</td></tr>
 </tbody></table></div>
+<p class="note">앉은 높이는 <code>BP_Charactor</code> → <code>CharacterMovement</code> → <code>Crouched Half Height</code>(앉았을 때 캡슐 높이의 절반, 기본 40)로 조절합니다. 지나갈 수 있는 틈 높이 = 이 값 × 2. 서 있을 때는 <code>CapsuleComponent</code> → <code>Half Height</code>(기본 96). 틈을 만들 때 이 높이를 기준으로 하세요.</p>
 <p class="note">본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서는 손전등을 줍기 전까지 손에 손전등이 없고 <code>1</code>~<code>4</code>가 반응하지 않습니다. 색 키는 그 색 필터도 주워야 동작합니다 (<a href="#pickup">3-3 BP_Pickup</a>). 이 맵은 항상 빛이 꺼진 채 시작합니다. 테스트용(<code>BP_TestGameMode</code>) 맵은 제한 없이 지금처럼 동작합니다.</p>
 </div></details>
 </div></details>
@@ -229,7 +256,7 @@
 <li>박스 크기는 액터 Scale로 조절합니다. 통로를 가로막을 만큼 키워야 지나칠 때 확실히 걸립니다.</li>
 <li>게임 중에는 보이지 않습니다. 에디터에서는 박스 테두리가 보입니다.</li>
 <li><code>NextLevel</code>을 지정하면: 신호를 먼저 다 보낸 뒤 → 화면이 0.5초 동안 검게 어두워지고 → 다음 레벨이 열립니다.</li>
-<li>다음 레벨에서는 그 맵의 <strong>PlayerStart</strong> 위치에서 시작합니다. 넘어갈 맵에 PlayerStart가 있는지, World Settings의 <strong>GameMode Override</strong>가 <code>BP_TestGameMode</code> 또는 <code>BP_RealGameMode</code>로 되어 있는지 확인하세요 (없으면 다른 플레이어로 시작할 수 있음, <a href="#settings-gamemode">9장</a> 참고).</li>
+<li>다음 레벨에서는 테스트용 맵이면 그 맵의 <strong>PlayerStart</strong>, 본 게임용 맵이면 <strong>맵에 놓아 둔 캐릭터</strong> 자리에서 시작합니다. 넘어갈 맵에 PlayerStart(또는 놓아 둔 캐릭터)가 있는지, World Settings의 <strong>GameMode Override</strong>가 <code>BP_TestGameMode</code> 또는 <code>BP_RealGameMode</code>로 되어 있는지 확인하세요 (없으면 다른 플레이어로 시작할 수 있음, <a href="#settings-gamemode">9장</a> 참고).</li>
 </ul>
 </div></details>
 <details class="node" id="trigger-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
@@ -253,7 +280,7 @@
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
 <tr><td><code>ResetBlock</code></td><td>켜면 들어온 Physics 블록을 시작 위치로 되돌림</td><td>켜짐</td></tr>
 <tr><td><code>ResetPlayer</code></td><td>켜면 들어온 플레이어를 <code>PlayerRespawnLocation</code>으로 소환</td><td>꺼짐</td></tr>
-<tr><td><code>PlayerRespawnLocation</code></td><td>플레이어 소환 위치. 뷰포트의 다이아몬드를 끌어서 정함 (구역 기준 위치라 구역을 옮기면 함께 따라감)</td><td>구역 중심</td></tr>
+<tr><td><code>PlayerRespawnLocation</code></td><td>플레이어 소환 위치. 뷰포트의 다이아몬드를 끌어서 정함 (구역 기준 위치라 에디터에서 구역을 옮기면 함께 따라감). 게임이 시작될 때의 자리로 고정되어, 게임 중에 구역이 움직여도(프레스) 소환 위치는 그대로</td><td>구역 중심</td></tr>
 </tbody></table></div>
 <p>크기는 액터 Scale로 조절합니다.</p>
 </div></details>
@@ -268,7 +295,7 @@
 </div></details>
 <details class="node" id="respawn-player"><summary>플레이어 (<code>ResetPlayer</code> 켬)</summary><div class="node-body">
 <ul>
-<li>들어오는 순간 <code>PlayerRespawnLocation</code>으로 순간이동합니다. 보던 방향은 그대로이고, 떨어지거나 날아가던 속도는 멈춥니다.</li>
+<li>들어오면 화면이 0.5초 동안 어두워진 뒤 <code>PlayerRespawnLocation</code>으로 순간이동하고, 다시 0.5초 동안 밝아집니다 (맵 이동과 같은 암전, 2026-11-01 추가). 보던 방향은 그대로이고, 떨어지거나 날아가던 속도는 멈춥니다.</li>
 <li>블록을 들고 있었다면 먼저 손에서 놓습니다 (블록을 들고 함께 이동할 수 없음).</li>
 <li>다이아몬드가 바닥에 조금 묻혀 있어도 겹치지 않는 가까운 자리로 소환됩니다.</li>
 </ul>
@@ -279,6 +306,7 @@
 <li>스테이지 경계: 출구 문 바로 안쪽에 깔아서 블록을 다음 스테이지로 가져가지 못하게 함 (<code>ResetBlock</code>만)</li>
 <li>낙하 구덩이: 맵 아래에 깔고 <code>ResetBlock</code> + <code>ResetPlayer</code> → 떨어진 블록은 제자리로, 플레이어는 구덩이 앞으로</li>
 <li>함정 바닥: 다락문(<code>IsDown</code>) 아래에 <code>ResetPlayer</code>만 켠 구역 → 떨어지면 방 입구에서 다시 시작</li>
+<li><strong>프레스(누르는 블록)</strong>는 이 구역을 손으로 붙이지 말고 전용 블록 <code>BP_PressBlock</code>을 쓰세요 (능력 블록 + 아래 감지 박스). <a href="#block-press">6장 프레스 블록</a></li>
 </ul>
 </div></details>
 </div></details>
@@ -337,6 +365,68 @@
 <li>스테이지 출구: 테이블 <code>SignalTargets</code> = 출구 문 Channel 0 → 필터를 반납해야 출구가 열림</li>
 <li>뒤로 못 가게: 같은 테이블에 지나온 입구 문 Channel 1(<a href="#door-lock">강제 닫기</a>)도 추가 → 반납과 동시에 입구가 잠김</li>
 <li>다음 맵 준비: 반납 후 통로의 <a href="#trigger">BP_Trigger</a>로 다음 레벨 이동 → 다음 맵에서 필터를 다시 주움</li>
+</ul>
+</div></details>
+</div></details>
+
+<!-- ===================== 3-5 빛 감지 장치 ===================== -->
+<details class="chapter" id="lightsensor"><summary><span class="chapter-number">3-5</span>BP_LightSensor — 빛 감지 장치 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>빛을 받으면 신호를 보내는 장치입니다. <strong>정한 색의 빛이 <code>ChargeTime</code>초 동안 계속 비추면</strong> 켜지고, 빛이 빠지면 꺼집니다(발판처럼). 손전등, 맵 광원, 거울 빔을 모두 감지합니다.</p>
+<p class="note">2026-10-31: 능력 블록과 같은 반응 방식(서서히 밝아지며 충전 → 켜짐 → 빛이 빠져도 <code>HoldTime</code>초 유지 → 서서히 어두워짐, 크리스탈이 들어온 빛 색으로 변함)으로 바꿨습니다. 동작 확인.</p>
+<details class="node" id="lightsensor-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>SignalTargets</code></td><td>신호를 보낼 장치와 채널 (<a href="#signal-connect">연결하는 방법</a>)</td><td>비어 있음</td></tr>
+<tr><td><code>UseColor</code></td><td>반응할 색. 아래 표 참고. 크리스탈이 이 색으로 표시됨(<code>All</code>은 흰색, 비추면 들어온 빛 색으로 바뀜)</td><td><code>All</code></td></tr>
+<tr><td><code>ChargeTime</code></td><td>이 시간(초) 동안 비추면 켜짐. 비추는 동안 점점 밝아지고, 도중에 빛이 빠지면 같은 속도로 다시 어두워짐(처음부터가 아니라 줄어든 만큼만 다시 채우면 됨). 0이면 비추자마자 켜짐</td><td>1</td></tr>
+<tr><td><code>HoldTime</code></td><td>켜진 뒤 빛이 빠져도 이 시간(초) 동안 신호 유지. 그 뒤 꺼지고 서서히 어두워짐</td><td>1</td></tr>
+<tr><td colspan="3"><code>UseColor = All</code>이어도 <strong>한 가지 색을 계속</strong> 비춰야 켜집니다. 충전 중이든 켜진 뒤든 다른 색으로 바꾸면 빛이 빠진 것처럼 처리됩니다(켜져 있었다면 <code>HoldTime</code> 뒤 꺼짐 → 어두워짐 → 새 색으로 다시 충전).</td></tr>
+<tr><td><code>KeepOn</code></td><td>한 번 켜지면 빛이 빠져도 계속 켜짐 <em>(아직 동작 안 함)</em></td><td>꺼짐</td></tr>
+</tbody></table></div>
+<div class="scroll"><table><thead><tr><th>UseColor</th><th>켜지는 빛</th></tr></thead><tbody>
+<tr><td><code>All</code></td><td>아무 빛이나 (흰 손전등 <code>1</code> 포함)</td></tr>
+<tr><td><code>Red</code> / <code>Green</code> / <code>Blue</code></td><td>그 색만. 다른 색이 섞이면 안 켜짐 (빨강 + 파랑 = 보라라서 <code>Red</code>는 안 켜짐)</td></tr>
+<tr><td><code>Purple</code> / <code>Yello</code> / <code>SkyBlue</code></td><td>두 빛이 <strong>합쳐졌을 때</strong> (예: 빨강 광원 + 파랑 손전등 = <code>Purple</code>)</td></tr>
+<tr><td><code>None</code></td><td>절대 안 켜짐</td></tr>
+</tbody></table></div>
+<p>흰 손전등은 색을 더하지 않아서 다른 빛의 색을 바꾸지 않습니다 (빨강 + 흰 빛 = 빨강). 흰 빛만 비추면 <code>All</code>에서만 켜집니다.</p>
+</div></details>
+<details class="node" id="lightsensor-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>빛 자물쇠: 센서 <code>UseColor</code> Red → 문 Channel 0 → 빨강으로 1초 비추면 열리고, 빛을 치우면 닫힘</li>
+<li>색 섞기 퍼즐: 센서 <code>UseColor</code> Purple + 빨강 맵 광원 → 플레이어가 파랑 손전등을 더해야 열림</li>
+<li>거울 퍼즐: 손전등이 직접 닿지 않는 곳의 센서를 거울로 반사해 비추기</li>
+<li>AND 퍼즐: 센서 2개 → 문 <code>ChannelRequired 0→2</code> → 두 센서를 동시에 비춰야 열림 (광원 + 손전등 등)</li>
+</ul>
+<p class="note">맵 광원은 플레이어가 가까이(<code>PlayerRange</code> 8000 안) 있을 때만 판정합니다. 멀리서는 맵 광원이 센서를 비춰도 켜지지 않습니다.</p>
+</div></details>
+</div></details>
+
+<!-- ===================== 3-6 체크포인트 ===================== -->
+<details class="chapter" id="checkpoint"><summary><span class="chapter-number">3-6</span>BP_Checkpoint — 체크포인트 (지나가면 저장) <span class="tag zone">구역</span></summary><div class="chapter-body">
+<p>보이지 않는 박스입니다. 플레이어가 지나가면 <strong>진행 상황을 파일로 저장</strong>하고, 다음에 게임을 켜면 이 맵의 <strong>지정 위치에서 다시 시작</strong>합니다. 방(구역) 입구마다 하나씩 두는 용도입니다. 신호와는 상관없습니다.</p>
+<details class="node" id="checkpoint-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>변수 / 항목</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td>액터 Scale</td><td>영역 크기. 통로를 막듯이 덮어야 지나칠 때 확실히 잡힘</td><td>-</td></tr>
+<tr><td><code>PlayerSpawnLocation</code></td><td>다시 시작할 위치. 뷰포트의 다이아몬드를 끌어서 정함 (체크포인트 기준 위치라 함께 따라감). 바닥 조금 위에 두세요</td><td>영역 중심</td></tr>
+<tr><td>액터 회전</td><td>다시 시작할 때 <strong>바라볼 방향</strong> = 체크포인트 액터의 정면(빨간 X축)</td><td>-</td></tr>
+</tbody></table></div>
+</div></details>
+<details class="node" id="checkpoint-behavior"><summary>동작</summary><div class="node-body">
+<ul>
+<li>플레이어가 영역에 <strong>들어올 때마다</strong> 저장합니다. 영역 안에 서 있는 동안 반복 저장되지는 않습니다.</li>
+<li>저장은 하나뿐입니다. <strong>마지막에 지난 체크포인트</strong>가 기준이며, 되돌아가 옛 체크포인트를 지나면 그쪽으로 덮어씁니다. 다른 맵의 체크포인트를 지나도 덮어씁니다.</li>
+<li>함께 저장되는 것: 가진 손전등·필터, 반납한 테이블 기록. 버튼·발판·블록·문·광원 상태는 저장하지 않으므로 <strong>그 방 퍼즐은 처음부터</strong> 다시 합니다.</li>
+<li>게임을 켜면 저장 파일을 자동으로 불러옵니다. 저장된 맵과 지금 맵이 같으면 그 위치로, 다르면 평소처럼 PlayerStart에서 시작합니다.</li>
+<li><strong>본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서만</strong> 저장하고 위치를 복원합니다. 테스트용(<code>BP_TestGameMode</code>) 맵에서는 지나가도 저장하지 않고, 항상 PlayerStart에서 시작합니다. (2026-11-01 변경)</li>
+</ul>
+<p class="note">테스트하다가 처음 상태로 돌아가려면 Play를 멈춘 상태에서 <code>프로젝트 폴더/Saved/SaveGames/Save0.sav</code> 파일을 지우면 됩니다. 이 파일이 있으면 모든 맵에서 "이미 주운 아이템"이 나타나지 않습니다. 새 게임 버튼은 시작 화면 작업 때 만들 예정입니다. 저장 파일은 PC마다 따로라 다른 팀원에게는 영향이 없습니다.</p>
+<p class="note bad">맵 파일 이름을 바꾸면 그 이름으로 저장된 체크포인트와 연결이 끊깁니다 (PlayerStart에서 시작, 에러는 없음).</p>
+</div></details>
+<details class="node" id="checkpoint-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>방 입구마다: 문을 지나 방에 들어선 자리에 영역, 다이아몬드는 방 안쪽 바닥, 액터는 방을 바라보게 회전</li>
+<li><a href="#trigger">통과 트리거</a>로 지나온 문을 잠그는 자리 바로 안쪽에 두면, 되돌아가지 못하는 지점부터 이어하기</li>
+<li>낙하 구덩이 복귀는 체크포인트가 아니라 <a href="#respawn">되돌리기 구역</a>(<code>ResetPlayer</code>)으로 — 게임을 다시 켜지 않아도 바로 소환</li>
 </ul>
 </div></details>
 </div></details>
@@ -549,6 +639,7 @@
 <li>들 수 있는 조건: <code>Move = Physics</code> + <code>CanGrab</code> 켜짐 (Details에서 체크하면 됨). 바라보면 상호작용 문구가 뜨고 F로 들기 / 놓기.</li>
 <li><code>Move</code>가 <code>Physics</code>가 아니면 <code>CanGrab</code>·<code>CanGrabSkyBlue</code>를 켜도 들 수 없습니다.</li>
 <li>든 블록은 플레이어가 보는 방향을 따라 돌고, 잡는 순간 수평·정면으로 정렬됩니다 (위아래를 봐도 기울지 않음).</li>
+<li>든 블록은 화면 가운데보다 조금 아래(<code>HeldDownOffset</code>, 기본 40)에 오고, 카메라와의 거리는 <strong>블록 앞면 기준</strong>(<code>HeldDistance</code>)이라 큰 블록을 들어도 시야를 덮지 않습니다. 두 값은 <code>BP_Charactor</code> 안 고정값입니다. (2026-11-01 수정, 테스트 결과 미확인)</li>
 <li>능력이 발동한 동안은 색에 따라 들기가 막힙니다. 들고 있는 중에 막히는 능력이 발동하면 자동으로 손에서 놓습니다.</li>
 </ul>
 <div class="scroll"><table><thead><tr><th>능력</th><th>발동 중 들기</th></tr></thead><tbody>
@@ -589,6 +680,13 @@
 <li>예: <code>PatrolOnce</code> + <code>ReOn</code> 버튼(Channel 1) → 끝까지 가서 멈춘 엘리베이터를 버튼으로 처음 층에 불러와 다시 올려 보냄.</li>
 <li>0번(<code>WaitTrigger</code> 출발/정지)과 같이 써도 서로 방해하지 않습니다. <code>Fixed</code>/<code>Physics</code> 블록에 보내면 아무 일도 일어나지 않습니다.</li>
 </ul>
+<p id="block-reverse"><strong>2번 채널 "방향 바꾸기"</strong> (2026-11-01 동작 확인): 신호가 켜지면 블록이 <strong>그 자리에서 돌아서서</strong> 반대 방향으로 경유지를 따라가고, 꺼지면 다시 원래 방향으로 돌아섭니다. 경유지가 2개 이상인 Patrol 블록만 해당합니다.</p>
+<ul>
+<li><strong>버튼은 <code>Togle</code>·<code>Timed</code>, 또는 발판</strong>으로 연결합니다. "켜져 있는 동안 반대 방향"이라서, <code>ReOn</code>은 켜짐·꺼짐이 바로 이어져 두 번 돌아서므로 아무 변화가 없습니다.</li>
+<li>예: 발판(Channel 2) → 밟고 있는 동안 엘리베이터가 내려오고, 내려오면 다시 올라감.</li>
+<li>주의: 2번이 켜진 채로 1번 "처음으로"를 보내면 방향이 정방향으로 초기화됩니다.</li>
+<li>주의: <code>PatrolReturn</code>은 원래 끝에서 스스로 돌아서므로, 2번 신호는 켜질 때·꺼질 때 모두 "지금 방향에서 돌아서기"로 동작합니다.</li>
+</ul>
 <p><code>Move</code>가 Patrol 계열이면 블록 아래 <code>SM_Floor_Plain_Light</code>(표시등)가 보입니다. <code>Fixed</code>/<code>Physics</code>면 숨겨집니다. 움직이는 블록인지 한눈에 알 수 있게 하는 표시입니다.</p>
 </div></details>
 <details class="node" id="block-movepoint"><summary>MovePoint 설정 방법</summary><div class="node-body">
@@ -603,6 +701,34 @@
 <li>블록을 회전하거나 크기를 바꾸면 경로도 같이 회전·확대됩니다. 게임 시작 시 한 번 월드 좌표로 바꿔 두기 때문에, 이동 중에는 경로가 블록을 따라가지 않습니다.</li>
 <li>속도는 <code>MoveSpeed</code>(초당 이동 거리)로 일정하게 움직입니다. 경유지 사이가 멀수록 오래 걸립니다.</li>
 <li><code>Move</code>가 <code>Fixed</code>나 <code>Physics</code>면 <code>MovePoint</code>는 무시됩니다.</li>
+</ul>
+</div></details>
+<details class="node" id="block-press"><summary>프레스 블록 <code>BP_PressBlock</code></summary><div class="node-body">
+<p>능력 블록과 똑같은 블록(자식 BP라 설정·능력·이동·채널 전부 같음)에 <strong>아래쪽 플레이어 감지 박스</strong>가 붙어 있습니다. Patrol로 움직이면 박스도 함께 움직이고, 블록이 멈추면(초록 정지, <code>WaitTrigger</code> 정지, <code>PatrolOnce</code> 끝) 박스도 멈춥니다. 박스가 닿으면 <a href="#respawn">되돌리기 구역</a>과 똑같이 동작합니다: 플레이어는 암전 후 <code>PlayerRespawnLocation</code>으로 소환, Physics 블록은 시작 위치로 되돌림. 둘 중 무엇을 할지 <code>ResetPlayer</code> / <code>ResetBlock</code>으로 고릅니다.</p>
+<div class="scroll"><table><thead><tr><th>추가 설정 (Press)</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ResetBlock</code></td><td>켜면 닿은 Physics 블록을 시작 위치로 되돌림 (<a href="#respawn-block">되돌리기 구역</a>과 같음). 프레스 블록 자기 자신은 제외</td><td>켜짐</td></tr>
+<tr><td><code>ResetPlayer</code></td><td>켜면 닿은 플레이어를 암전 후 <code>PlayerRespawnLocation</code>으로 소환</td><td>켜짐</td></tr>
+<tr><td><code>PlayerRespawnLocation</code></td><td>소환 위치 다이아몬드. 레벨에서 놓은 자리(게임 시작 때 자리)에 고정되어, 블록이 움직여도 소환 위치는 그대로</td><td>블록 중심</td></tr>
+<tr><td><code>PressBox</code> (컴포넌트)</td><td>감지 박스. 블록 아랫면 바로 아래에 얇게. 크기는 레벨에서 박스를 선택해 Box Extent로 조절 가능. 크기 능력(노랑/하늘)으로 메시가 커져도 박스는 그대로</td><td>블록 아래</td></tr>
+</tbody></table></div>
+<ul>
+<li>보통 <code>Move</code> = Patrol 계열 + <code>MovePoint</code>로 위아래 왕복, 또는 <code>WaitTrigger</code> + 버튼으로 내려오게 합니다.</li>
+<li>블록이 올라가는 중에 아래에서 점프해 박스에 닿아도 소환됩니다.</li>
+<li>다이아몬드는 프레스가 닿지 않는 안전한 바닥 조금 위에 두세요.</li>
+</ul>
+<p id="block-press-size"><strong>메시를 바꿨을 때 감지 박스만 크기 맞추기</strong> (<code>IsUserStaticMesh</code> 켬 + <code>UserStaticMesh</code>로 다른 모양을 쓸 때)</p>
+<p>액터 자체의 Scale(Details 맨 위 Transform)을 바꾸면 <strong>메시·감지 박스·다이아몬드 거리가 한꺼번에</strong> 커집니다. 감지 박스만 바꾸려면 <strong>컴포넌트</strong>를 따로 골라서 고칩니다.</p>
+<ol>
+<li>레벨에서 프레스 블록을 선택합니다.</li>
+<li>Details 패널 위쪽의 <strong>컴포넌트 목록</strong>(액터 이름 아래 트리)에서 <code>PressBox</code>를 클릭합니다. 아래 칸이 감지 박스의 설정으로 바뀝니다.</li>
+<li><strong>Shape → Box Extent</strong>로 크기를 정합니다. 값은 <strong>가운데에서 한쪽 면까지 거리(절반 크기)</strong>입니다. 예: 메시 바닥이 가로 400 × 세로 200이면 X 190, Y 90 정도(조금 작게), Z 10~15(얇게).</li>
+<li><strong>Transform → Location</strong>의 Z로 위치를 메시 아랫면 바로 아래(또는 살짝 안쪽)에 맞춥니다. 뷰포트에서 주황색 선 상자로 보입니다. 옆으로 어긋났으면 X·Y도 맞춥니다.</li>
+<li>메시만 크기를 바꾸고 싶으면 같은 목록에서 <code>StaticMesh</code>를 골라 그 Scale을 바꿉니다. 이 경우에도 감지 박스는 따라 커지지 않으니 3~4번으로 다시 맞춥니다.</li>
+</ol>
+<ul>
+<li>Box Extent 대신 <code>PressBox</code>의 Scale을 바꿔도 되지만, Extent로 맞추는 쪽이 숫자가 실제 크기와 맞아 알아보기 쉽습니다.</li>
+<li>이렇게 바꾼 값은 그 액터 하나에만 적용됩니다. 다른 프레스 블록은 BP 기본값 그대로입니다. 모든 프레스 블록의 기본 크기를 바꾸려면 <code>BP_PressBlock</code>을 열어 Components의 <code>PressBox</code>를 고칩니다.</li>
+<li>Details에서 바꾼 칸 옆에 생기는 노란 화살표(↶)를 누르면 BP 기본값으로 돌아갑니다.</li>
 </ul>
 </div></details>
 <details class="node" id="block-abilities"><summary>6-2. 색별 능력</summary><div class="node-body">
@@ -751,16 +877,59 @@
 <tr><td><code>Config/DefaultEngine.ini</code> (Project Settings → Maps &amp; Modes → Game Instance Class)</td><td><code>BP_GameInstance</code></td><td>손전등·필터 획득이 저장되지 않아 본 게임용 맵에서 빛을 아예 못 씀</td></tr>
 </tbody></table></div>
 </div></details>
-<details class="node" id="settings-gamemode" open><summary>맵마다 고를 GameMode (World Settings → GameMode Override)</summary><div class="node-body">
-<div class="scroll"><table><thead><tr><th>GameMode</th><th>용도</th><th>손전등·필터</th></tr></thead><tbody>
-<tr><td><code>BP_TestGameMode</code></td><td>기능 테스트 맵</td><td>줍지 않아도 전부 사용 (1~4 키 바로 사용)</td></tr>
-<tr><td><code>BP_RealGameMode</code></td><td>실제 스테이지 맵</td><td><code>BP_Pickup</code>으로 주워야 사용. 빛 꺼진 채 시작</td></tr>
-</tbody></table></div>
+<details class="node" id="settings-gamemode" open><summary>새 맵 준비: World Settings · GameMode · 플레이어 배치</summary><div class="node-body">
+<p>맵을 새로 만들거나 팀원 맵을 받으면 아래 순서대로 맞춥니다. <strong>GameMode를 무엇으로 고르느냐에 따라 플레이어를 놓는 방법, 시작 위치, 저장, 손전등 사용이 한꺼번에 정해집니다.</strong></p>
+<pre>World Settings → GameMode Override
+ ├ BP_TestGameMode (테스트) → PlayerStart 자리에 플레이어를 새로 만듦 → 빛 전부 사용 · 저장 안 함
+ └ BP_RealGameMode (본 게임) → 맵에 놓은 BP_Charactor에 들어감     → 주워야 사용 · 체크포인트 저장·복원
+                                └ 저장된 체크포인트가 이 맵이면 그 자리·방향으로 옮겨서 시작</pre>
+
+<p><strong>① World Settings 열기</strong></p>
 <ul>
-<li>Override를 비워 두면 프로젝트 기본 GameMode로 시작해 다른 플레이어가 나올 수 있습니다. 맵마다 반드시 둘 중 하나를 지정하세요.</li>
-<li>예전 이름 <code>BP_GameMode</code>는 <code>BP_TestGameMode</code>로 바뀌었습니다. 예전 이름으로 지정된 맵도 지금은 자동으로 <code>BP_TestGameMode</code>로 연결되지만, 곧 옛 이름을 정리할 예정이니 직접 다시 지정해 두세요.</li>
-<li>다음 맵으로 넘어갈 때(BP_Trigger <code>NextLevel</code>) 도착 맵에도 PlayerStart와 GameMode Override가 필요합니다.</li>
+<li>레벨 에디터 메뉴 <strong>Window → World Settings</strong> (또는 툴바 오른쪽 <strong>Settings → World Settings</strong>). Details 옆에 World Settings 탭이 생깁니다.</li>
+<li><strong>Game Mode → GameMode Override</strong> 칸에서 아래 둘 중 하나를 고르고 레벨을 저장합니다. 이 값은 맵 파일에 저장되므로 맵마다 따로 정합니다.</li>
 </ul>
+
+<p><strong>② GameMode 고르기</strong></p>
+<div class="scroll"><table><thead><tr><th>GameMode</th><th>쓰는 곳</th><th>플레이어</th><th>시작 위치</th><th>손전등·필터</th><th>체크포인트</th></tr></thead><tbody>
+<tr><td><code>BP_TestGameMode</code></td><td>기능 테스트 맵</td><td>PlayerStart 자리에 <strong>새로 생성</strong></td><td>PlayerStart</td><td>줍지 않아도 전부 사용 (1~4 키 바로 사용)</td><td>지나가도 저장 안 함, 복원 안 함</td></tr>
+<tr><td><code>BP_RealGameMode</code></td><td>실제 스테이지 맵</td><td><strong>맵에 놓은 <code>BP_Charactor</code></strong>에 들어감 (새로 만들지 않음)</td><td>놓은 캐릭터 자리·방향. 저장된 체크포인트가 이 맵이면 그 자리</td><td><code>BP_Pickup</code>으로 주워야 사용. 빛 꺼진 채 시작</td><td>지날 때마다 저장, 다시 켜면 복원 (<a href="#checkpoint">3-6장</a>)</td></tr>
+</tbody></table></div>
+
+<p><strong>③ 플레이어 놓기</strong></p>
+<div class="scroll"><table><thead><tr><th></th><th>테스트 맵 (<code>BP_TestGameMode</code>)</th><th>본 게임 맵 (<code>BP_RealGameMode</code>)</th></tr></thead><tbody>
+<tr><td>PlayerStart</td><td><strong>딱 하나</strong> 필요 (Place Actors → Basic → Player Start)</td><td>쓰이지 않음 (있어도 무해, 지워도 됨)</td></tr>
+<tr><td><code>BP_Charactor</code></td><td><strong>놓지 않음</strong></td><td>시작할 자리에 <strong>딱 하나</strong>. 바라볼 방향으로 Z 회전</td></tr>
+<tr><td><code>Auto Possess Player</code></td><td>-</td><td><code>Player 0</code>. <code>BP_Charactor</code> Class Defaults에서 정해 두면 맵에서 따로 안 바꿔도 됨 (맵에서 바꾼 값이 우선)</td></tr>
+</tbody></table></div>
+
+<p><strong>④ 다른 맵으로 넘어가는 경우</strong> (<a href="#trigger">BP_Trigger</a> <code>NextLevel</code>)</p>
+<ul>
+<li>도착 맵도 ①~③을 똑같이 맞춰야 합니다. 출발 맵과 도착 맵의 GameMode가 달라도 됩니다.</li>
+<li>주운 손전등·필터, 반납 기록은 맵을 옮겨도 유지됩니다 (<code>BP_GameInstance</code>, <a href="#settings-required">위 필수 설정</a>).</li>
+<li>도착 맵은 놓은 캐릭터(또는 PlayerStart) 자리에서 시작합니다. 저장된 체크포인트는 맵 이름이 다르면 무시됩니다. 도착 맵의 첫 체크포인트를 지나야 새로 저장됩니다.</li>
+</ul>
+
+<p><strong>⑤ 확인</strong>: Play → 조작이 되는지, 시작 위치·방향이 맞는지, 1~4 키가 GameMode대로 동작하는지 봅니다. 이상하면 아래 표를 보세요.</p>
+</div></details>
+
+<details class="node" id="settings-placement" open><summary>배치 주의사항 (중복·누락)</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>상황</th><th>결과</th><th>해결</th></tr></thead><tbody>
+<tr><td>GameMode Override를 비워 둠</td><td>프로젝트 기본 GameMode로 시작 → 다른 플레이어가 나오거나 손전등·저장이 우리 규칙대로 안 됨</td><td>맵마다 둘 중 하나를 반드시 지정</td></tr>
+<tr><td>예전 이름 <code>BP_GameMode</code>로 지정됨</td><td>지금은 <code>BP_TestGameMode</code>로 자동 연결되지만 옛 이름을 곧 정리할 예정</td><td><code>BP_TestGameMode</code> 또는 <code>BP_RealGameMode</code>로 다시 지정</td></tr>
+<tr><td>본 게임 맵에 <code>BP_Charactor</code>가 <strong>없음</strong></td><td>조작할 캐릭터가 없음. 화면이 맵 원점 근처에 떠 있고 아무 키도 안 먹음</td><td>캐릭터 하나 놓기</td></tr>
+<tr><td>본 게임 맵에 <code>BP_Charactor</code>가 <strong>2개 이상</strong></td><td>하나만 조종되고 나머지는 서 있음. 체크포인트가 있으면 둘 다 같은 자리로 옮겨져 겹침</td><td>하나만 남기기</td></tr>
+<tr><td>놓은 캐릭터의 <code>Auto Possess Player</code>가 <code>Disabled</code></td><td>캐릭터가 없을 때와 같음</td><td><code>Player 0</code>으로 (Class Defaults 또는 그 캐릭터 Details → Pawn)</td></tr>
+<tr><td>테스트 맵에 <code>BP_Charactor</code>를 놓음</td><td>놓은 캐릭터와 PlayerStart에 생긴 캐릭터 중 어느 쪽에 들어갈지 확실하지 않음</td><td>테스트 맵에서는 캐릭터를 지우고 PlayerStart만</td></tr>
+<tr><td>테스트 맵에 PlayerStart가 <strong>없음</strong></td><td>맵 원점 근처에 생성 (바닥이 없으면 떨어짐)</td><td>PlayerStart 하나 놓기</td></tr>
+<tr><td>테스트 맵에 PlayerStart가 <strong>2개 이상</strong></td><td>그중 아무 하나에서 시작 (매번 다를 수 있음)</td><td>하나만 남기기</td></tr>
+<tr><td>테스트 맵에 <code>BP_Checkpoint</code></td><td>지나가도 저장 안 됨 (정상)</td><td>본 게임 맵에서 확인</td></tr>
+<tr><td>본 게임 맵의 파일 이름을 바꿈</td><td>그 이름으로 저장된 체크포인트와 연결이 끊겨 처음 자리에서 시작</td><td>배포 뒤에는 맵 이름을 바꾸지 않기</td></tr>
+<tr><td>배포한 맵의 <code>BP_FilterReturn</code>을 지우고 다시 놓음</td><td>내부 이름이 바뀌어 예전 반납 기록과 연결이 끊김 (<a href="#returntable">3-4장</a>)</td><td>지우지 말고 옮기기만</td></tr>
+<tr><td>예전 저장 파일이 남아 있음</td><td>모든 맵에서 이미 주운 아이템이 안 나타나고, 본 게임 맵은 체크포인트 자리에서 시작</td><td><code>Saved/SaveGames/Save0.sav</code> 삭제 (PC마다 따로라 팀원에게는 영향 없음)</td></tr>
+<tr><td>체크포인트 다이아몬드·리스폰 다이아몬드가 바닥이나 벽 속</td><td>가까운 빈 자리로 비켜서 소환되거나 실패</td><td>바닥 조금 위, 빈 공간에 두기</td></tr>
+</tbody></table></div>
+<p class="note">이 표의 본 게임 맵 항목(캐릭터 배치, 저장은 본 게임 모드에서만)은 2026-11-01에 바뀐 내용입니다 (LightTestMap = BP_RealGameMode + 놓은 캐릭터에서 동작 확인).</p>
 </div></details>
 <details class="node" id="settings-mistakes"><summary>흔한 실수</summary><div class="node-body">
 <dl class="pins">
@@ -770,8 +939,10 @@
 <dt>맵 광원이 블록을 못 잡아요</dt><dd>블록 메시의 Generate Overlap Events가 켜져 있는지, <code>PlayerRange</code>가 0이 아닌지 확인하세요.</dd>
 <dt>새 블록 메시가 투명하게 안 보여요</dt><dd>그 메시의 Nanite를 끄세요.</dd>
 <dt>1~4 키를 눌러도 빛이 안 켜져요</dt><dd>그 맵의 GameMode가 <code>BP_RealGameMode</code>이면 손전등(·필터)을 주워야 합니다. 테스트 중이면 <code>BP_TestGameMode</code>로 지정하세요. Game Instance Class가 <code>BP_GameInstance</code>인지도 확인하세요.</dd>
+<dt>주운 적 없는 아이템이 안 보이거나, 엉뚱한 위치에서 시작해요</dt><dd>예전에 저장된 진행 상황을 불러온 것입니다. <code>Saved/SaveGames/Save0.sav</code>를 지우면 처음 상태로 시작합니다. <a href="#checkpoint">3-6장</a></dd>
 <dt>F로 아이템이 안 주워져요</dt><dd>BP_Pickup 메시의 콜리전이 Visibility를 Block하는지 확인하세요. 아이템을 다른 물체 안에 묻어 두면 겨눌 수 없습니다.</dd>
-<dt>레벨을 이동했더니 다른 캐릭터로 시작해요</dt><dd>도착 맵의 GameMode Override와 PlayerStart를 확인하세요.</dd>
+<dt>레벨을 이동했더니 다른 캐릭터로 시작해요</dt><dd>도착 맵의 GameMode Override를 확인하고, 테스트 맵이면 PlayerStart, 본 게임 맵이면 놓아 둔 <code>BP_Charactor</code>를 확인하세요. <a href="#settings-gamemode">새 맵 준비</a></dd>
+<dt>Play 했는데 아무 조작도 안 돼요</dt><dd>본 게임 맵(<code>BP_RealGameMode</code>)인데 <code>BP_Charactor</code>가 없거나 <code>Auto Possess Player</code>가 Disabled입니다. <a href="#settings-placement">배치 주의사항</a></dd>
 <dt>콜리전 Visibility 채널</dt><dd>건드리지 마세요. 빛 판정 레이가 이 채널을 씁니다.</dd>
 </dl>
 </div></details>
@@ -779,6 +950,7 @@
 <ul>
 <li>맵 광원을 선택하면 주황색 상자(감지 박스)가 보입니다. 판정 범위를 확인할 때 쓰세요.</li>
 <li>뷰포트에서 Alt + C를 누르면 콜리전 표시를 켜고 끌 수 있습니다.</li>
+<li>Details 패널의 설정 카테고리가 닫혀 있으면: 카테고리 제목을 <strong>Shift + 클릭</strong>하면 전부 한꺼번에 열립니다. 한 번 열어 둔 카테고리는 다른 액터를 골라도 열린 채로 기억됩니다(내 PC 에디터 설정이라 팀원은 각자 한 번 열어야 함). 처음부터 열린 채로 나오게 하는 BP 설정은 없습니다.</li>
 </ul>
 </div></details>
 </div></details>
