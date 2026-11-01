@@ -67,6 +67,11 @@
 
 <!-- ===================== 최근 변경 ===================== -->
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
+<p><strong>2026-11-02</strong></p>
+<ul>
+<li><strong>F 상호작용 판정 개선</strong>: 작은 버튼이나 책상 위 손전등을 대충 봐도 잡힘. 판정 공에 닿은 것 전부 중 가장 가까운 상호작용 대상을 고르고, 벽(맵에 고정된 메시) 뒤는 제외 (동작 확인). <a href="#player-controls">1장 조작</a></li>
+<li>능력 블록 <strong>색별 충전·유지 시간을 블록마다 설정</strong> (<code>RChargeTime</code>, <code>GreenHoldTime</code> 등). <a href="#block-abilities">6-2장</a></li>
+</ul>
 <p><strong>2026-11-01</strong></p>
 <ul>
 <li>(만듦, 테스트 전) 새 장치 <strong>리셋 버튼 <code>BP_ResetButton</code></strong> (버튼의 자식): 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 <code>ResetArea</code> 안</strong>인 Physics 블록이 전부 처음 자리로. 영역 밖으로 던진 블록도 돌아옴, 들고 있던 블록은 손에서 놓음. 영역 크기·위치·회전은 레벨에서 버튼을 선택하고 컴포넌트 목록의 <code>ResetArea</code>(Box Extent, 위치, 회전)로 조절. 버튼 기능(<code>SignalTargets</code>)도 그대로라 Patrol 블록은 같은 버튼에 1번 채널 "처음으로"로 연결. <code>ButtonMode</code>는 <code>ReOn</code>. 초록으로 멈춘 블록은 자리만 돌아가고 멈춘 상태는 능력이 끝날 때까지 유지. <a href="#resetbutton">2-1장</a></li>
@@ -177,7 +182,7 @@
 <tr><td><code>1</code></td><td>손전등 흰 빛: 색을 더하지 않는 빛. 다른 빛의 색을 바꾸지 않고(빨강 광원 + 흰 빛 = 빨강), <code>OwnColor</code> 블록의 고유색을 발동시킴</td></tr>
 <tr><td><code>2</code> / <code>3</code> / <code>4</code></td><td>손전등 색 전환 (<span class="c-red">빨강</span> / <span class="c-green">초록</span> / <span class="c-blue">파랑</span>)</td></tr>
 <tr><td>지금 색의 숫자 키 다시 누르기 / <code>E</code></td><td>손전등 끄기</td></tr>
-<tr><td><code>F</code></td><td>바라보는 대상과 상호작용 — 버튼이면 누르기, 블록이면 잡기 / 놓기, 아이템이면 줍기</td></tr>
+<tr><td><code>F</code></td><td>바라보는 대상과 상호작용 — 버튼이면 누르기, 블록이면 잡기 / 놓기, 아이템이면 줍기. 화면 가운데 근처를 대충 봐도 됩니다: 굵은 판정에 닿은 것 중 <strong>가장 가까운 상호작용 대상</strong>을 고르고, 앞에 받침·책상이 걸려 있어도 그 뒤의 버튼·아이템을 찾습니다. 벽 너머 대상은 고르지 않습니다 (벽 = 맵에 고정된 WorldStatic 메시. 체크포인트·트리거 상자나 Physics 블록 너머는 눌림)</td></tr>
 <tr><td><code>C</code></td><td>앉기 / 일어서기 (누를 때마다 전환). 앉으면 캡슐이 낮아져 낮은 틈(기본 높이 80 이상)을 지나갈 수 있고, 걷는 속도가 느려지며 점프가 안 됨. 틈 아래에서 일어서기를 누르면 공간이 생길 때까지 앉은 채로 있음</td></tr>
 </tbody></table></div>
 <p class="note">앉은 높이는 <code>BP_Charactor</code> → <code>CharacterMovement</code> → <code>Crouched Half Height</code>(앉았을 때 캡슐 높이의 절반, 기본 40)로 조절합니다. 지나갈 수 있는 틈 높이 = 이 값 × 2. 서 있을 때는 <code>CapsuleComponent</code> → <code>Half Height</code>(기본 96). 틈을 만들 때 이 높이를 기준으로 하세요.</p>
@@ -665,6 +670,7 @@
 <tr><td><code>UserStaticMesh</code></td><td>사용할 메시 (발판, 벽 등)</td><td>없음</td></tr>
 <tr><td><code>CanGrab</code></td><td>켜면 플레이어가 F로 들고 놓을 수 있음. <code>Move = Physics</code>일 때만 적용</td><td>꺼짐</td></tr>
 <tr><td><code>CanGrabSkyBlue</code></td><td>켜면 SkyBlue 능력으로 작아진 동안 들 수 있음. <code>CanGrab</code>이 꺼져 있어 평소엔 못 드는 블록도 작아지면 들 수 있게 됨. 끄면 작아져도 못 듦. <code>Move = Physics</code>일 때만 적용</td><td>켜짐</td></tr>
+<tr><td><code>RChargeTime</code> ~ <code>SKHoldTime</code></td><td>색별 충전 시간(이만큼 비춰야 발동)과 유지 시간(빛이 떠난 뒤 더 유지). 색마다 변수 이름과 기본값은 <a href="#block-abilities">6-2 색별 능력</a> 표 참고</td><td>충전 1.5초 (초록 0.2초) / 유지 5초</td></tr>
 </tbody></table></div>
 </div></details>
 <details class="node" id="block-grab"><summary>들기 (CanGrab)</summary><div class="node-body">
@@ -767,11 +773,20 @@
 <details class="node" id="block-abilities"><summary>6-2. 색별 능력</summary><div class="node-body">
 <p><strong>능력 발동 흐름 (공통)</strong></p>
 <ol>
-<li>빛을 계속 비추면 게이지가 차오름 (색마다 충전 시간이 다름. Green은 0.2초로 빠름)</li>
+<li>빛을 계속 비추면 게이지가 차오름 (색마다 충전 시간이 다름. 기본은 Green만 0.2초로 빠름, 아래 표로 블록마다 조절)</li>
 <li>다 차면 능력 시작</li>
 <li>빛이 떠나면 일정 시간 유지되다 종료 → 쿨타임</li>
 </ol>
-<p class="note">충전 / 유지 / 쿨타임 시간은 각 블록마다 바꿀 수 없고, <code>AvilityConfig</code> 함수에 색별로 고정되어 있습니다.</p>
+<p><strong>색별 충전·유지 시간은 블록마다 바꿀 수 있습니다</strong> (2026-11-02). 블록을 선택하고 Details에서:</p>
+<div class="scroll"><table><thead><tr><th>색</th><th>충전 시간 (이만큼 비춰야 발동)</th><th>유지 시간 (빛이 떠난 뒤 이만큼 더 유지)</th></tr></thead><tbody>
+<tr><td class="c-red">Red</td><td><code>RChargeTime</code></td><td>없음 (즉시 발동)</td></tr>
+<tr><td class="c-blue">Blue</td><td><code>BChargeTime</code></td><td>없음 (즉시 발동)</td></tr>
+<tr><td class="c-green">Green</td><td><code>GChargeTime</code></td><td><code>GreenHoldTime</code></td></tr>
+<tr><td>Purple</td><td><code>PChargeTime</code></td><td><code>PHoldTime</code></td></tr>
+<tr><td>Yello</td><td><code>YChargeTime</code></td><td><code>YHoldTime</code></td></tr>
+<tr><td>SkyBlue</td><td><code>SKChargeTime</code></td><td><code>SKHoldTime</code></td></tr>
+</tbody></table></div>
+<p class="note">기본값은 블루프린트의 Class Defaults 값입니다 (예전 고정값: 충전 1.5초, 초록만 0.2초, 유지 5초). 충전 시간을 0으로 두면 비추자마자 발동하고, 유지 시간을 0으로 두면 빛이 떠나는 순간 바로 끝납니다. 쿨타임은 아직 고정입니다.</p>
 
 <h3 class="c-red">Red — 폭발 (즉시 발동, 유지 없음)</h3>
 <ul>

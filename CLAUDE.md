@@ -113,7 +113,7 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 - `MovePoint`: Show 3D Widget 벡터 배열, 블록 로컬 좌표. BeginPlay 쯤 `GetTransform → TransformLocation`으로 `WorldPatrolPoints`에 변환(이후 블록이 움직여도 경로 고정). `VInterpTo_Constant(MoveSpeed)`로 `PatrolIndex` 순서대로 이동.
 - 움직이는 발판/벽은 별도 BP 없이 이 블록으로 만듦: UserStaticMesh + Patrol + WaitTrigger + 버튼/발판 SignalTargets.
 - 예시: 버튼으로 출발하는 엘리베이터 / 초록으로 멈추는 발판 / 보라 벽 / 노란 계단 / 파랑으로 끌어와 발판 누르기.
-- 충전·유지·쿨타임은 인스턴스 설정 불가 (`AvilityConfig` 함수에 색별 고정).
+- 충전·유지 시간은 2026-11-02부터 인스턴스 설정 가능(사용자 구현): `RChargeTime`, `BChargeTime`, `GChargeTime`/`GreenHoldTime`, `PChargeTime`/`PHoldTime`, `YChargeTime`/`YHoldTime`, `SKChargeTime`/`SKHoldTime` → `AvilityConfig`가 반환. Red·Blue 유지는 0 고정, 쿨타임은 고정.
 
 ### 1-7. BP_Hatch — 다락문 (수신, 부모 BP_Activate)
 | 인스턴스 설정 | 설명 | 기본값 |
@@ -248,6 +248,8 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 | 27 | ~~들기 위치를 시야보다 조금 아래로~~ ✅ (2026-11-01 사용자 확인) | BP_Charactor Tick 들기 New Location에서 `Camera Up × HeldDownOffset`(새 Float 40)을 뺌. 월드 −Z 대신 카메라 Up: 위·아래를 봐도 화면에서 같은 위치. 작업 26과 같은 계산에 합침 | 소 |
 | 28 | ~~리스폰 연출을 플레이어로 모으기 + 세상 멈춤~~ ✅ (2026-11-01 사용자 "1번으로 됬고" — BP_PlayerController Should Perform Full Tick When Paused 켜서 일시정지 중 암전 진행) | BP_Charactor Custom Event `RespawnAt(Location)`: Branch(NOT Respawning) → Respawning true → Set Game Paused(true) → (HeldBlock DropBlock) → Fade 0→1 Hold → Delay(FadeTime+0.2) → Teleport → Stop → Fade 1→0 → Set Game Paused(false) → Respawning false. Class Defaults Tick Even When Paused 켬, Event Tick 앞 Branch(Is Game Paused). BP_Respawn·BP_PressBlock은 Cast To BP_Charactor → RespawnAt(RespawnWorldLocation)만, 각자의 Respawning/FadeTime·암전 노드 삭제. 일시정지 중 카메라 페이드가 안 도는 것 확인(2026-11-01) → BP_PlayerController Should Perform Full Tick When Paused 시도, 안 되면 Paused를 첫 Delay 뒤로. ESC 메뉴(작업 10)는 Respawning 중 막기, BGM(19)은 일시정지 무시 설정 필요. 시간 늦추기(Global Time Dilation)는 Delay·카메라까지 느려져 기각 | 소~중 |
 | 29 | 리셋 버튼 `BP_ResetButton` (2026-11-01 추가, 그래프 확인·테스트 전) | 버튼을 누르면 주변 Physics 블록을 시작 자리로. 경과: BP_Respawn 수신 장치화 → 블록 목록 ResetBlocks → 구역 ResetInside(ResetBlock 토글은 Overlap이 다시 안 생겨 무효) → 소환 방식(비추천) → **사용자 최종: 자동, 버튼 주변, 영역은 사각형**. BP_Button 자식, ButtonMode ReOn, 컴포넌트 `ResetArea`(Box Collision, NoCollision, Hidden in Game — 레벨에서 컴포넌트 목록으로 Box Extent·위치·회전 조절). Event Interact → Parent: Interact → Get All Actors Of Class(BP_AvilityBlock) → ForEach → Branch(Move == Physics AND Is Point In Box With Transform(블록 GetActorLocation, ResetArea.GetWorldTransform, ResetArea.GetUnscaledBoxExtent)) → ResetToStart. 충돌 판정(GetOverlappingActors) 안도 안내했으나 **사용자는 처음 위치 판정으로 구현(2026-11-01 그래프 확인, 테스트 전)** → 영역 밖으로 던진 블록도 돌아옴. 초록 정지 상태는 ResetToStart가 능력 상태를 안 건드려 유지(자리만 이동) Physics 블록은 StaticMesh만 움직이고 액터(DefaultSceneRoot)는 처음 자리에 남으므로 거리 = 처음 위치 기준 → 던진 블록도 돌아옴. Patrol 제외(ResetToStart가 StaticMesh만 옮김), BP_Respawn 변경 없음 | 소 |
+| 30 | ~~F 상호작용 판정 개선~~ ✅ (2026-11-02 동작 확인) | `FindTarget`: Sphere Trace Multi For Objects(R 20, WorldStatic/WorldDynamic/PhysicsBody) → 가까운 순 CanInteract → Line Trace For Objects(WorldStatic만)로 벽 확인 → FocusTarget. 원인: 예전 Sphere Trace Single R 40이 받침·책상에 먼저 닿음 / 맵 벽은 Visibility Ignore라 채널 방식 벽 확인 불가 → 물체 종류 방식. 손전등 빛도 같은 이유로 벽을 통과하는지는 미확인 | 소 |
+| 31 | ~~능력 블록 충전·유지 시간 인스턴스 설정~~ ✅ (2026-11-02 사용자 구현) | 색별 ChargeTime/HoldTime 변수 → AvilityConfig. 쿨타임은 고정 | 소 |
 
 - 작업 4 광원 회전 (2026-10-06 설계 확정, 사용자 결정 — 오프셋/Step/PingPong/Loop/방향키 연속 회전안 모두 폐기):
   - 컴포넌트: `Root → BaseMesh` / `HeadPivot(Scene, 관절 위치) → HeadMesh + SpotLight → LightSencer`, 전부 Movable. 헤드 회전 시 빛·감지 박스·IsLit 판정이 따라가는 것 확인함.

@@ -339,7 +339,7 @@ DefaultSceneRoot
 | `Add/RemoveColorContribution` (인터페이스) | ActiveContributions 갱신 → `ReCalculate` |
 | `ReCalculate` | 합친 색 → CurrentColor → (OwnColor면 `| Select(UseColor)`) → Switch on Int(0/7 None, 1 Red, 2 Green, 3 Yello, 4 Blue, 5 Purple, 6 SkyBlue) |
 | `ColorCheck` (매크로) | `(ColorMode != ReactOnly) OR (UseColor == All) OR (색 == UseColor)` |
-| `AvilityConfig` | 색별 충전·유지·쿨타임 고정값 |
+| `AvilityConfig` | Switch(Color) → 색별 ChargeTime·HoldTime·TargetColor 반환. 2026-11-02 사용자: 충전·유지 시간을 인스턴스 변수로 — Red `RChargeTime` / Blue `BChargeTime` / Green `GChargeTime`·`GreenHoldTime` / Purple `PChargeTime`·`PHoldTime` / Yello `YChargeTime`·`YHoldTime` / SkyBlue `SKChargeTime`·`SKHoldTime` (Red·Blue 유지 0 고정, All·None 1.5/0 상수). 쿨타임은 고정 |
 | `AvilityTick` / `AvilityStart` / `AvilityEnd` | 능력 진행(상태 흐름·발광 식은 CLAUDE.md 2-3, 2026-10-31 그래프 확인). Sequence then_0 = Switch(AvilityState) 충전/유지/쿨타임, then_1 = BlockColor·GlowAmount 갱신. Tick에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵 |
 | `GetLightSource` (Pure) | 출력 actor / IsPlayer / Found. 플레이어 기여 우선, 아니면 Keys[0] |
 | 빨강 `Push`, 폭발 | Select(Found ? actor : 플레이어) 기준 |
@@ -541,7 +541,9 @@ CapsuleComponent (루트, Character 기본)
 | `RefreshFlashlight` | `SM_Flashlight.SetVisibility(CanUseFlashlight, Propagate 끔)` — 메시만. 빛은 LightControll/TurnOff 담당. BeginPlay와 손전등 줍기 직후 호출 |
 | 숫자 키 검사 (작업 6) | `IA_Red/Green/Blue` Started → Branch(`CanUseColor(Red/Green/Blue)`) → `LightControll(색)`. `IA_White` Started → Branch(`CanUseFlashlight`) → `LightControll((0,0,0))`. `IA_TurnOff`는 검사 없음. 검사를 LightControll 안이 아니라 키 쪽에 둔 이유: LightControll은 LinearColor를 받고 검사는 EN_LightColor로 묻기 때문 |
 | `IA_TurnOff` (E) | 끄기 |
-| `IA_Relation` (F) | 바라보는 대상 `Interact` 또는 블록 잡기/놓기 |
+| `IA_Relation` (F) | Started → IsValid(`HeldBlock`) → 있으면 `DropBlock` / 없으면 `TryInteract` |
+| `TryInteract` (함수) | IsValid(`FocusTarget`) → Cast To BP_AvilityBlock → 성공 `GrabBlock(Block)` / 실패 `Interact`(BPI_Interact 메시지, Target FocusTarget) |
+| `FindTarget` (함수, `FocusTarget` 갱신, 2026-11-02 개편·동작 확인) | `Sphere Trace Multi For Objects`(Start = Camera 위치, End = + Camera Forward × `InteractDistance`, Radius 20, Object Types WorldStatic/WorldDynamic/PhysicsBody, Ignore Self) → For Each(Out Hits, 가까운 순) → Break Hit Result → `CanInteract`(HitActor) → Branch T → **벽 확인** `Line Trace For Objects`(Camera 위치 → 후보 Impact Point, Object Types **WorldStatic만**, Ignore Self) → Branch(NOT Return Value OR 선 HitActor == 후보) T → `FocusTarget = 후보` → Return / Completed → `FocusTarget = None`. 예전 SphereTraceSingle(R 40)은 큰 공이 받침·책상에 먼저 닿아 작은 대상을 못 고름. 벽 확인을 Visibility 채널로 했을 때는 맵 벽이 Visibility Ignore라 벽 너머 버튼이 눌림 → 물체 종류 방식으로 변경(WorldDynamic은 체크포인트·트리거 상자가 막아서 제외) |
 | `IA_Crouch` (C, 2026-10-30) | Started → Branch(`Is Crouched`) True → `Un Crouch` / False → `Crouch`. CharacterMovement `Can Crouch` 켬, `Crouched Half Height`(기본 40)로 앉은 높이. 카메라는 캡슐에 붙은 SpringArm이라 캡슐이 낮아진 만큼 같이 내려감(`Crouched Eye Height`는 안 쓰임). 앉으면 점프 불가·`Max Walk Speed Crouched`(엔진 기본). 틈 아래 Un Crouch는 엔진이 공간 날 때까지 대기. 키 매핑 `IMC_Default` |
 | `GrabBlock` | `GrabComponentAtLocationWithRotation`(StaticMesh) → 메시 Pawn 응답 Ignore → `TurnOff` → HeldBlock 저장 |
 | `DropBlock` | 놓기 + Pawn 충돌 복구 |
@@ -600,3 +602,5 @@ CapsuleComponent (루트, Character 기본)
 | 2026-11-01 | 작업 29 변경(사용자 "영역을 사각형으로"): ResetRadius·RangePreview(구) 대신 `ResetArea`(Box Collision, NoCollision, Hidden in Game). 조건 = Move == Physics AND Is Point In Box With Transform(블록 GetActorLocation, ResetArea.GetWorldTransform, ResetArea.GetUnscaledBoxExtent) — 회전·Scale 반영(역변환 후 Unscaled Extent와 비교). 미구현 |
 | 2026-11-01 | 작업 29 변경(사용자 "충돌 판정 블록처럼 배치형식"): ResetArea를 BP_Respawn Box와 같은 콜리전(Query Only, LightCencer, WorldDynamic/PhysicsBody Overlap)으로, 판정 = ResetArea.GetOverlappingActors(BP_AvilityBlock) → Branch(Move == Physics) → ResetToStart. Is Point In Box With Transform(처음 위치) 안 폐기. 지금 안에 있는 블록만 — 미구현 |
 | 2026-11-01 | **BP_ResetButton 그래프 확인**: Interact → Parent: Interact → Get All Actors Of Class(BP_AvilityBlock) → ForEach → Branch(Move == NewEnumerator1(Physics) AND Is Point In Box With Transform(GetActorLocation, ResetArea.GetComponentToWorld, GetUnscaledBoxExtent)) → ResetToStart. 처음 위치 판정 방식으로 구현(충돌 판정 안 대신). 회색 기본 이벤트 3개(BeginPlay/ActorBeginOverlap/Tick)는 비활성이라 무해. 구조 절 추가 — 테스트 전 |
+| 2026-11-02 | BP_Charactor F 판정 확인: IA_Relation → TryInteract(FocusTarget 사용) → FindTarget의 SphereTraceSingle Radius 40이 원인(큰 공이 주변 물체에 먼저 닿음). Radius 10 안팎으로 줄이도록 안내(변수 `InteractRadius` 권장) — 미적용. 앞서 안내한 InteractBox는 보류(줄여도 안 될 때만) |
+| 2026-11-02 | **F 판정 개편 동작 확인**: FindTarget = Sphere Trace Multi For Objects(R 20) → 가까운 순으로 CanInteract → Line Trace For Objects(WorldStatic) 벽 확인 → 첫 후보 FocusTarget. 맵 벽이 Visibility Ignore라 채널 방식 벽 확인이 실패했던 것 해결. **능력 블록 충전·유지 시간 인스턴스 변수화**(AvilityConfig, 사용자 구현) |
