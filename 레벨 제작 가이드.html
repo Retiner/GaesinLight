@@ -16,6 +16,7 @@
 <a href="#signal">0 신호 연결</a>
 <a href="#player">1 플레이어</a>
 <a href="#button">2 버튼</a>
+<a href="#resetbutton">2-1 리셋 버튼</a>
 <a href="#plate">3 발판</a>
 <a href="#trigger">3-1 트리거</a>
 <a href="#respawn">3-2 되돌리기 구역</a>
@@ -68,6 +69,7 @@
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
 <p><strong>2026-11-01</strong></p>
 <ul>
+<li>(만듦, 테스트 전) 새 장치 <strong>리셋 버튼 <code>BP_ResetButton</code></strong> (버튼의 자식): 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 <code>ResetArea</code> 안</strong>인 Physics 블록이 전부 처음 자리로. 영역 밖으로 던진 블록도 돌아옴, 들고 있던 블록은 손에서 놓음. 영역 크기·위치·회전은 레벨에서 버튼을 선택하고 컴포넌트 목록의 <code>ResetArea</code>(Box Extent, 위치, 회전)로 조절. 버튼 기능(<code>SignalTargets</code>)도 그대로라 Patrol 블록은 같은 버튼에 1번 채널 "처음으로"로 연결. <code>ButtonMode</code>는 <code>ReOn</code>. 초록으로 멈춘 블록은 자리만 돌아가고 멈춘 상태는 능력이 끝날 때까지 유지. <a href="#resetbutton">2-1장</a></li>
 <li>리스폰(되돌리기 구역·프레스 블록) 동안 <strong>세상이 멈춤</strong>: 어둡고 소환되는 사이 움직이는 장치가 정지했다가 밝아질 때 다시 움직임. 소환 처리는 플레이어 한 곳(<code>BP_Charactor.RespawnAt</code>)으로 모음. <a href="#respawn-player">3-2장</a></li>
 <li>블록 들기: 큰 블록도 시야를 덮지 않게 거리를 블록 앞면부터 재고, 화면 가운데보다 조금 아래에 들게 함 (동작 확인). <a href="#block-grab">6장 들기</a></li>
 <li>능력 블록 <strong>2번 채널 "방향 바꾸기"</strong>: 신호 켜짐 → 그 자리에서 돌아서 반대 방향, 꺼짐 → 원래 방향. <code>Togle</code>·<code>Timed</code>·발판으로 연결. <a href="#block-reverse">6장</a></li>
@@ -214,6 +216,36 @@
 </div></details>
 </div></details>
 
+<!-- ===================== 2-1 리셋 버튼 ===================== -->
+<details class="chapter" id="resetbutton"><summary><span class="chapter-number">2-1</span>BP_ResetButton — 리셋 버튼 (블록 배치 초기화) <span class="tag send">송신</span></summary><div class="chapter-body">
+<p>F로 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 안</strong>인 Physics 능력 블록을 전부 처음 위치·회전으로 되돌리는 버튼입니다. 퍼즐을 망쳤을 때 방을 다시 시작하게 하는 용도입니다. <code>BP_Button</code>의 자식이라 버튼 설정(<a href="#button-settings">2장</a>)도 전부 그대로 쓸 수 있습니다. <span class="note">(2026-11-01 만듦, 테스트 전)</span></p>
+<details class="node" id="resetbutton-settings" open><summary>설정</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>항목</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>ResetArea</code> (컴포넌트)</td><td>초기화 범위인 주황 상자. 레벨에서 버튼 선택 → Details 위쪽 컴포넌트 목록에서 <code>ResetArea</code> → <strong>Box Extent</strong>(절반 크기)·Location·Rotation으로 방을 덮게 맞춥니다. 버튼과 떨어뜨려 놓아도 되고, 돌려 놓아도 정확합니다. 게임 중엔 안 보이고 아무것과도 부딪히지 않습니다</td><td>버튼 둘레</td></tr>
+<tr><td><code>ButtonMode</code></td><td><code>ReOn</code>으로 두세요 (누를 때마다 한 번씩 초기화). 다른 모드여도 블록 초기화는 누를 때마다 일어나지만, 같이 연결한 신호가 어긋납니다</td><td><code>ReOn</code></td></tr>
+<tr><td><code>SignalTargets</code></td><td>버튼과 같음. Patrol 블록을 함께 처음으로 보내려면 여기에 그 블록 + Channel <code>1</code>을 넣습니다</td><td>비어 있음</td></tr>
+</tbody></table></div>
+<p class="note">액터 Scale은 1로 두세요. 키우면 버튼 메시도 같이 커집니다. 영역 크기는 <code>ResetArea</code>의 Box Extent로만 조절합니다.</p>
+</div></details>
+<details class="node" id="resetbutton-rules"><summary>어떤 블록이 돌아오나</summary><div class="node-body">
+<div class="scroll"><table><thead><tr><th>블록</th><th>결과</th><th>이유</th></tr></thead><tbody>
+<tr><td>영역 안에서 시작한 Physics 블록</td><td>돌아옴 (지금 어디 있든, 영역 밖으로 던졌어도)</td><td>판정 기준이 블록의 <strong>처음 놓인 자리</strong>. Physics 블록은 메시만 움직이고 액터 위치는 처음 자리에 남아 있음</td></tr>
+<tr><td>영역 밖에서 시작한 Physics 블록</td><td>안 돌아옴 (영역 안으로 굴러 들어와 있어도)</td><td>위와 같음</td></tr>
+<tr><td>플레이어가 들고 있는 블록</td><td>손에서 놓인 뒤 돌아옴</td><td>블록의 <code>ResetToStart</code>가 처리</td></tr>
+<tr><td>Patrol 블록 (움직이는 발판 등)</td><td>이 버튼으로는 안 돌아옴 → <code>SignalTargets</code>에 Channel <code>1</code> "처음으로"로 연결</td><td>되돌리기가 메시만 옮겨서 Patrol 블록은 모양이 어긋남</td></tr>
+<tr><td>Fixed 블록</td><td>변화 없음</td><td>움직이지 않음</td></tr>
+<tr><td>프레스 블록 등 능력 블록의 자식</td><td>Physics면 같은 규칙</td><td>능력 블록으로 취급</td></tr>
+</tbody></table></div>
+<p class="note">능력 상태는 초기화하지 않습니다. 예: 초록으로 멈춘 블록은 처음 자리로 순간이동한 뒤 능력이 끝날 때까지 그 자리에 멈춰 있고, 보라로 투명한 블록도 능력이 끝나야 원래대로 돌아옵니다.</p>
+</div></details>
+<details class="node" id="resetbutton-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
+<ul>
+<li>방 입구에 리셋 버튼 + <code>ResetArea</code>를 방 전체 크기로: 상자를 잘못 옮겨 막혔을 때 처음부터 다시</li>
+<li>리셋 버튼 + 같은 방의 움직이는 발판을 <code>SignalTargets</code> Channel 1로: 블록과 발판을 한 번에 처음 상태로</li>
+<li>방이 여러 개면 방마다 버튼을 하나씩, 영역이 겹치지 않게</li>
+</ul>
+</div></details>
+</div></details>
 <!-- ===================== 3 발판 ===================== -->
 <details class="chapter" id="plate"><summary><span class="chapter-number">3</span>BP_PressurePlate — 발판 <span class="tag send">송신</span></summary><div class="chapter-body">
 <p>무언가 올라가 있는 동안 신호를 보내는 발판입니다.</p>

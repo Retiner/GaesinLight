@@ -132,6 +132,23 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 - `Interact` → Switch(ButtonMode): JustOn = 한 번만 `SendActivate` / Togle = 상태 반전 후 Send(De)Activate / ReOn = `SendActivate` → `SendDeactivate` 즉시 / Timed = `SendActivate` → Delay(TimedDuration) → `SendDeactivate`. **(미확인: 세부 노드)**
 - `SendActivate` / `SendDeactivate`: ForEach(SignalTargets) → Break S_SignalTarget → `Activate`/`Deactivate`(Message, Target, Channel).
 
+### BP_ResetButton (리셋 버튼, BP_Button 자식 — 2026-11-01 그래프 확인, 테스트 전)
+**구성요소**: 부모 것 + `ResetArea`(Box Collision, DefaultSceneRoot 자식, NoCollision, Hidden in Game — 범위 표시·계산용). Class Defaults `ButtonMode` = `ReOn`.
+
+```
+Event Interact (BPI_Interact) → Parent: Interact (버튼 원래 동작: SignalTargets 신호)
+ → Get All Actors Of Class(BP_AvilityBlock) → For Each Loop
+     → Branch( Move == Physics
+               AND Is Point In Box With Transform(Point = 블록 GetActorLocation,
+                                                  BoxWorldTransform = ResetArea.GetWorldTransform,
+                                                  BoxExtent = ResetArea.GetUnscaledBoxExtent) )
+     → True → ResetToStart(블록)
+```
+- 블록 액터 위치 = 처음 놓인 자리(Physics는 StaticMesh만 움직임) → 영역 밖으로 던진 블록도 돌아옴.
+- Is Point In Box With Transform은 트랜스폼을 역변환(Scale 제거)한 뒤 비교하므로 Extent는 Unscaled.
+- Patrol 제외(ResetToStart가 StaticMesh만 옮김) → 같은 버튼 SignalTargets에 Ch1 "처음으로".
+- 초록 정지 등 능력 상태는 그대로(자리만 이동).
+
 ### BP_PressurePlate
 **구성요소**: `DefaultSceneRoot` → `SM_Pressure_Plate1`, `SM_Pressure_Plate2`(윗판), `Trigger`(Box, 윗판의 자식이 아니라 형제 — 자식이면 깜빡임)
 
@@ -576,3 +593,10 @@ CapsuleComponent (루트, Character 기본)
 | 2026-11-01 | **작업 28 완료·동작 확인**: ①(BP_PlayerController Should Perform Full Tick When Paused)로 해결. BP_Respawn·BP_PressBlock은 Cast To BP_Charactor → RespawnAt(RespawnWorldLocation)만, 각자 암전 노드·Respawning·FadeTime 삭제 |
 | 2026-11-01 | **BP_PressBlock 동작 확인(사용자 "잘되")** — BeginPlay 활성화·Self 확인 반영. 가이드 #block-press-size(UserStaticMesh 때 PressBox만 크기 조절) 추가 |
 | 2026-11-01 | 사용자: 레벨 수동 부착 대신 블록 버전 따로 → `BP_PressBlock`(BP_AvilityBlock 자식, 복사 대신 자식 추천) 안내 — 미구현 |
+| 2026-11-01 | 작업 29 리셋 버튼 안내: BP_Respawn 부모를 BP_Activate로 바꿔 수신 장치로(Class Settings → Parent Class), BeginPlay에 Parent: BeginPlay 호출, 함수 `ResetAllBlocks` = Box.GetOverlappingActors(BP_AvilityBlock) → ForEach → Branch(Move == Physics) → ResetToStart, `OnChannelActive` 오버라이드 Parent 호출 → Switch on Int 0 → ResetAllBlocks. 방 전체를 덮는 구역 + ResetBlock/ResetPlayer 끔 + ReOn 버튼 Ch0. Patrol 블록 제외 이유: ResetToStart가 StaticMesh만 순간이동해 액터와 어긋남 — 미구현 |
+| 2026-11-01 | 작업 29 변경(사용자 "리셋용 버튼으로 따로"): BP_Respawn 수신 장치화 안 취소 → `BP_ResetButton`(BP_Button 자식) + `ResetBlocks`[I](BP_AvilityBlock 배열). Event Interact → Parent: Interact → ForEach → IsValid → Branch(Move == Physics) → ResetToStart. Class Defaults ButtonMode ReOn. 가이드 채널 표의 BP_Respawn 0번 행 삭제 — 미구현 |
+| 2026-11-01 | 작업 29 최종안(사용자 "ResetBlock 꺼 두고 버튼 누르면 켜서 초기화하고 다시 꺼지는 동작만"): bool 토글은 BeginOverlap을 다시 만들지 않아 무효 → BP_Respawn 새 함수 `ResetInside`(Box.GetOverlappingActors(BP_AvilityBlock) → ForEach → Branch(Move == Physics) → ResetToStart, ResetBlock 무시) + BP_ResetButton `ResetZones`[I](BP_Respawn 배열) → Event Interact → Parent: Interact → ForEach → IsValid → ResetInside. ResetBlocks 변수 안 씀 — 미구현 |
+| 2026-11-01 | 작업 29 최종 설계(사용자 "버튼 주변으로"): BP_ResetButton(BP_Button 자식) `ResetRadius`[I] 2000 + `RangePreview` Sphere(Construction SetSphereRadius). Event Interact → Parent: Interact → Get All Actors Of Class(BP_AvilityBlock) → ForEach → Branch(Move == Physics AND GetDistanceTo ≤ ResetRadius) → ResetToStart. 앞선 ResetBlocks·ResetZones·ResetInside 안은 폐기 — 미구현 |
+| 2026-11-01 | 작업 29 변경(사용자 "영역을 사각형으로"): ResetRadius·RangePreview(구) 대신 `ResetArea`(Box Collision, NoCollision, Hidden in Game). 조건 = Move == Physics AND Is Point In Box With Transform(블록 GetActorLocation, ResetArea.GetWorldTransform, ResetArea.GetUnscaledBoxExtent) — 회전·Scale 반영(역변환 후 Unscaled Extent와 비교). 미구현 |
+| 2026-11-01 | 작업 29 변경(사용자 "충돌 판정 블록처럼 배치형식"): ResetArea를 BP_Respawn Box와 같은 콜리전(Query Only, LightCencer, WorldDynamic/PhysicsBody Overlap)으로, 판정 = ResetArea.GetOverlappingActors(BP_AvilityBlock) → Branch(Move == Physics) → ResetToStart. Is Point In Box With Transform(처음 위치) 안 폐기. 지금 안에 있는 블록만 — 미구현 |
+| 2026-11-01 | **BP_ResetButton 그래프 확인**: Interact → Parent: Interact → Get All Actors Of Class(BP_AvilityBlock) → ForEach → Branch(Move == NewEnumerator1(Physics) AND Is Point In Box With Transform(GetActorLocation, ResetArea.GetComponentToWorld, GetUnscaledBoxExtent)) → ResetToStart. 처음 위치 판정 방식으로 구현(충돌 판정 안 대신). 회색 기본 이벤트 3개(BeginPlay/ActorBeginOverlap/Tick)는 비활성이라 무해. 구조 절 추가 — 테스트 전 |
