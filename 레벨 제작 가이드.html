@@ -67,6 +67,10 @@
 
 <!-- ===================== 최근 변경 ===================== -->
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
+<p><strong>2026-11-03</strong></p>
+<ul>
+<li>(테스트 결과 미확인) <strong>플레이 화면 HUD</strong>: 조준점, 상호작용 문구(<code>F: …</code>), 오른쪽 아래 1~4 색 슬롯(가진 필터만 안쪽 원 표시). <a href="#player-controls">1장</a></li>
+</ul>
 <p><strong>2026-11-02</strong></p>
 <ul>
 <li><strong>F 상호작용 판정 개선</strong>: 작은 버튼이나 책상 위 손전등을 대충 봐도 잡힘. 판정 공에 닿은 것 전부 중 가장 가까운 상호작용 대상을 고르고, 벽(맵에 고정된 메시) 뒤는 제외 (동작 확인). <a href="#player-controls">1장 조작</a></li>
@@ -187,6 +191,7 @@
 </tbody></table></div>
 <p class="note">앉은 높이는 <code>BP_Charactor</code> → <code>CharacterMovement</code> → <code>Crouched Half Height</code>(앉았을 때 캡슐 높이의 절반, 기본 40)로 조절합니다. 지나갈 수 있는 틈 높이 = 이 값 × 2. 서 있을 때는 <code>CapsuleComponent</code> → <code>Half Height</code>(기본 96). 틈을 만들 때 이 높이를 기준으로 하세요.</p>
 <p class="note">본 게임용 GameMode(<code>BP_RealGameMode</code>) 맵에서는 손전등을 줍기 전까지 손에 손전등이 없고 <code>1</code>~<code>4</code>가 반응하지 않습니다. 색 키는 그 색 필터도 주워야 동작합니다 (<a href="#pickup">3-3 BP_Pickup</a>). 이 맵은 항상 빛이 꺼진 채 시작합니다. 테스트용(<code>BP_TestGameMode</code>) 맵은 제한 없이 지금처럼 동작합니다.</p>
+<p class="note"><strong>플레이 화면(HUD)</strong> (2026-11-03 만듦, 테스트 결과 미확인): 화면 정중앙에 조준점, 그 아래에 상호작용 대상이 있으면 <code>F: 손전등 줍기</code>처럼 할 수 있는 일(블록을 들고 있으면 <code>F: 놓기</code>), 오른쪽 아래에 <code>1</code>~<code>4</code> 색 슬롯. 슬롯마다 그 색의 반투명 원은 항상 보이고, 안쪽 채운 원은 그 필터(1번은 손전등)를 가졌을 때만 보입니다. 테스트용 GameMode 맵에서는 전부 가진 것으로 표시됩니다. 문구 내용은 각 장치가 정합니다.</p>
 </div></details>
 </div></details>
 
