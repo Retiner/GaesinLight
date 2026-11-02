@@ -90,6 +90,9 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 ### 기타
 - `BP_TestGameMode`(옛 BP_GameMode): LightTestMap의 GameMode Override. 플레이어는 GameMode가 스폰(레벨에 BP_Charactor 배치 없음, 15번에서 배치 방식으로 바꿀 예정).
 - `BP_PlayerController`: Class Defaults `Should Perform Full Tick When Paused` 켬(2026-11-01, 리스폰 일시정지 중 카메라 암전 진행용). `IMC_Default` + `IA_*`(입력).
+- `BP_PlayerController` Event BeginPlay(2026-11-03, 작업 32): (기존 노드 뒤) Create Widget(`WBP_HUD`, Owning Player = Self) → Set `HUD`(WBP_HUD 참조 변수) → Add to Viewport. 그래프 미확인.
+- `Content/UI/WBP_HUD`(작업 32, 테스트 결과 미확인): Canvas Panel → `Crosshair`(Image 6×6, 정중앙 Anchors·Alignment 0.5, Rounded Box 반지름 3, 흰색 0.8) / `InteractText`(Text, 정중앙 + Y 40, Text 바인딩 `Get_InteractText_Text` = Cast BP_Charactor(Get Owning Player Pawn) → IsValid(HeldBlock) "F: 놓기" → IsValid(FocusTarget) → GetInteractText(FocusTarget) → Text Is Empty면 빈 글자 / 아니면 Format "F: {Action}". 2026-11-03 그래프 확인 시 GetInteractText Target이 캐릭터에 연결된 오류 → FocusTarget으로 수정 안내) / `ColorSlots`(Horizontal Box, 오른쪽 아래 −40, −40) 안에 `WBP_ColorSlot` 4개(1 흰색 UseFlashlight, 2 Red, 3 Green, 4 Blue).
+- `Content/UI/WBP_ColorSlot`: Vertical Box → Overlay(`OuterCircle` 44 반지름 22 / `InnerCircle` 26 반지름 13) + `KeyText`. 변수 `SlotColor`·`KeyLabel`·`UseFlashlight`·`FilterColor`[I]. Event Pre Construct → InnerCircle 색 = SlotColor, OuterCircle 색 = SlotColor(A 0.3), KeyText = KeyLabel. InnerCircle Visibility 바인딩 = Cast BP_Charactor → Select(UseFlashlight ? CanUseFlashlight : CanUseColor(FilterColor)) → Visible/Hidden (사용자 결정: 바깥 원 항상, 안쪽 원은 가진 것만).
 - `BP_LightBlock`: BP_AvilityBlock 리다이렉터(사용 안 함).
 
 ---
@@ -604,3 +607,4 @@ CapsuleComponent (루트, Character 기본)
 | 2026-11-01 | **BP_ResetButton 그래프 확인**: Interact → Parent: Interact → Get All Actors Of Class(BP_AvilityBlock) → ForEach → Branch(Move == NewEnumerator1(Physics) AND Is Point In Box With Transform(GetActorLocation, ResetArea.GetComponentToWorld, GetUnscaledBoxExtent)) → ResetToStart. 처음 위치 판정 방식으로 구현(충돌 판정 안 대신). 회색 기본 이벤트 3개(BeginPlay/ActorBeginOverlap/Tick)는 비활성이라 무해. 구조 절 추가 — 테스트 전 |
 | 2026-11-02 | BP_Charactor F 판정 확인: IA_Relation → TryInteract(FocusTarget 사용) → FindTarget의 SphereTraceSingle Radius 40이 원인(큰 공이 주변 물체에 먼저 닿음). Radius 10 안팎으로 줄이도록 안내(변수 `InteractRadius` 권장) — 미적용. 앞서 안내한 InteractBox는 보류(줄여도 안 될 때만) |
 | 2026-11-02 | **F 판정 개편 동작 확인**: FindTarget = Sphere Trace Multi For Objects(R 20) → 가까운 순으로 CanInteract → Line Trace For Objects(WorldStatic) 벽 확인 → 첫 후보 FocusTarget. 맵 벽이 Visibility Ignore라 채널 방식 벽 확인이 실패했던 것 해결. **능력 블록 충전·유지 시간 인스턴스 변수화**(AvilityConfig, 사용자 구현) |
+| 2026-11-03 | 작업 32 HUD: WBP_HUD(조준점·상호작용 문구·색 슬롯)·WBP_ColorSlot 생성, BP_PlayerController에서 화면에 띄움. 사용자 요청으로 커밋. 그래프는 상호작용 문구 바인딩만 확인(Target 수정 안내), 나머지 미확인·테스트 결과 미확인 |
