@@ -734,3 +734,58 @@ CapsuleComponent (루트, Character 기본)
 | 2026-11-02 | BP_Charactor F 판정 확인: IA_Relation → TryInteract(FocusTarget 사용) → FindTarget의 SphereTraceSingle Radius 40이 원인(큰 공이 주변 물체에 먼저 닿음). Radius 10 안팎으로 줄이도록 안내(변수 `InteractRadius` 권장) — 미적용. 앞서 안내한 InteractBox는 보류(줄여도 안 될 때만) |
 | 2026-11-02 | **F 판정 개편 동작 확인**: FindTarget = Sphere Trace Multi For Objects(R 20) → 가까운 순으로 CanInteract → Line Trace For Objects(WorldStatic) 벽 확인 → 첫 후보 FocusTarget. 맵 벽이 Visibility Ignore라 채널 방식 벽 확인이 실패했던 것 해결. **능력 블록 충전·유지 시간 인스턴스 변수화**(AvilityConfig, 사용자 구현) |
 | 2026-11-03 | 작업 32 HUD: WBP_HUD(조준점·상호작용 문구·색 슬롯)·WBP_ColorSlot 생성, BP_PlayerController에서 화면에 띄움. 사용자 요청으로 커밋. 그래프는 상호작용 문구 바인딩만 확인(Target 수정 안내), 나머지 미확인·테스트 결과 미확인 |
+| 2026-11-03 | 높은 방 환경 조명 분리: BP_Ceiling_Light_High 추가, Tutorial+Red 128개·Green 100개 교체. 통로 20개 및 벽 16개도 광량·반경 조정. 저장 후 배치 속성·퍼즐 액터·PPV 보존 검증, 화면 밖 렌더 확인. 실제 PIE/FPS 미측정 |
+| 2026-11-03 | 수직 통로 누락 보완: 회전된 SM_Wall_Light 16개를 BP_Ceiling_Wall_Light_High로 교체. 환경 전등 4종 기본값과 두 맵 264개 인스턴스의 Light Color를 RGB(225,240,245)로 통일. 퍼즐 광원·PPV·원본 메시 속성 보존 검증 및 6개 시점 렌더 확인 |
+| 2026-11-03 | 푸시 전 최종 저장값 확인: BP_Ceiling_Light_High의 Outer Cone Angle 60° 유지. 문서와 검증 기준에 반영. 수직 통로 전용 BP는 기존 10° 유지 |
+
+
+### BP_Floor_Plain_Light / BP_Wall_Light — 환경 조명 패널 (2026-11-03)
+- 부모: StaticMeshActor. 기존 StaticMeshComponent가 루트이며 원본 메시·재질·콜리전을 유지한다. Event Graph/Tick 로직 없음.
+- BP_Floor_Plain_Light: SM_Floor_Plain_Light + 자식 RectLightComponent `PanelLight`. 로컬 위치 (0.6, 0.1, 12), 회전 Pitch 90° → +Z. 현재 80 lm, 반경 600 cm, Source Width/Height 88 cm. 약 3m 높이의 낮은 통로용.
+- BP_Wall_Light: SM_Wall_Light + `FrontLight` / `BackLight`. 위치 X ±12 cm, Yaw 0°/180° → ±X. 현재 각 100 lm, 반경 800 cm, Source Width/Height 260 cm.
+- 공통: 현재 Light Color RGB(225,240,245), Movable, Cast Shadows=false, Volumetric/Indirect Lighting Intensity=0, Specular Scale=0.25, Max Draw Distance=0, Max Distance Fade Range=0 (2026-11-03 2차 원거리 표시 제한 해제). 밝기·색·반경은 표준 컴포넌트 Details에서 수정.
+- 수광체를 작동시키는 빛 판정 및 신호 인터페이스 없음. 기존 능력 블록·맵 광원·거울 BP는 수정하지 않음.
+- 현재 적용: Tutorial+Red 낮은 천장 12, 높은 천장 128, 수직 통로 16. Green 낮은 천장 8, 높은 천장 100. BP_Wall_Light의 기존 16개는 모두 회전된 천장 패널이어서 수직 통로용 BP로 교체했다. 엔진 ConvertActors로 변환해 액터 참조를 치환하고 이름·변환·재질·충돌·폴더·태그·부모 연결을 유지. Blue/LightTestMap/Assets는 수정하지 않음.
+- 검증: Tools/Verify-EnvironmentLights.py. 저장 파일 재로딩 후 264개 BP, 조명 264개 및 원본 속성 서명 대조. 성능 수치는 플레이 테스트 전.
+
+### BP_Ceiling_Light_High — 높은 방 전용 천장 전등 (2026-11-03)
+- 부모 StaticMeshActor. 원래 SM_Floor_Plain_Light 루트 + SpotLightComponent `DownLight` 하나. 별도 이벤트·Tick·퍼즐 신호·빛 판정 없음.
+- DownLight 로컬 위치 (0.6, 0.1, 12), Pitch 90° → 메시 로컬 +Z. 기존 천장 액터 회전을 유지하면 월드 아래(-Z)를 비춘다. 신규 배치 시 발광면이 바닥을 향하도록 회전할 것.
+- BP 기본값: 600 lm, Attenuation Radius 2000 cm, Inner Cone 30° / Outer Cone 60°(최종 저장값), Inverse Squared Falloff 켜짐, Source Radius 15 cm, 현재 RGB (225,240,245), Specular Scale .5.
+- Movable, Cast Shadows=false, Indirect/Volumetric Intensity=0, Max Draw Distance/Max Distance Fade Range=0. 범위를 늘려 도달 거리를 확보하고 실제 밝기는 Intensity로 조정한다.
+- 현재 맵 인스턴스는 가까운 하부 보행 바닥까지 높이 h(cm)를 측정해 수동 보정한 값: `50 단위 반올림(600 × (h/900)²)` lm, 반경 `100 단위 반올림(Max(1000, h×2.2))` cm. 배치값은 150/250/400/600 lm 및 1000/1300/1600/2000 cm. 런타임 자동 계산이나 BP Construction Script는 없다.
+- Tutorial+Red 높은 방 A1/A2/A3/B1/B2/B3 128개, Green A1/B1/B2/B3 100개. 같은 방 안의 높은 발판 위 전등도 같은 BP를 쓰되 개별 광량을 낮췄다. B3는 상층 통로·퍼즐 발판 기준이며 약 54m 아래 낙하/재시작 공간에 추가 조명을 두지 않았다.
+- 기존 메시·재질·충돌·변환·폴더·태그·부모 및 다른 액터·PPV 설정 불변을 저장 후 검증. 보정 전 백업 C:/lightgame_ai/Backups/BeforeHeightLighting_20261103. 5개 고정 시점 렌더로 밝기를 확인했으며 실제 PIE/FPS는 미측정.
+
+### BP_Ceiling_Wall_Light_High — 수직 통로의 회전된 벽 패널 전등 (2026-11-03)
+- 이전 높은 방 분류는 SM_Floor_Plain_Light만 대상으로 했으므로, SM_Wall_Light를 회전해 천장에 단 16개가 누락되었다. Tutorial+Red의 Level_Red/Level_B2/CeilingLight에 배치된 SM_Ceiling218/219/243/246/248~259가 대상. 메시 높이 Z6610 cm, 아래 바닥 Z10 cm로 약 66m의 수직 통로다.
+- StaticMeshActor 부모, 원본 SM_Wall_Light 루트 + SpotLightComponent `DownLight` 1개. 로컬 위치 (-12,0,0), Yaw180° → 로컬 -X. 기존 액터의 로컬 +X가 월드 위쪽이어서 -X가 월드 아래를 향한다. 기존 양면 RectLight의 상향 빛은 포함하지 않는다.
+- 600 lm, Attenuation Radius 10000 cm, Inner Cone5°/Outer Cone10°. 긴 통로를 따라 아래쪽에 빛을 모으는 좁은 스포트라이트. Inverse Squared Falloff=true, Source Radius15 cm, Specular Scale .5. 그림자·간접광·볼류메트릭 없음, Movable, 표시 거리 제한 0.
+- 환경 전등 4종(BP_Floor_Plain_Light/BP_Wall_Light/BP_Ceiling_Light_High/이 BP)의 기본값 및 두 맵 264개 인스턴스의 실제 Light Color를 RGB(225,240,245)로 통일했다. 패널 발광 재질과 퍼즐 광원 RGB·밝기·기존 PPV는 보존. Assets 파일 수정 없음.
+- 원본 메시 루트 서명, 다른 액터 및 퍼즐 LightComponent 색·밝기·반경을 저장 후 대조. Tutorial+Red 156개·Green108개, 총 광원 264개. 수직 통로 아래/위/바닥과 다른 구역 3곳을 화면 밖 렌더로 확인. 실제 PIE/FPS 미측정.
+- 백업 C:/lightgame_ai/Backups/BeforeShaftAndColor_20261103, 작업 사본 C:/lightgame_ai/ShaftAndColor_20261103. 가이드 #shaft-ceiling-lights 참고.
+
+
+### PPV_Spectrum_Look_01 — 화면 분위기 1차 (2026-11-03)
+BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼륨 1개씩을 교체했다. Unbound=true, Enabled=true, Priority=50, BlendWeight=1. 폴더 Lighting/PostProcess.
+- Manual 노출, Apply Physical Camera Exposure=false, Exposure Compensation=+1.0.
+- Bloom=0.20, Threshold=1.5, Vignette=0.12. Fringe/MotionBlur/FilmGrain/LensFlare=0.
+- WhiteTemp=6500, Tint=0. Global Saturation W=0.98, Contrast W=1.04.
+- Shadows Gain RGB=(0.985,1,1.02), W=1. Gamma W=1.03. Offset RGB=(0.003,0.004,0.006), W=0. FilmToe=0.50.
+- 18개 항목에만 Override 적용. 게임 로직, 재질, 조명 BP는 수정하지 않았고 PPV 외 액터 이름·클래스·변환 서명을 저장 후 재검증.
+- 사용자의 실제 플레이 화면을 받은 뒤 2차 보정 예정. 가이드 #spectrum-look. 원본 맵 백업 C:/lightgame_ai/Backups/BeforePostProcess_20261103 (조명 BP 교체가 이미 반영된 시점).
+
+
+### 2026-11-03 원거리 가독성 보완 (사용자 화면 피드백)
+- 사용자 화면에서 먼 구조물이 발광 띠 외에는 보이지 않는 문제 확인. 기존 패널의 Max Draw Distance 1500 cm가 원거리 조명을 끄고, 레드 맵에는 기본 SkyLight가 없었음.
+- BP_Floor_Plain_Light / BP_Wall_Light 및 기존 두 맵의 모든 패널 RectLight: Max Draw Distance=0, Max Distance Fade Range=0. 원거리 표시 제한 해제. 사용자 조명 강도·색·반경 보존(현재 배치 바닥 200 lm/1200 cm, 벽 각 350 lm/1800 cm).
+- PPV_Spectrum_Look_01에 런타임 엔진 자산 GrayTextureCube를 Ambient Cubemap으로 지정, Intensity=.35, Tint=(1,1,1,1). Global Saturation/Contrast W=1. Shadows Gain=(1,1,1,1), Gamma W=1.10, Offset=(.006,.006,.006,0), FilmToe=.42, Vignette=.05. 기존 노출 +1과 Bloom .20 유지.
+- 카메라 거리와 무관한 최소 바탕광 확보. 액터 배치·게임 로직 변경 없음. 실제 FPS 미측정. 원본 백업 C:/lightgame_ai/Backups/BeforeVisibilityFix_20261103.
+
+
+### 2026-11-03 PPV 명암 3차 조정
+사용자 화면에서 회색 막처럼 뜬 암부를 확인. 두 맵의 PPV_Spectrum_Look_01 설정 8개만 변경.
+- Ambient Cubemap Intensity .35→.22, Shadows Gamma W 1.10→1.05, Offset RGB .006→.003(W=0).
+- Global Contrast W 1.04, Film Toe .47, Vignette .08, Bloom Intensity .12, Threshold 2.0.
+- Manual 노출 +1, 중립 색·기본 환경광, 조명 거리 제한 해제 유지. 두 맵에 ExponentialHeightFog가 없는 것도 확인.
+- 조명 BP·강도·색·반경 및 게임 로직 변경 없음. 원본 백업 C:/lightgame_ai/Backups/BeforeContrastPass_20261103. 가이드 #spectrum-look에 현재값 반영.

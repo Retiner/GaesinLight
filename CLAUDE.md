@@ -368,3 +368,28 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 - `LightTestMap` 로컬 변경(2026-10-23): 나중에 다른 팀원 맵으로 덮어쓸 예정 → 커밋에 넣지 말 것(사용자 확인). **2026-11-01 사용자 요청으로 LightTestMap·LightTestMap1 커밋함(4fe06b0)** — 이후에도 맵은 사용자가 말할 때만 포함.
 - 5(채널)는 버튼/발판/모든 수신 장치를 건드리는 구조 변경이라, 4의 "신호로 움직임/꺼짐" 로직과 겹침 → 4를 할 때 5의 설계를 먼저 정하는 게 좋음.
 - 6과 7은 같은 손전등 필터 시스템이라 6을 먼저 하면 7의 필터 메시를 재사용 가능 (7을 먼저 해도 무방).
+
+
+## 2026-11-03 환경 조명 패널 적용
+사용자가 직접 구현을 요청하여 BP_Floor_Plain_Light / BP_Wall_Light를 자동 생성하고 Tutorial+Red 156개·Green 108개를 교체했다. 부모 StaticMeshActor, 원본 메시 루트 + 그림자 없는 하늘색 RectLight(바닥 1개·벽 양면 2개). 퍼즐 판정·신호 없음. 기본값·컴포넌트 구조는 BP_STRUCTURE 및 가이드 #environment-lights. 원래 액터 라벨을 보존해서 아웃라이너 SM_ 이름이 남는다. 재검증 Tools/Verify-EnvironmentLights.py. 백업 C:/lightgame_ai/Backups/BeforeFixtureLights_20261103. GitHub 커밋·푸시 미수행. 실제 프레임률/게임 플레이 확인 전.
+
+
+## 2026-11-03 화면 분위기 1차 적용
+사용자 요청으로 Tutorial+Red·Green의 임시 PostProcessVolume을 PPV_Spectrum_Look_01로 교체. 차가운 실험시설 톤의 전역 PPV, Manual 고정 노출(+1), 물리 카메라 노출 해제, Bloom 0.20, Threshold 1.5, Vignette 0.12, Saturation W .98, Contrast W 1.04, 약한 청회색 Shadows, FilmToe .50, 색수차/모션블러/필름그레인/렌즈플레어 0. 정확한 값은 BP_STRUCTURE 및 가이드 #spectrum-look. 기존 조명·재질·게임 로직은 유지. 적용 전 백업 C:/lightgame_ai/Backups/BeforePostProcess_20261103. 실제 플레이 화면을 사용자가 제공하면 2차 수정할 예정이며, 아직 사용자 플레이 결과는 받지 않았다. 커밋·푸시 미수행.
+
+
+## 2026-11-03 원거리 검게 묻힘 2차 수정
+사용자 스크린샷에서 큰 방·먼 발판이 발광 띠 외에 보이지 않아 수정. 환경 패널의 MaxDrawDistance 1500을 BP·두 맵 모두 0으로, FadeRange 0. 사용자 광원 강도/색/반경(현재 바닥1200·벽1800cm)을 보존. PPV에 /Engine/EngineResources/GrayTextureCube Ambient Cubemap .35 + 흰 Tint, 암부 Gain 중립화/Gamma1.10/Offset.006, GlobalContrast/Saturation1, FilmToe.42,Vignette.05. 노출+1/Bloom.2 유지. 스카이라이트 캡처·퍼즐 빛 판정은 수정하지 않음. 가이드 #spectrum-look, BP_STRUCTURE 2차 항목. 백업 BeforeVisibilityFix_20261103. 조명 거리 제한 해제에 따른 실 플레이 FPS는 별도 확인 필요. 커밋/푸시 미수행.
+
+
+## 2026-11-03 회색 암부 3차 수정
+사용자가 화면이 뿌옇고 조금 더 어둡고 선명했으면 한다고 요청. 원거리 가독성을 유지하면서 Ambient Cubemap .22, Shadows Gamma W1.05/Offset RGB .003, Global Contrast W1.04, FilmToe .47, Vignette .08, Bloom .12/Threshold2로 두 맵 PPV만 조정. Manual 노출+1 및 조명 거리 제한 없음 유지. 안개 볼륨은 두 맵 모두 없음. 조명 BP·아트·퍼즐 로직은 유지. 현재값은 가이드 #spectrum-look와 BP_STRUCTURE 3차 항목. 백업 BeforeContrastPass_20261103. 커밋/푸시 미수행.
+
+## 2026-11-03 높은 방 전용 전등 적용
+사용자 요청으로 BP_Ceiling_Light_High(StaticMeshActor + DownLight SpotLight) 생성. Tutorial+Red 높은 방 128개·Green 높은 방 100개를 기존 배치 그대로 교체. 연결 통로는 BP_Floor_Plain_Light 20개 유지, 80 lm/600 cm로 보정. BP_Wall_Light 16개는 각 면 100 lm/800 cm. 신규 High BP 기본 600 lm/2000 cm, RGB210/230/240, Inner30°/Outer50°, 역제곱 감쇠, 그림자 없음, Specular .5, 간접광/볼류메트릭 0, 표시 거리 제한 0. 실제 배치는 보행 바닥 높이에 따라 150~600 lm/1000~2000 cm 인스턴스 오버라이드(자동 계산 BP 아님). BP 기본값을 바꿔도 오버라이드 값은 별도 변경해야 함. B3 54m 아래는 낙하/재시작 구역이므로 상층 통로 기준으로 조정.
+원본 루트 속성 서명·다른 액터·PPV 보존을 저장 후 재검증. Green 전체 액터는 작업 시작 시 이미 5998개로, 과거 검증 스크립트의 6001개 기준만 현재 상태로 갱신했다. 원본 패널 서명은 그대로 통과. 화면 밖 렌더 5개 시점에서 과도한 중첩 밝기를 확인해 최초 3000 lm 시험값에서 광량을 낮췄다. 실제 PIE/FPS 미측정. 가이드 #high-ceiling-lights·#environment-lights 및 BP_STRUCTURE 반영. 백업 C:/lightgame_ai/Backups/BeforeHeightLighting_20261103. 결과물 C:/lightgame_ai/HeightLighting_20261103. 커밋/푸시 미수행.
+
+## 2026-11-03 수직 통로 천장 누락 수정·환경 조명 색 통일
+푸시 전 최종 저장값 확인: 사용자가 추가 저장한 BP_Ceiling_Light_High의 Outer Cone Angle은 60°다. 이전 50°를 덮어쓰지 않고 유지했으며 현재 문서·Tools 검증 기준도 60°로 갱신했다. 다른 기본 설정 및 수직 통로 전용 10°는 유지.
+사용자 스크린샷으로 SM_Wall_Light를 회전해 천장에 단 경우가 앞선 SM_Floor_Plain_Light 분류에서 누락된 점 확인. Tutorial+Red Level_Red/Level_B2/CeilingLight 16개, Z6610 cm/아래 바닥 Z10 cm(약66m). BP_Ceiling_Wall_Light_High 추가(StaticMeshActor + 원본 벽 패널 + DownLight Spot1개), 로컬 X=-12/Yaw180(-X→월드 아래), 600 lm/10000 cm, Inner5°/Outer10°, 역제곱 감쇠, 그림자 없음. 기존 양면 광원 중 위로 비추던 빛 제거. 원래 위치·회전·크기·재질·충돌·폴더·태그·부모 보존.
+사용자 요청으로 환경 전등 4종 기본값과 Tutorial+Red·Green의 264개 인스턴스 Light Color를 RGB225/240/245로 통일. 실제 광원의 색 변경이며 발광 재질·퍼즐 RGB 광원은 보존. 기존 일반 전등 광량·반경 및 PPV 유지. 현재 배치: Red 일반 높은 방128/낮은 통로12/수직 통로16, Green 높은 방100/낮은 통로8, BP_Wall_Light는 현재 미배치. 총 광원도 264개(이전280개에서 상향16개 제외). Tools/Verify-EnvironmentLights.py로 저장 재검증, 다른 액터 및 퍼즐 광원 색/밝기/반경·PPV 보존 대조, 6개 고정 시점 렌더 확인. 실제 PIE/FPS 미측정. 백업 BeforeShaftAndColor_20261103, 최신 사본 C:/lightgame_ai/ShaftAndColor_20261103. 가이드 #shaft-ceiling-lights·#channels·#changes 및 BP_STRUCTURE 반영. 커밋/푸시 미수행.
