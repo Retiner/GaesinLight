@@ -28,6 +28,9 @@
 <a href="#light">5 맵 광원</a>
 <a href="#mirror">5-1 거울</a>
 <a href="#block">6 능력 블록</a>
+<a href="#falling-hazard-block">시간차 낙하·플레이어 밀기</a>
+<a href="#smooth-push-pressblock">부드럽게 미는 프레스 블록</a>
+<a href="#green-group-stop">6-1 초록빛 그룹 정지</a>
 <a href="#hatch">7 다락문</a>
 <a href="#examples">8 조합 예시</a>
 <a href="#settings">9 설정·주의</a>
@@ -40,28 +43,35 @@
 
 <!-- ===================== 신호 채널 ===================== -->
 <details class="chapter" id="channels" open><summary><span class="chapter-number">★</span>신호 채널 한눈에 보기 (현재 버전)</summary><div class="chapter-body">
-<p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>, 빛 감지 장치 <code>BP_LightSensor</code>)의 <code>SignalTargets</code>(트리거는 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
+<p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, <a href="#block-signal-trigger">블록 신호 구역 <code>BP_BlockSignalTrigger</code></a>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>, 빛 감지 장치 <code>BP_LightSensor</code>)의 <code>SignalTargets</code>(기존 BP_Trigger만 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
 <div class="scroll"><table><thead><tr><th>받는 장치</th><th>Channel</th><th>기능</th><th>신호 켜짐</th><th>신호 꺼짐</th><th>추천 버튼 모드</th></tr></thead><tbody>
 <tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">0</td><td>열기</td><td>열림</td><td>닫힘</td><td><code>Togle</code> (열고 닫기) / <code>JustOn</code> (한 번 열면 끝) / <code>Timed</code> (시간 제한)</td></tr>
 <tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">1</td><td><a href="#door-lock">강제 닫기 (잠금)</a></td><td>닫히고 영구히 잠김. 이후 0번 신호가 와도 안 열림</td><td>아무 일 없음 (잠금 유지)</td><td><code>JustOn</code> (보통은 통과 트리거로 연결)</td></tr>
 <tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">0</td><td>열기 (<code>WaitTrigger</code> 켬일 때만)</td><td>열림</td><td>닫힘</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
-<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td><td><code>Togle</code> (출발·정지) / <code>JustOn</code> (출발만) / <code>Timed</code> (잠깐만 움직임)</td></tr>
+<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td><td><code>Togle</code> (출발·정지) / <code>JustOn</code> (최초 출발) / <code>RepeatOn</code> (매번 켜기) / <code>Timed</code> (잠깐만 움직임)</td></tr>
 <tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">1</td><td><a href="#block-move">처음으로</a> (Patrol 계열만, <code>ReOn</code> 버튼 권장)</td><td>처음 위치로 순간이동 → <code>RestartDelay</code>초 뒤 다시 출발</td><td>아무 일 없음</td><td><strong><code>ReOn</code></strong></td></tr>
-<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">2</td><td><a href="#block-reverse">방향 바꾸기</a> (Patrol, 경유지 2개 이상)</td><td>그 자리에서 돌아서 반대 방향으로</td><td>다시 원래 방향으로</td><td><code>Togle</code> / <code>Timed</code> / 발판 (<code>ReOn</code> 불가)</td></tr>
+<tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">2</td><td><a href="#block-reverse">방향 바꾸기</a> (Patrol, 경유지 2개 이상)</td><td>현재 방향에서 반대 방향으로 전환</td><td>아무 일 없음 (현재 에셋 확인)</td><td><code>ReOn</code> (매번 방향 전환)</td></tr>
+<tr><td>귀환 플랫폼 <code>BP_ReturnPlatform</code></td><td class="ch">0</td><td><a href="#return-platform">정방향 출발</a></td><td>시작점 대기 중일 때만 출발</td><td>이동 유지</td><td><code>RepeatOn</code></td></tr>
+<tr><td>귀환 플랫폼 <code>BP_ReturnPlatform</code></td><td class="ch">3</td><td><a href="#return-platform">시작점으로 귀환</a></td><td>경유지를 역순으로 따라 0번까지 이동한 뒤 정지</td><td>귀환 유지</td><td><code>ReOn</code> 낙하 트리거</td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">0</td><td>전원</td><td>켜짐</td><td>꺼짐</td><td><code>Togle</code> (스위치) / <code>Timed</code> (잠깐 켜짐)</td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">1</td><td>색 바꾸기 (<code>ChangeColor</code> 설정대로)</td><td><code>Red</code>/<code>Green</code>/<code>Blue</code>면 그 색, <code>Rotate</code>면 빨강→초록→파랑 순서로 다음 색</td><td>원래 색(<code>LightColor</code>)으로 복귀. <code>Rotate</code>는 무시</td><td><code>Rotate</code>면 <strong><code>ReOn</code></strong> / 그 외는 <code>Togle</code>·<code>Timed</code></td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">2</td><td>헤드 위아래로 꺾기</td><td><code>PitchAngle</code>만큼 꺾임 (<code>RotateTime</code>초 동안)</td><td>원래 각도로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">3</td><td>좌우로 돌리기</td><td><code>YawAngle</code>만큼 돌아감 (<code>RotateTime</code>초 동안)</td><td>원래 방향으로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
 <tr><td>맵 광원 <code>BP_Light</code> / 상자형 <code>BP_Light2</code></td><td class="ch">4</td><td>이동</td><td><code>MoveOffset</code> 위치로 이동 (<code>MoveSpeed</code> 속도)</td><td>원래 위치로 복귀</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
+<tr><td>반복 광원 <a href="#blink-light"><code>BP_BlinkLight</code></a></td><td class="ch">7</td><td>점멸 반복</td><td>시작 지연 후 켜짐·꺼짐 시간 반복</td><td>지연·반복 중지 후 소등</td><td>통과 트리거 / <code>JustOn</code> / <code>Togle</code> / <code>Timed</code></td></tr>
 </tbody></table></div>
 <ul>
 <li><strong>추천 버튼 모드 고르는 법</strong>: 신호가 켜져 있는 동안 상태가 유지되는 기능(열기·출발·전원·회전·이동)은 <code>Togle</code>(켰다 껐다) / <code>JustOn</code>(한 번 켜면 끝) / <code>Timed</code>(시간 제한) 중에서 고릅니다. 여기에 <code>ReOn</code>을 쓰면 켜지자마자 꺼져서 열리자마자 닫히거나 움직이자마자 되돌아옵니다. 반대로 <strong>누를 때마다 한 번씩 일어나는 기능</strong>(블록 1번 "처음으로", 광원 1번 <code>Rotate</code>)은 <code>ReOn</code>이 맞습니다. <code>JustOn</code>은 처음 한 번만 반응하고, <code>Togle</code>은 두 번 눌러야 한 번 반응합니다. 발판은 "밟고 있는 동안 켜짐"이라 <code>Togle</code>처럼 쓰입니다. 버튼 모드 설명은 <a href="#button-mode">1장 ButtonMode</a>.</li>
 <li>상자형 광원 <code>BP_Light2</code>는 번호와 기능이 <code>BP_Light</code>와 같습니다. 다른 점: 4번은 광원이 상자에서 레일을 따라 내려가고(꺼지면 올라가 상자로 들어감), 3번은 상자는 그대로 두고 광원 부분만 좌우로 돕니다. <a href="#light2">5장 상자형 광원</a> 참고.</li>
 <li>신호를 받지 않는 장치: 거울 <code>BP_Mirror</code>(회전·이동 신호 없음, 액터를 돌려 배치), 되돌리기 구역 <code>BP_Respawn</code>, 체크포인트 <code>BP_Checkpoint</code>. 플레이어와 송신 장치도 신호를 받지 않습니다.</li>
+<li><a href="#smooth-push-pressblock"><code>BP_SmoothPushPressBlock</code></a>은 능력 블록의 0/1/2 신호를 그대로 받습니다. <code>BP_ReturnPlatform</code> 전용 3번 귀환 신호는 사용하지 않습니다.</li>
+<li><a href="#falling-hazard-block"><code>BP_FallingHazardBlock</code></a>: <strong>0번 = 낙하 반복 시작</strong>(<code>WaitForStartSignal</code> 켰을 때). 한 번 신호를 받으면 <code>StartDelay</code> 뒤 출발하고 반복합니다. 다시 켜거나 꺼도 취소·재시작하지 않습니다.</li>
+<li><a href="#falling-hazard-stop"><code>BP_FallingHazardBlock</code></a>: <strong>3번 = 다음 낙하 정지</strong>. 켜진 동안 다음 출발을 막습니다. 해제 후 공통 시간표는 다음 자기 차례, 개별 모드는 남은 대기 시간부터 재개합니다. 이미 떨어지는 블록은 낙하를 마친 뒤 기존 리스폰 위치에서 대기합니다.</li>
 <li>표에 없는 번호로 보내면 아무 일도 일어나지 않습니다.</li>
 <li>채널 번호는 받는 장치 안에서만 의미가 있습니다. 문의 1번(강제 닫기)과 광원의 1번(색)은 서로 다른 기능입니다.</li>
 <li>"시작부터 켜진 상태" 설정(문·다락문 <code>StartOpen</code>, 능력 블록 <code>StartMoving</code>, 광원 <code>StartOn</code>)을 켜면 <strong>0번 채널</strong>의 켜짐/꺼짐이 반대로 동작합니다. 예: <code>StartOpen</code> 문은 신호가 켜지면 닫히고, 꺼지면 다시 열립니다. 광원의 1~4번과 문의 1번(강제 닫기)은 반대가 되지 않습니다.</li>
 <li>몇 개의 신호가 모여야 켜지는지는 받는 장치의 <code>ChannelRequired</code>로 정합니다(기본 1개, 2 이상이면 AND). 자세한 연결 방법은 <a href="#signal">0. 기본 개념</a>을 보세요.</li>
+<li><a href="#green-group-stop">초록빛 그룹 정지</a> <code>BP_GreenGroupStop</code>은 <code>StopTargets</code>에 등록한 블록의 <strong>0번 채널</strong>에 정지·재개 신호를 보냅니다. 대상의 <code>StartMoving</code>을 켜야 켜짐=정지, 꺼짐=재개로 동작합니다. 받침에는 손전등 감지를 위한 <code>Visibility = Block</code>이 필요합니다.</li>
 </ul>
 </div></details>
 
@@ -71,12 +81,30 @@
 <ul>
 <li>(테스트 결과 미확인) <strong>플레이 화면 HUD</strong>: 조준점, 상호작용 문구(<code>F: …</code>), 오른쪽 아래 1~4 색 슬롯(가진 필터만 안쪽 원 표시). <a href="#player-controls">1장</a></li>
 </ul>
+<p><strong>2026-11-03 — 낙하 블록 공통 시간표 추가</strong></p><ul><li><a href="#falling-hazard-schedule">공통 시간표</a>: 초록빛·정지 신호·늦은 복귀로 놓친 차례는 건너뛰고 다음 자기 차례에 출발합니다. Green의 3묶음 12개에 0 / 3 / 6초, 반복 9초로 적용했습니다.</li></ul>
+<p><strong>2026-11-03 — 낙하 블록 정지 신호 추가</strong></p><ul><li><a href="#falling-hazard-stop"><code>BP_FallingHazardBlock</code> 3번</a>: 신호가 켜진 동안 다음 낙하를 막습니다. 떨어지는 물체는 기존 리스폰으로 돌아와 대기하며, 신호 해제 후 남은 시간부터 재개합니다.</li></ul>
+<p><strong>2026-11-03 — 반복 광원 시작 지연 추가</strong></p><ul><li><a href="#blink-light"><code>BP_BlinkLight → Blink Timer → Blink Start Delay</code></a>: 7번 신호 후 처음 불이 켜질 때까지 기다리는 시간(초). 기본 0초이며, 지연 후 기존 켜짐·꺼짐 반복을 시작합니다.</li></ul>
+<p><strong>2026-11-03 — 신호로 반복 점멸하는 광원 추가</strong></p><ul><li><a href="#blink-light"><code>BP_BlinkLight</code></a>: <code>BP_Light</code> 자식. 7번 신호로 반복 시작·중지, 디테일의 <code>Blink On Time / Blink Off Time</code>에서 각각 초 설정. 기본 3초 켜짐 / 2초 꺼짐입니다.</li></ul>
+<p><strong>2026-11-03 — 낙하 블록 신호 시작 추가</strong></p><ul><li><code>BP_FallingHazardBlock → WaitForStartSignal</code>을 켜면 트리거의 0번 신호 후 시간차 낙하를 시작합니다. 기존 자동 시작은 기본 설정으로 유지됩니다.</li></ul>
+<p><strong>2026-11-03 — 시간차로 떨어지는 블록 추가</strong></p>
+<ul><li><a href="#falling-hazard-block"><code>BP_FallingHazardBlock</code></a>: 출발 시간을 나누고 리스폰 후 다음 차례까지 기다립니다. 낙하 중 플레이어와 충돌하면 옆으로 밀어냅니다. 기존 레벨은 자동 교체하지 않았습니다.</li></ul>
+<p><strong>2026-11-02 — 부드럽게 미는 프레스 블록 추가</strong></p>
+<ul><li><a href="#smooth-push-pressblock"><code>BP_SmoothPushPressBlock</code></a>: 기존 프레스 블록의 자식. 가만히 있는 플레이어도 옆에서 일정하게 밀며, 뒤가 벽이면 함께 멈춥니다. 기존 레벨은 자동 교체하지 않았습니다.</li></ul>
+<p><strong>2026-11-02 — 귀환 플랫폼 추가</strong></p>
+<ul><li><a href="#return-platform"><code>BP_ReturnPlatform</code></a>: 능력 블록을 상속한 별도 플랫폼. 0번으로 출발, 3번으로 경유지를 따라 시작점까지 귀환, 도착 후 정지. 다음 버튼 입력에 다시 정방향 출발합니다. 귀환 중 재입력은 무시하며 기존 능력 블록은 그대로입니다.</li></ul>
+<p><strong>2026-11-02 — RepeatOn 추가</strong></p>
+<ul><li>버튼의 <a href="#button-mode"><code>ButtonMode = RepeatOn</code></a>: 누를 때마다 선택한 채널을 다시 작동시키고 켜진 상태를 유지합니다. <code>SignalTargets → Channel</code>에서 번호 선택. 반복해서 눌러도 이 버튼의 켜진 신호는 하나로 유지됩니다. 블록 신호 구역에서도 같은 모드를 사용할 수 있습니다.</li></ul>
+<p><strong>2026-11-02 — 로컬 추가</strong></p>
+<ul><li><a href="#block-signal-trigger"><code>BP_BlockSignalTrigger</code></a>: 블록이 들어오면 지정한 대상에 숫자 채널 신호를 보내는 구역. 버튼과 같은 네 가지 모드, 기본 <code>ReOn</code>. 플랫폼 / Channel 1을 연결하면 떨어질 때마다 플랫폼을 시작점으로 복귀시킬 수 있습니다.</li>
+<li>현재 에셋을 검사한 결과 능력 블록 Channel 2는 신호 켜짐에만 방향을 바꿉니다. 이전의 켜짐·꺼짐 양쪽 반응 안내를 정정했습니다.</li></ul>
 <p><strong>2026-11-02</strong></p>
 <ul>
 <li><strong>F 상호작용 판정 개선</strong>: 작은 버튼이나 책상 위 손전등을 대충 봐도 잡힘. 판정 공에 닿은 것 전부 중 가장 가까운 상호작용 대상을 고르고, 벽(맵에 고정된 메시) 뒤는 제외 (동작 확인). <a href="#player-controls">1장 조작</a></li>
 <li>능력 블록 <strong>색별 충전·유지 시간을 블록마다 설정</strong> (<code>RChargeTime</code>, <code>GreenHoldTime</code> 등). <a href="#block-abilities">6-2장</a></li>
 </ul>
 <p><strong>2026-11-01</strong></p>
+<ul><li>로컬 <code>BP_GreenGroupStop</code>: 초록빛 효과가 발동하면 등록한 Patrol 블록들을 함께 정지하고, 효과가 풀리면 함께 재개. Green 레벨의 받침에 대상 4개 연결. 받침의 충돌 꺼짐으로 손전등이 통과하던 문제도 수정했으며 실제 손전등으로 정지·해제 확인. <a href="#green-group-stop">6-1장 사용법</a></li></ul>
+
 <ul>
 <li>(만듦, 테스트 전) 새 장치 <strong>리셋 버튼 <code>BP_ResetButton</code></strong> (버튼의 자식): 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 <code>ResetArea</code> 안</strong>인 Physics 블록이 전부 처음 자리로. 영역 밖으로 던진 블록도 돌아옴, 들고 있던 블록은 손에서 놓음. 영역 크기·위치·회전은 레벨에서 버튼을 선택하고 컴포넌트 목록의 <code>ResetArea</code>(Box Extent, 위치, 회전)로 조절. 버튼 기능(<code>SignalTargets</code>)도 그대로라 Patrol 블록은 같은 버튼에 1번 채널 "처음으로"로 연결. <code>ButtonMode</code>는 <code>ReOn</code>. 초록으로 멈춘 블록은 자리만 돌아가고 멈춘 상태는 능력이 끝날 때까지 유지. <a href="#resetbutton">2-1장</a></li>
 <li>리스폰(되돌리기 구역·프레스 블록) 동안 <strong>세상이 멈춤</strong>: 어둡고 소환되는 사이 움직이는 장치가 정지했다가 밝아질 때 다시 움직임. 소환 처리는 플레이어 한 곳(<code>BP_Charactor.RespawnAt</code>)으로 모음. <a href="#respawn-player">3-2장</a></li>
@@ -213,8 +241,10 @@
 <tr><td><code>Togle</code></td><td>누를 때마다 켜짐 ↔ 꺼짐</td><td>열고 닫을 수 있는 문·다락문, 광원 전원(0번)·고정 색(1번)·회전·이동(2~4번), 블록 출발/정지(0번)</td></tr>
 <tr><td><code>ReOn</code></td><td>누를 때마다 켜짐 → 즉시 꺼짐 신호를 한 번에 보냄 (펄스)</td><td>Rotate 광원 (누를 때마다 색 한 칸씩 회전), 능력 블록 1번 "처음으로" (누를 때마다 처음 위치로)</td></tr>
 <tr><td><code>Timed</code></td><td>누르면 켜지고 <code>TimedDuration</code>초 뒤 자동으로 꺼짐</td><td>시간 제한 문·다락문, 잠깐 켜지는 광원, 잠깐만 움직이는 블록·광원</td></tr>
+<tr><td><code>RepeatOn</code></td><td>누를 때마다 다시 작동시키고 켜진 상태로 유지. 반복해서 눌러도 이 버튼의 신호는 하나로 유지</td><td>블록 0번 출발 유지, 누를 때마다 다시 작동시킬 장치. 채널 번호는 SignalTargets에서 선택</td></tr>
 </tbody></table></div>
 <p class="note"><code>ReOn</code>은 "톡 치는" 신호라서 문에 쓰면 열리자마자 닫힙니다. 누를 때마다 한 번 반응하는 장치 전용입니다. (예: 라이트 색 변경)</p>
+<p class="note" id="button-repeat-on"><strong>RepeatOn 설정:</strong> 레벨의 버튼 선택 → ButtonMode를 RepeatOn → SignalTargets의 Target과 Channel 지정. 플랫폼 출발은 Channel 0, WaitTrigger 켬·StartMoving 끔으로 설정합니다. 0번은 현재 방향으로 이동을 켤 뿐이며, 2번으로 바뀐 방향을 정방향으로 바꾸거나 끝난 PatrolOnce를 처음부터 다시 시작하지는 않습니다. 다른 송신 장치가 함께 켜져 있으면 수신 장치의 기존 필요 신호 수 규칙을 따릅니다.</p>
 </div></details>
 <details class="node" id="button-examples"><summary>이렇게 만들 수 있어요</summary><div class="node-body">
 <ul>
@@ -314,6 +344,22 @@
 <li>다음 레벨로: 스테이지 끝 통로에 트리거를 놓고 <code>NextLevel</code> 지정. <code>Targets</code>에 지나온 문 Channel 1을 함께 넣어도 됨</li>
 </ul>
 </div></details>
+</div></details>
+
+<details class="chapter" id="block-signal-trigger"><summary><span class="chapter-number">3-1 추가</span>BP_BlockSignalTrigger — 블록 신호 구역 <span class="tag send">송신</span></summary><div class="chapter-body">
+<p><code>Content/BluePrint/BP_BlockSignalTrigger</code>를 레벨에 놓으면, 능력 블록의 본체가 영역에 들어올 때 버튼처럼 신호를 보냅니다. 플레이어에는 반응하지 않습니다.</p>
+<div class="scroll"><table><thead><tr><th>설정</th><th>사용 방법</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>SignalTargets</code></td><td>+로 칸 추가 → Target에 받을 장치 선택 → Channel에 0, 1, 2 등 기능 번호 입력. 여러 장치를 함께 연결할 수 있음</td><td>비어 있음</td></tr>
+<tr><td><code>ButtonMode</code></td><td>JustOn: 처음 한 번 켜기 / Togle: 진입할 때마다 켜짐·꺼짐 교대 / ReOn: 진입할 때마다 켰다가 바로 끄기 / Timed: 정해진 시간 동안 켜기 / RepeatOn: 진입할 때마다 재작동 후 켜짐 유지</td><td>ReOn</td></tr>
+<tr><td><code>TimedDuration</code></td><td>Timed 유지 시간(초). 켜져 있는 동안 다시 들어와도 시간이 연장되지 않음</td><td>10</td></tr>
+<tr><td><code>TriggerBlock</code></td><td>감지할 특정 블록 선택. 비우면 조건에 맞는 모든 능력 블록 감지</td><td>비어 있음</td></tr>
+<tr><td><code>OnlyPhysicsBlocks</code></td><td>켜면 Physics 블록만 감지. 끄면 Patrol·Fixed 등 다른 Move도 감지</td><td>켜짐</td></tr>
+</tbody></table></div>
+<ol><li>낙하 지점에 배치하고 Scale 또는 Box 컴포넌트의 Box Extent로 영역을 키웁니다.</li>
+<li>플랫폼 복귀 예시: ButtonMode = ReOn, SignalTargets의 Target = 움직이는 플랫폼, Channel = 1.</li>
+<li>플랫폼 위의 블록 하나만 감지하려면 TriggerBlock에 그 블록을 지정합니다.</li>
+<li>낙하 블록도 리스폰시키려면 기존 BP_Respawn을 아래에 둡니다. <strong>신호 구역을 먼저 통과한 뒤 리스폰 구역에 닿게</strong> 배치하세요. 완전히 겹치면 리스폰이 먼저 실행될 수 있습니다.</li></ol>
+<p>1번 신호는 플랫폼을 MovePoint[0]으로 순간이동시키고 RestartDelay 뒤 이동 조건에 따라 재출발시킵니다. 이 구역 자체는 블록을 리스폰시키지 않습니다. 감지할 블록 본체의 Generate Overlap Events가 켜져 있어야 합니다.</p>
 </div></details>
 
 <!-- ===================== 3-2 되돌리기 구역 ===================== -->
@@ -591,6 +637,21 @@
 <li>시작 조준은 상자 액터를 돌려 맞춥니다. 빛 판정은 내려간 위치·돌아간 방향을 그대로 따라갑니다.</li>
 </ul>
 </div></details>
+<details class="node" id="blink-light"><summary><span class="tag">BP_BlinkLight · Channel 7</span>신호로 켜짐·꺼짐 반복</summary><div class="node-body">
+<p><code>BP_Light</code>를 상속한 반복 점멸 광원입니다. 콘텐츠 브라우저의 <code>Content/BluePrint/BP_BlinkLight</code>를 레벨에 배치합니다. 색·빛 길이·회전·이동 설정은 기존 광원과 같습니다.</p>
+<div class="scroll"><table><thead><tr><th>디테일 → Blink Timer</th><th>기능</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>Blink On Time</code></td><td>한 번 켜져 있는 시간(초)</td><td>3</td></tr>
+<tr><td><code>Blink Off Time</code></td><td>한 번 꺼져 있는 시간(초)</td><td>2</td></tr>
+<tr><td><code>Blink Start Delay</code></td><td>7번 신호를 받은 뒤 처음 켜질 때까지 지연(초). 0 이하면 즉시 시작</td><td>0</td></tr>
+</tbody></table></div>
+<ol>
+<li><code>BP_BlinkLight</code>를 배치하고 두 시간을 설정합니다. 기본적으로 꺼진 채 신호를 기다립니다.</li>
+<li>기존 <code>BP_Trigger</code>의 <strong><code>Targets</code></strong> 배열에 항목을 추가합니다. <code>Target</code>은 이 광원, <code>Channel</code>은 <strong>7</strong>, <code>NextLevel</code>은 비웁니다.</li>
+<li>플레이어가 트리거에 들어오면 <code>Blink Start Delay</code>만큼 기다렸다가 <strong>켜짐 시간 → 꺼짐 시간 → 켜짐 시간…</strong>을 반복합니다. 예: 지연 2 / 켜짐 3 / 꺼짐 2면 처음 2초 대기 후, 3초 켜짐·2초 꺼짐을 계속 반복합니다. 시작 지연은 처음 한 번만 적용됩니다.</li>
+</ol>
+<p>7번 신호가 꺼지면 지연 또는 반복을 중지하고 소등합니다. 다시 켜면 시작 지연부터 새로 기다립니다. 트리거는 켜짐 신호만 보내므로 통과 후 계속 반복하며, <code>Togle</code> 버튼은 반복 시작·중지 스위치로 사용할 수 있습니다. 발판은 밟는 동안 반복합니다. <code>ReOn</code>은 신호가 바로 꺼져 반복도 즉시 중지됩니다.</p>
+<p>각 광원의 시간을 따로 설정할 수 있습니다. 0.01초 미만은 0.01초로 보정합니다. 점멸 중 전원은 7번으로 제어하세요. 0번 전원을 함께 제어하면 다음 점멸 단계가 전원을 다시 바꿉니다. 기존 0~4번 기능은 상속되며, 5·6번에는 연결된 동작이 없습니다.</p>
+</div></details>
 <details class="node" id="light-judge"><summary>판정 방식 (알아두면 좋은 것)</summary><div class="node-body">
 <ul>
 <li>빛 원뿔 안의 블록마다 중심 + 꼭짓점 8곳으로 직접 검사합니다. 먼 거리의 작은 블록도 놓치지 않습니다.</li>
@@ -724,14 +785,32 @@
 <li>예: <code>PatrolOnce</code> + <code>ReOn</code> 버튼(Channel 1) → 끝까지 가서 멈춘 엘리베이터를 버튼으로 처음 층에 불러와 다시 올려 보냄.</li>
 <li>0번(<code>WaitTrigger</code> 출발/정지)과 같이 써도 서로 방해하지 않습니다. <code>Fixed</code>/<code>Physics</code> 블록에 보내면 아무 일도 일어나지 않습니다.</li>
 </ul>
-<p id="block-reverse"><strong>2번 채널 "방향 바꾸기"</strong> (2026-11-01 동작 확인): 신호가 켜지면 블록이 <strong>그 자리에서 돌아서서</strong> 반대 방향으로 경유지를 따라가고, 꺼지면 다시 원래 방향으로 돌아섭니다. 경유지가 2개 이상인 Patrol 블록만 해당합니다.</p>
+<p id="block-reverse"><strong>2번 채널 "방향 바꾸기"</strong> (2026-11-02 현재 에셋 확인): 신호가 켜질 때마다 블록이 현재 방향에서 반대 방향으로 전환합니다. 꺼짐 신호에는 반응하지 않습니다. 경유지가 2개 이상인 Patrol 블록만 해당합니다.</p>
 <ul>
-<li><strong>버튼은 <code>Togle</code>·<code>Timed</code>, 또는 발판</strong>으로 연결합니다. "켜져 있는 동안 반대 방향"이라서, <code>ReOn</code>은 켜짐·꺼짐이 바로 이어져 두 번 돌아서므로 아무 변화가 없습니다.</li>
-<li>예: 발판(Channel 2) → 밟고 있는 동안 엘리베이터가 내려오고, 내려오면 다시 올라감.</li>
+<li><strong>반복해서 방향을 바꾸려면 <code>ReOn</code></strong>으로 연결합니다. Togle은 신호가 켜지는 진입에만 방향을 바꾸므로 두 번 중 한 번 반응합니다.</li>
+<li>예: 블록 신호 구역(ReOn, Channel 2) → 블록이 들어올 때마다 플랫폼의 이동 방향 전환.</li>
 <li>주의: 2번이 켜진 채로 1번 "처음으로"를 보내면 방향이 정방향으로 초기화됩니다.</li>
-<li>주의: <code>PatrolReturn</code>은 원래 끝에서 스스로 돌아서므로, 2번 신호는 켜질 때·꺼질 때 모두 "지금 방향에서 돌아서기"로 동작합니다.</li>
+<li>주의: <code>PatrolReturn</code>은 원래 끝에서 스스로 돌아서므로, 2번 신호가 켜질 때에는 그 순간의 방향을 기준으로 반전합니다.</li>
 </ul>
 <p><code>Move</code>가 Patrol 계열이면 블록 아래 <code>SM_Floor_Plain_Light</code>(표시등)가 보입니다. <code>Fixed</code>/<code>Physics</code>면 숨겨집니다. 움직이는 블록인지 한눈에 알 수 있게 하는 표시입니다.</p>
+</div></details>
+<details class="node" id="return-platform"><summary>BP_ReturnPlatform — 블록이 떨어지면 시작점으로 돌아오는 플랫폼</summary><div class="node-body">
+<p><code>Content/BluePrint/BP_ReturnPlatform</code>은 <code>BP_AvilityBlock</code>의 자식입니다. <strong>순간이동 없이</strong> 경유지를 거꾸로 따라 시작점으로 돌아오고, 다음 버튼 입력을 기다립니다.</p>
+<ol>
+<li>기존 플랫폼 대신 새 <code>BP_ReturnPlatform</code>을 레벨에 배치합니다. 기존 액터가 자동으로 교체되지는 않습니다.</li>
+<li><code>MovePoint</code>를 2개 이상 설정합니다. 0번은 시작점으로 보통 <code>(0,0,0)</code>, 1번부터 이동할 곳의 상대 좌표를 입력합니다. 기본 경로는 0번 <code>(0,0,0)</code> → 1번 <code>(300,0,0)</code>입니다.</li>
+<li><code>MoveSpeed</code>로 속도를 조절합니다. 다른 메시를 쓰려면 <code>IsUserStaticMesh</code>를 켜고 <code>UserStaticMesh</code>를 지정합니다.</li>
+<li>버튼: <code>ButtonMode = RepeatOn</code>, <code>SignalTargets → Target = 새 플랫폼</code>, <code>Channel = 0</code>.</li>
+<li>낙하 구역: <code>BP_BlockSignalTrigger</code>의 <code>ButtonMode = ReOn</code>, <code>SignalTargets → Target = 같은 플랫폼</code>, <code>Channel = 3</code>. 필요하면 <code>TriggerBlock</code>에 위에 올릴 블록을 지정합니다.</li>
+<li>떨어진 블록은 기존 <code>BP_Respawn</code>으로 되돌립니다. 신호 구역을 리스폰 구역보다 위에 두어 3번 신호가 먼저 전달되게 합니다.</li>
+</ol>
+<div class="scroll"><table><thead><tr><th>상황</th><th>동작</th></tr></thead><tbody>
+<tr><td>시작점 대기 + 0번</td><td>정방향 출발</td></tr>
+<tr><td>전진 중 또는 끝점 대기 + 3번</td><td>지나온 경유지들을 거꾸로 따라 0번으로 귀환</td></tr>
+<tr><td>귀환 중 버튼 또는 트리거 재입력</td><td>무시. 방향이나 경로를 다시 뒤집지 않음</td></tr>
+<tr><td>0번 도착</td><td>정지하고 정방향 출발을 준비. 버튼을 다시 누르면 재출발</td></tr>
+</tbody></table></div>
+<p><code>Move</code>·<code>WaitTrigger</code>·<code>StartMoving</code>은 이 전용 BP가 게임 시작 때 자동으로 설정합니다. 경로·속도·메시를 설정하면 됩니다. 초록 정지는 왕복 중에도 적용됩니다. 이 BP는 <strong>0번과 3번만</strong> 사용하며 기존 1번 순간이동·2번 방향 반전 신호는 처리하지 않습니다.</p>
 </div></details>
 <details class="node" id="block-movepoint"><summary>MovePoint 설정 방법</summary><div class="node-body">
 <p><code>Move</code>가 Patrol 계열일 때 블록이 지나갈 경유지 목록입니다.</p>
@@ -746,6 +825,73 @@
 <li>속도는 <code>MoveSpeed</code>(초당 이동 거리)로 일정하게 움직입니다. 경유지 사이가 멀수록 오래 걸립니다.</li>
 <li><code>Move</code>가 <code>Fixed</code>나 <code>Physics</code>면 <code>MovePoint</code>는 무시됩니다.</li>
 </ul>
+</div></details>
+<details class="node" id="smooth-push-pressblock"><summary>부드럽게 미는 프레스 블록 <code>BP_SmoothPushPressBlock</code></summary><div class="node-body">
+<p><code>Content / BluePrint / BP_SmoothPushPressBlock</code>을 배치합니다. 부모는 <a href="#block-press">BP_PressBlock</a>입니다. 옆으로 움직이는 벽·프레스가 정지한 플레이어를 부드럽게 밀도록 만든 별도 BP입니다.</p>
+<ol><li>기존 블록과 같은 위치·회전·크기로 배치합니다.</li><li><code>IsUserStaticMesh</code>·<code>UserStaticMesh</code>, <code>MovePoint</code>, <code>MoveSpeed</code>, 빛 반응과 <code>WaitTrigger</code>를 기존과 맞춥니다. 기본은 <code>PatrolOnce</code>이며 다른 Patrol 모드도 사용할 수 있습니다.</li><li>연결된 버튼·발판·트리거의 Target을 새 블록으로 바꿉니다. 신호는 기존 능력 블록과 같은 0=이동, 1=시작점 순간 복귀, 2=방향 반전입니다.</li><li>부모 BP에 있는 장식은 상속됩니다. 레벨 인스턴스에만 추가한 Bar·Plate는 새 액터에 별도로 복사해야 합니다.</li></ol>
+<div class="scroll"><table><thead><tr><th>Smooth Push 설정</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>EnableSmoothPush</code></td><td>부드러운 옆면 밀기 사용</td><td>켬</td></tr>
+<tr><td><code>PushSkin</code></td><td>블록에 파고들지 않게 두는 작은 간격(cm). 기본값부터 사용</td><td>0.5</td></tr>
+<tr><td><code>StopWhenPlayerBlocked</code></td><td>플레이어 뒤가 벽이면 블록도 정지. 막힌 곳이 비면 자동 재출발. 끄면 블록은 계속 움직이므로 리스폰 설계가 있는 경우에만 사용</td><td>켬</td></tr>
+</tbody></table></div>
+<p class="note"><strong>PressBox 리스폰은 그대로입니다.</strong> 밀기만 할 면에 PressBox가 겹쳐 있으면 먼저 리스폰됩니다. <code>ResetPlayer</code>를 끄거나 PressBox를 실제 압사 면에만 배치하세요. 위에 올라탄 경우에는 기존 발판 이동 처리를 사용합니다. 초록빛 정지와 색별 충전·유지 시간도 부모에서 상속됩니다.</p>
+</div></details>
+<details class="node" id="falling-hazard-block"><summary>시간차 낙하·플레이어 밀기 <code>BP_FallingHazardBlock</code></summary><div class="node-body">
+<p><code>Content / BluePrint / BP_FallingHazardBlock</code>은 <code>BP_AvilityBlock</code>의 자식입니다. 중력으로 자연스럽게 떨어지며, 출발 대기와 반복 간격을 조절하고 플레이어를 옆으로 밀어냅니다. <code>Move</code>는 실행 시 <code>Physics</code>로 고정됩니다.</p>
+<ol><li>새 BP를 <strong>같은 Z 높이</strong>에 배치합니다. 원하는 <code>IsUserStaticMesh / UserStaticMesh</code>와 빛 반응을 설정합니다. 기존 액터는 자동 교체되지 않습니다.</li><li>아래에 기존 <code>BP_Respawn</code>을 배치하고 <code>ResetBlock</code>을 켭니다. 블록이 닿으면 시작 위치로 돌아와 다음 차례까지 기다립니다. 이 구역에 닿지 않으면 자동으로 복귀하지 않습니다.</li><li>아래 표처럼 <code>StartDelay</code>를 다르게, <code>RepeatInterval</code>은 모두 같게 설정합니다. 대기 중에는 충돌을 끄므로 두 블록의 시작 위치가 같아도 서로 밀어내지 않습니다. 먼저 떨어진 블록이 다음 출발 전에 공간을 비워야 합니다.</li><li>기존에 크게 올렸던 <code>Linear Damping</code>은 자연 낙하를 위해 0.01 정도로 되돌립니다. 새 BP 자체는 감쇠나 질량, 최고속도를 변경하지 않습니다.</li></ol>
+<div class="scroll"><table><thead><tr><th>Fall Cycle</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>WaitForStartSignal</code></td><td>켜면 0번 신호가 올 때까지 대기. 끄면 기존처럼 자동 시작</td><td>끔</td></tr>
+<tr><td><code>StartDelay</code></td><td>자동 시작은 플레이 시작부터, 신호 시작은 0번 수신부터 첫 출발까지 대기(초)</td><td>0</td></tr>
+<tr><td><code>RepeatFalls</code></td><td>리스폰 후 다음 출발 차례까지 대기</td><td>켬</td></tr>
+<tr><td><code>RepeatInterval</code></td><td>같은 블록의 출발 간격(초). 리스폰 후 추가 대기가 아님</td><td>4</td></tr>
+<tr><td><code>HideWhileWaiting</code></td><td>대기하는 블록 숨기기. 대기 중 물리/충돌/빛 수신/잡기는 꺼짐</td><td>켬</td></tr>
+</tbody></table></div>
+<div class="scroll"><table><thead><tr><th>위치</th><th>첫 번째 StartDelay</th><th>두 번째 StartDelay</th><th>RepeatInterval</th></tr></thead><tbody>
+<tr><td>1번</td><td>0</td><td>2</td><td>4</td></tr><tr><td>2번</td><td>0.5</td><td>2.5</td><td>4</td></tr><tr><td>3번</td><td>1</td><td>3</td><td>4</td></tr><tr><td>4번</td><td>1.5</td><td>3.5</td><td>4</td></tr>
+</tbody></table></div>
+<p class="note">복귀까지 4초보다 오래 걸리면 그 블록은 놓친 차례를 건너뜁니다. 여러 번 몰아서 떨어뜨리지 않습니다. 실제 낙하 시간을 확인해 필요하면 반복 간격을 늘리세요. 초록빛 정지 중 주기 때문에 강제로 복귀하지 않습니다. <code>RepeatFalls</code>를 끄거나 <code>RepeatInterval</code>을 0 이하로 설정하면 초기 출발 지연만 적용하고, 이후 리스폰에서는 바로 다시 떨어집니다.</p>
+<div class="scroll"><table><thead><tr><th>Player Push</th><th>설명</th><th>기본값</th></tr></thead><tbody>
+<tr><td><code>EnablePlayerPush</code></td><td>낙하 충돌 시 플레이어 옆으로 밀기</td><td>켬</td></tr>
+<tr><td><code>PushSpeed</code></td><td>수평 밀림 속도(cm/s)</td><td>500</td></tr>
+<tr><td><code>PushUpSpeed</code></td><td>현재 수직 속도에 추가하는 위쪽 속도(cm/s)</td><td>100</td></tr>
+<tr><td><code>MinImpactSpeed</code></td><td>작동할 최소 아래쪽 낙하 속도(cm/s). 느린 접촉 제외</td><td>150</td></tr>
+<tr><td><code>PushCooldown</code></td><td>같은 블록이 다시 밀 수 있는 간격(초)</td><td>0.5</td></tr>
+<tr><td><code>UseCustomPushDirection / PushDirection</code></td><td>켜면 지정 방향. 액터 로컬 좌표, Z 무시. (1,0,0)은 앞쪽. 끄면 블록 중심에서 플레이어 쪽</td><td>끔 / (1,0,0)</td></tr>
+<tr><td><code>EscapeClearance</code></td><td>블록 밑에서 옆으로 빠져나올 때 여유(cm)</td><td>10</td></tr>
+<tr><td><code>MaxEscapeDistance</code></td><td>끼임 방지용 즉시 수평 이동의 최대 거리(cm). 큰 블록은 조절 필요</td><td>500</td></tr>
+</tbody></table></div>
+<p>밀 때 블록 바깥으로 필요한 거리만 충돌을 확인하며 먼저 이동한 뒤 수평 속도를 줍니다. 벽을 관통시키지 않으므로 탈출 공간이 없으면 완전히 빠져나오지 못할 수 있습니다. 본체 메시의 <code>Pawn</code> 반응은 <code>Block</code>이어야 합니다. 대기/초록 정지/느린 접촉에는 밀기를 적용하지 않습니다. 잡기는 기본으로 꺼져 있으며 <code>CanGrab</code>으로 켤 수 있습니다.</p>
+<p><strong>트리거를 밟아야 낙하 시작하기:</strong> 낙하 블록의 <code>Fall Cycle → Wait For Start Signal</code>을 켭니다. 기존 <code>BP_Trigger</code>의 <code>Targets</code> 배열에 항목을 추가해 <code>Target</code>을 이 블록, <code>Channel</code>을 <strong>0</strong>으로 설정하고 <code>NextLevel</code>은 비워 둡니다. 플레이어가 구역에 들어오면 <code>StartDelay</code> 후 출발합니다. 여러 블록을 하나의 트리거에 넣으면 같은 신호를 받아 각자 지연 후 떨어집니다.</p>
+<p>블록 진입용 <code>BP_BlockSignalTrigger</code>를 쓴다면 배열 이름은 <code>SignalTargets</code>입니다. 버튼도 Target/Channel 0으로 사용할 수 있으며 짧은 <code>ReOn</code> 신호도 됩니다. <strong>한 번 시작하면 리스폰 후 자동 반복</strong>하고, 반복 신호나 신호 꺼짐으로 출발 시간이 바뀌지 않습니다. 매 낙하마다 다시 신호를 요구하는 방식은 아닙니다. 기존 <code>WaitTrigger / StartMoving</code>은 Patrol용이므로 이 기능에는 <code>WaitForStartSignal</code>을 사용하세요.</p>
+<div id="falling-hazard-schedule">
+<p><strong>공통 시간표로 묶음 간격 유지하기:</strong> 같은 시계를 기준으로 자기 차례에만 출발합니다. 초록빛으로 멈추거나 리스폰이 늦어 차례를 놓치면 그 회차는 건너뛰고 다음 자기 차례까지 기다립니다.</p>
+<div class="scroll"><table><thead><tr><th>디테일</th><th>설정</th></tr></thead><tbody>
+<tr><td><code>Shared Schedule → Use Shared Schedule</code></td><td>공통 시간표 사용. 기본은 꺼짐으로 기존 개별 동작 유지</td></tr>
+<tr><td><code>Shared Schedule → Schedule Controller</code></td><td>같은 시간표에 참여할 블록끼리 같은 <code>BP_FallSchedule</code> 액터 지정</td></tr>
+<tr><td><code>Fall Cycle → Start Delay</code></td><td>공통 시작 시각에서 자기 묶음의 첫 출발까지 시간(초)</td></tr>
+<tr><td><code>Fall Cycle → Repeat Interval</code></td><td>자기 차례가 돌아오는 주기(초). 규칙적인 묶음 패턴은 같은 값으로 설정. 공통 모드는 양수 필수</td></tr>
+</tbody></table></div>
+<p>Green에는 <code>FallSchedule_Green_ThreeGroups</code>를 추가해 다음처럼 저장했습니다. 아래 시간은 공통 시작 신호를 받은 순간부터 계산합니다. 실제 Green에서 높은 블록의 정상 복귀까지 약 6.8초가 걸렸으므로, 초기 제안인 5.25초 대신 여유 있는 9초 주기와 균등한 3초 간격으로 설정했습니다.</p>
+<div class="scroll"><table><thead><tr><th>묶음</th><th>블록</th><th>Start Delay</th><th>Repeat Interval</th><th>예정 출발</th></tr></thead><tbody>
+<tr><td>1</td><td>BP_FallingHazardBlock, 2, 3, 4</td><td>0초</td><td>9초</td><td>0 → 9 → 18 → 27…</td></tr>
+<tr><td>2</td><td>BP_FallingHazardBlock5~8</td><td>3초</td><td>9초</td><td>3 → 12 → 21 → 30…</td></tr>
+<tr><td>3</td><td>BP_FallingHazardBlock9~12</td><td>6초</td><td>9초</td><td>6 → 15 → 24 → 33…</td></tr>
+</tbody></table></div>
+<p>각 블록을 선택해 위 값을 수정할 수 있습니다. Green의 해당 12개는 <code>Repeat Falls</code>와 <code>Wait For Start Signal</code>이 켜져 있습니다. 기존 시작 트리거 연결은 그대로 사용합니다. 같은 컨트롤러의 블록 하나에 0번 신호가 도착하면 공통 시계가 한 번 시작되며, 다른 블록도 같은 기준 시각을 사용합니다. 컨트롤러 자체에 0번을 연결해도 됩니다. 반복 신호로 기준 시각이 초기화되지는 않습니다.</p>
+<p>다른 레벨에서는 <code>BP_FallSchedule</code>을 하나 배치하고 참여할 블록들의 <code>Schedule Controller</code>에 지정합니다. 그룹 전체를 신호로 시작하려면 참여 블록의 <code>Wait For Start Signal</code>을 전부 켜세요. 하나라도 끄면 그 블록이 초기화될 때 공통 시계가 자동 시작됩니다. 컨트롤러가 비었거나 공통 모드 주기가 0 이하면 출발하지 않습니다.</p>
+<p><strong>정지·복귀:</strong> 3번이 켜진 동안도 시계는 계속 갑니다. 해제 후에는 다음 자기 차례를 기다립니다. 예를 들어 1묶음이 9초에 준비되지 못했다면 11초에 준비되어도 바로 출발하지 않고 18초 차례를 기다립니다. 그때도 준비되지 않았다면 다음 회차를 건너뜁니다. 공중에서 초록빛이 풀린 블록은 기존처럼 그 자리에서 낙하를 이어갑니다. 이것은 새로운 출발과 별개입니다.</p>
+</div>
+<div id="falling-hazard-stop">
+<p><strong>3번 신호로 다음 낙하 정지:</strong> 신호를 보내는 장치의 대상에 이 낙하 블록을 넣고 <code>Channel = 3</code>으로 설정합니다. 별도의 활성화 옵션은 필요 없습니다.</p>
+<ul>
+<li><strong>신호 켜짐:</strong> 출발 대기 시간을 멈춥니다. 이미 떨어지고 있는 블록은 계속 낙하하고, 기존 <code>BP_Respawn</code>에 닿아 시작 위치로 돌아오면 다음 출발을 대기합니다. 대기 중 표시 여부는 <code>HideWhileWaiting</code> 설정을 따릅니다.</li>
+<li><strong>신호 꺼짐:</strong> 공통 시간표 사용 시 다음 자기 차례를 기다립니다. 공통 시간표를 끈 개별 모드에서는 정지했을 때 남아 있던 대기 시간부터 이어갑니다. 예를 들어 1초 남았을 때 정지했다면 해제 후 1초 뒤 출발합니다. 정지 중 0번 시작 신호를 받으면 해제 후 <code>StartDelay</code> 전체를 기다립니다.</li>
+<li><strong>영구 정지:</strong> 기존 <code>BP_Trigger → Targets</code>에 대상 블록 / 3번을 설정하고 <code>NextLevel</code>은 비웁니다. 트리거는 켜짐만 보내므로 통과 후 다음 낙하가 계속 중단됩니다.</li>
+<li><strong>정지·재개 스위치:</strong> <code>Togle</code> 버튼은 누를 때마다 정지/재개, 발판은 밟는 동안 정지합니다. 이 장치들의 배열 이름은 <code>SignalTargets</code>입니다. <code>ReOn</code>은 바로 해제되어 지속 정지에는 쓰지 않습니다.</li>
+</ul>
+<p>0번은 기존 시작 신호, 3번은 별도 정지 신호입니다. 초록빛으로도 정지 중이면 3번만 해제해도 출발하지 않습니다. <code>RepeatFalls</code> 꺼짐이나 <code>RepeatInterval = 0</code>에서도 정지 신호가 우선합니다. 공중의 블록을 즉시 순간이동시키거나 얼리는 기능은 아닙니다.</p>
+</div>
+<p>UserStaticMesh와 기존 색 능력은 상속됩니다. 단일 플레이어 기준으로 검증했습니다.</p>
 </div></details>
 <details class="node" id="block-press"><summary>프레스 블록 <code>BP_PressBlock</code></summary><div class="node-body">
 <p>능력 블록과 똑같은 블록(자식 BP라 설정·능력·이동·채널 전부 같음)에 <strong>아래쪽 플레이어 감지 박스</strong>가 붙어 있습니다. Patrol로 움직이면 박스도 함께 움직이고, 블록이 멈추면(초록 정지, <code>WaitTrigger</code> 정지, <code>PatrolOnce</code> 끝) 박스도 멈춥니다. 박스가 닿으면 <a href="#respawn">되돌리기 구역</a>과 똑같이 동작합니다: 플레이어는 암전 후 <code>PlayerRespawnLocation</code>으로 소환, Physics 블록은 시작 위치로 되돌림. 둘 중 무엇을 할지 <code>ResetPlayer</code> / <code>ResetBlock</code>으로 고릅니다.</p>
@@ -863,6 +1009,20 @@
 <li>파란 운반 퍼즐: <code>ColorMode = ReactOnly</code> + <code>UseColor = Blue</code> + <code>Physics</code> → 블록을 당겨와서 발판 위에 올리기</li>
 </ul>
 </div></details>
+</div></details>
+
+<!-- ===================== 6-1 초록빛 그룹 정지 ===================== -->
+<details class="chapter" id="green-group-stop"><summary><span class="chapter-number">6-1</span>BP_GreenGroupStop — 초록빛으로 여러 블록 정지</summary><div class="chapter-body">
+<p>흰색 받침 하나에 초록빛 능력을 발동시켜 여러 Patrol 기둥을 함께 멈출 때 사용합니다. 받침의 초록 효과가 끝나면 대상들이 다시 움직입니다.</p>
+<ol>
+<li><code>Content/BluePrint/BP_GreenGroupStop</code>을 배치하고 <code>ColorMode = ReactOnly</code>, <code>UseColor = Green</code>으로 설정합니다. 현재 Green 레벨 받침은 <code>Move = PatrolRotation</code>이며 기존 경로를 유지합니다.</li>
+<li>멈출 블록마다 기존 Patrol 모드와 경로를 유지하고 <code>WaitTrigger</code>와 <code>StartMoving</code>을 켭니다. <code>ChannelRequired</code>는 <code>0 → 1</code>입니다.</li>
+<li>받침의 Details에서 <code>Stop Targets</code>를 검색합니다. +로 칸을 추가해 멈출 <code>BP_AvilityBlock</code>을 각각 지정합니다. None인 칸은 무시됩니다.</li>
+<li>플레이 중 받침에 초록빛을 비춰 충전합니다. 효과 발동 시 대상들이 정지하고, 효과가 해제되면 원래 Patrol 이동을 재개합니다. 기존 초록 능력의 충전·유지·쿨타임을 따릅니다.</li>
+</ol>
+<p>현재 <code>Green</code> 레벨은 <code>BP_AvilityBlock3</code>이 받침이고, <code>BP_AvilityBlock4</code>~<code>7</code>이 대상입니다. 같은 대상의 0번 채널에 다른 스위치 신호를 섞으면 신호 합산 규칙이 적용됩니다.</p>
+<p><strong>흰색 받침이 빛에 반응하지 않으면:</strong> 보이는 메시의 충돌이 <code>NoCollision</code>인지 확인합니다. 현재 받침 <code>SM_Floor_Plain_Light</code>에는 <code>Custom → Query Only → Visibility: Block</code>을 적용했습니다. 캐릭터·블록 등 물체 채널은 Ignore라서 물리적으로 막지 않습니다. 모양은 그대로이며 손전등 레이만 받습니다. Fixed나 사용자 메시 설정으로 받침 메시가 없어지면 실제로 보이는 본체 메시 쪽에 Visibility 충돌이 필요합니다.</p>
+<p class="muted">Patrol 이동 제어용입니다. Physics 블록을 묶어 얼리는 기능은 아닙니다. 이 BP는 원본 블록의 복제본이므로 원본 수정이 자동으로 반영되지는 않습니다. 실제 플레이어 초록 손전등 입력으로 대상 4개 정지, 손전등 끄기 후 재개까지 확인했습니다.</p>
 </div></details>
 
 <!-- ===================== 7 다락문 ===================== -->

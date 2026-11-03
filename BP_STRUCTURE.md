@@ -46,7 +46,7 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 | 이름 | 내용 |
 |---|---|
 | `S_SignalTarget` | `Target`(Actor), `Channel`(Int, 기본 0) |
-| `EN_ButtonMode` | JustOn / Togle / ReOn / Timed |
+| `EN_ButtonMode` | JustOn / Togle / ReOn / Timed / RepeatOn (기존 항목 순서 유지, 마지막에 추가) |
 | `EN_ChangeColor` | Red / Green / Blue / Rotate |
 | `EN_LightColor` | Red / Blue / Green |
 | `EN_ColorMode` | Default / ReactOnly / OwnColor |
@@ -130,10 +130,15 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 | `ButtonMode` [I] | EN_ButtonMode |
 | `TimedDuration` [I] | Timed 지속 시간(10) |
 | `UseAsset` [I] + `UseStaticMesh` [I] | 외형 교체 (Construction) |
-| 켜짐 상태 bool (내부, 이름 미확인) | Togle용 |
+| `IsOn` (내부) | JustOn / Togle / Timed / RepeatOn 상태 |
 
 - `Interact` → Switch(ButtonMode): JustOn = 한 번만 `SendActivate` / Togle = 상태 반전 후 Send(De)Activate / ReOn = `SendActivate` → `SendDeactivate` 즉시 / Timed = `SendActivate` → Delay(TimedDuration) → `SendDeactivate`. **(미확인: 세부 노드)**
 - `SendActivate` / `SendDeactivate`: ForEach(SignalTargets) → Break S_SignalTarget → `Activate`/`Deactivate`(Message, Target, Channel).
+
+**2026-11-02 로컬 추가 — RepeatOn**: Switch의 `NewEnumerator4` → Branch(IsOn). false면 IsOn=true → SendActivate, true면 SendDeactivate → IsOn=true → SendActivate. 처음 눌렀을 때부터 켜진 채로 유지하며, 이후에는 자기의 기존 신호 하나를 해제한 뒤 다시 제공하므로 ChannelCount가 누적되지 않는다. 채널 번호는 기존 SignalTargets의 Channel 사용(0으로 고정하지 않음). 다른 송신 장치의 신호와 ChannelRequired 계산은 기존 규칙을 따른다. 0번은 출발·정지만 하며 방향을 정방향으로 초기화하지 않는다.
+
+- 공유 enum을 사용하는 BP_BlockSignalTrigger에도 같은 RepeatOn 분기를 연결했다. 기존 네 모드와 모든 기본값은 유지. BP_ResetButton 자식은 기본 ReOn 유지, 파일 수정 없음.
+- 검증: 별도 임시 맵의 직접 BP 호출 27개 검사 통과. 100회 눌러도 신호 수 1, 다른 송신자 기여 보존, 0번 재출발/유지, 1번 반복 리셋, 2번 반복 방향 전환, 임의 채널·여러 대상, 기존 모드와 ResetButton 기본값 확인. 새 프로세스 오류·경고 0. F키 상호작용·Timed 만료 PIE는 미실시. 백업: Saved/CodexBackups/ButtonRepeatOn-20261102.
 
 ### BP_ResetButton (리셋 버튼, BP_Button 자식 — 2026-11-01 그래프 확인, 테스트 전)
 **구성요소**: 부모 것 + `ResetArea`(Box Collision, DefaultSceneRoot 자식, NoCollision, Hidden in Game — 범위 표시·계산용). Class Defaults `ButtonMode` = `ReOn`.
@@ -180,6 +185,27 @@ OnComponentBeginOverlap(Box)
      → GetPlayerCameraManager.StartCameraFade(0→1, 0.5초, Hold) → Delay 0.5 → OpenLevel(by Object Reference, NextLevel)
 ```
 - Deactivate는 보내지 않음(영구 켜짐).
+
+### BP_BlockSignalTrigger (블록 진입 신호 구역, 로컬 추가 2026-11-02)
+`BP_Trigger` 복제본이며 부모는 Actor. 원본 Box를 유지하고 플레이어 한 번 감지·레벨 이동 로직은 제거했다. `BP_Button`과 같은 구조체 배열과 인터페이스 메시지로 송신한다.
+
+| 변수 | 설명 |
+|---|---|
+| `SignalTargets` [I] | 수신 액터와 Channel 정수 배열. 버튼과 동일한 구조 |
+| `ButtonMode` [I] | JustOn / Togle / ReOn / Timed / RepeatOn. 기본 ReOn |
+| `TimedDuration` [I] | Timed 유지 시간, 기본 10초 |
+| `TriggerBlock` [I] | 비우면 조건을 만족하는 모든 능력 블록, 지정하면 그 인스턴스만 |
+| `OnlyPhysicsBlocks` [I] | 기본 true. false면 Fixed·Patrol 등 다른 Move도 감지 |
+| `IsOn` | JustOn·Togle·Timed용 내부 상태 |
+
+- Box BeginOverlap → `HandleBlockOverlap(OtherActor, OtherComp)` → Cast BP_AvilityBlock → OtherComp가 그 블록의 본체 `StaticMesh`인지 검사 → OnlyPhysicsBlocks면 Move == Physics 검사 → TriggerBlock이 유효하면 OtherActor와 같은지 검사 → `TriggerSignal`.
+- `TriggerSignal`: JustOn은 최초 한 번 Activate, Togle은 IsOn 반전 후 Activate/Deactivate, ReOn은 Activate 직후 Deactivate, Timed는 IsOn일 때 재진입 무시하고 Activate → Delay(TimedDuration) → Deactivate.
+- RepeatOn(2026-11-02 추가): 첫 진입에 Activate 후 유지. 이후 진입에는 자기 신호를 Deactivate → Activate하여 중복 누적 없이 재작동 후 유지.
+- `SendActivate` / `SendDeactivate`: ForEach(SignalTargets) → Break S_SignalTarget → BPI_Activatable 메시지(Target, Channel). 버튼과 같은 구조.
+- 콜리전: QueryOnly, Object Type LightSencer(BP_Respawn과 동일), WorldDynamic·PhysicsBody Overlap, 나머지 Ignore. 장식 컴포넌트 진입은 무시한다.
+- 플랫폼 복귀: SignalTargets에 플랫폼 / Channel 1, ButtonMode ReOn. 반복 진입 때마다 MovePoint[0]으로 순간이동한다. 낙하 블록 리스폰은 별도 BP_Respawn 담당이며, 신호 구역은 리스폰 구역보다 위에 배치한다.
+- 검증: 별도 임시 맵에서 감지 처리 함수를 호출하는 25개 검사 통과. 채널 0 송수신, 채널 1 반복 플랫폼 복귀, 채널 2 ReOn 반복 방향 전환, 선택 블록·Move·본체 필터, 여러 수신 대상, 모드 상태와 콜리전 확인. 새 프로세스 로드·컴파일 오류/경고 0. 실제 물리 진입과 Timed 만료의 PIE 검증은 미실시.
+- 현재 플랫폼 채널 2는 OnChannelActive에만 ReverseDirection 연결. OnChannelDeactive의 2번은 미연결이므로 반복 방향 전환에는 ReOn을 사용한다. 원본 동작은 수정하지 않았다.
 
 ### BP_Pickup (손전등·필터 줍기, BPI_Interact, 작업 6 — 2026-10-24 완료)
 **구성요소**: `DefaultSceneRoot` → `ItemMesh`(Static Mesh, Custom: Query Only, WorldDynamic, Visibility만 Block — F 트레이스용, 플레이어·블록과 충돌 없음)
@@ -297,6 +323,29 @@ DefaultSceneRoot
 - `OnChannelActive`: Parent → Switch — 0 전원 켬(TurnOn + SetVisibility) / 1 색(ChangeColor) / 2 ActiveRotatePitch / 3 ActiveRotateYaw / 4 ActiveMove. `OnChannelDeactive`는 각 반대(1번 Rotate는 무시). **(미확인: Deactive 4 → DeactiveMove 연결)**
 - `IsStartOn`: 0 → `StartOn`.
 
+### BP_BlinkLight (신호로 반복 점멸, BP_Light 자식 — 2026-11-03)
+- 시작 지연 검증(2026-11-03): 실제 PIE 125개 검사 통과. 트리거 수신 후 0.8초 대기, 이후 0.3초 켜짐/0.2초 꺼짐 유지, 지연 중 취소·재시작·중복 입력·0/음수·기존 반복 동작 확인. Green 맵의 기존 광원 3개 위치·설정과 기존 파일 해시 보존. 결과 `Saved/CodexBackups/BlinkLightStartDelay-20261103/verification.json`.
+`Content/BluePrint/BP_BlinkLight.uasset`. BP_Light를 부모로 하는 자식이며 메시·색·회전·이동·빛 판정과 BeginPlay를 상속한다. 기존 광원과 레벨은 자동 교체하지 않는다.
+
+| 변수 | 설명 |
+|---|---|
+| `BlinkOnTime` [I] | Blink Timer 카테고리, 켜짐 유지 시간(초), 기본 3 |
+| `BlinkOffTime` [I] | Blink Timer 카테고리, 꺼짐 유지 시간(초), 기본 2 |
+| `BlinkStartDelay` [I] | Blink Timer 카테고리, 7번 수신 후 최초 켜짐까지 지연(초), 기본 0. 0 이하면 즉시 시작 |
+| `BlinkRunning` / `BlinkPhaseOn` | 내부 실행 상태 / 현재 켜짐 단계 |
+| `BlinkTimerHandle` | 내부 단발 타이머 핸들. 부모 LightScan 타이머와 별개 |
+
+- 기본 `StartLightOn=false`, ChannelRequired에 `7→1` 추가. 실제 부모 그래프는 0~4번에만 동작이 연결되어 있고 5·6번은 미연결. 새 기능은 7번 사용.
+- `OnChannelActive(7)` → `StartBlink`: 실행/지연 중이면 무시. 아니면 BlinkRunning=true → BlinkPhaseOn=false → ApplyBlinkPower(false). BlinkStartDelay>0이면 동일 BlinkTimerHandle로 BeginBlinkCycle 단발 예약, 아니면 즉시 호출. 시작 지연은 첫 켜짐에 한 번만 적용하며 반복 단계에는 추가하지 않는다.
+- `BeginBlinkCycle`: BlinkRunning일 때만 BlinkPhaseOn=true → ApplyBlinkPower(true) → QueueBlinkPhase. 취소 후 이전 시작 콜백을 호출해도 재점등하지 않는다.
+- `QueueBlinkPhase`: 현재 단계의 BlinkOnTime/BlinkOffTime을 Select → Max(시간, 0.01초) → SetTimerByFunctionName(AdvanceBlinkPhase, Looping=false) → BlinkTimerHandle 저장. 단계 시작마다 시간을 읽으므로 실행 중 변경은 다음 해당 단계부터 적용.
+- `AdvanceBlinkPhase`: 실행 중일 때만 BlinkPhaseOn 반전 → ApplyBlinkPower → QueueBlinkPhase. 새 신호마다 타이머를 추가하거나 매 프레임 시간을 계산하지 않는다.
+- `ApplyBlinkPower(PowerOn)`: 부모 TurnOn과 SpotLight Visibility를 함께 갱신. false면 부모 ClearLitActor 즉시 호출해 블록·거울에 남은 빛 기여도 제거.
+- `OnChannelDeactive(7)` / `ReceiveEndPlay` → StopBlink: BlinkRunning=false → ClearAndInvalidateTimerHandle → BlinkPhaseOn=false → ApplyBlinkPower(false). 지연 중에도 취소 가능. 재활성화하면 시작 지연 전체부터 다시 기다리고 켜짐 단계를 시작한다.
+- 7번 외 OnChannelActive/Deactive는 부모 호출. 부모 IsStartOn을 상속하여 7번은 StartLightOn의 반전을 받지 않음. ChannelRequired의 합산·임계값 유지.
+- 연결: BP_Trigger의 **Targets** 배열에 이 자식과 Channel=7, NextLevel 비움. 트리거는 Activate만 보내므로 통과 후 계속 점멸. 버튼 JustOn/Togle/Timed·발판도 가능. ReOn은 즉시 Deactivate해서 점멸을 바로 중지하므로 지속 점멸용으로 쓰지 않는다. 점멸 전원은 7번으로 제어하고, 실행 중 0번 전원 신호와 혼용하면 다음 단계에서 타이머가 전원을 다시 설정한다.
+- 검증 결과: 임시 PIE 77개 검사 통과. 실제 플레이어 진입·시간·독립 인스턴스·정지/재시작·부모 상속·빛 기여 해제 확인. 빌드 컴파일 오류·경고 0. 결과 `Saved/CodexBackups/BlinkLight-20261103/verification.json`. 기존 Content/Config 파일 해시 일치, 새 광원만 추가.
+
 ### BP_Light2 (상자형 맵 광원, 2026-10-25 완료)
 BP_Light 복사본. 변수·LightScan·IsLit·채널 번호·OnChannelActive/Deactive는 BP_Light와 같음. 차이는 움직이는 대상(액터 → 컴포넌트)뿐. (`BP_Light1`은 BP_Light2로 가는 리다이렉터 — 이름 변경 흔적, 에디터에서 안 보임, 그냥 둠)
 
@@ -362,6 +411,70 @@ DefaultSceneRoot
 - Construction: ColorMode로 메시 → Move로 표시등 → UserStaticMesh면 교체 후 종료, 아니면 `BlockMID` 생성 → 크리스탈 색.
 - Tick (2026-10-30): `AvilityTick` → Branch(`RestartWaiting`) F → Branch(`WaitTrigger`) → (T면 Branch(`TriggerPaused`) F) → Switch(`Move`). Patrol 핀마다 `Branch(MoveCheck)` → `SetActorLocation(Movelocation(DeltaTime))` → `Branch(getDistance)`(경유지 도착) → `Branch(CheckChange)`(마지막 경유지): Return T → `PatrollCount × -1` → `PatrolIndex += PatrollCount` / Rotation T → `PatrolIndex = 0` / Restart T → `PatrolIndex = 0` → `SetActorLocation(WorldPatrolPoints[0], Teleport)` / **Once T → 없음(끝에서 멈춤)** / 모두 F → `PatrolIndex += PatrollCount`.
 
+### BP_FallingHazardBlock (낙하 주기·플레이어 밀기, BP_AvilityBlock 자식 — 2026-11-03)
+- 공통 시간표 추가(2026-11-03): 디테일 **Shared Schedule → UseSharedSchedule**(기본 false), **ScheduleController**(BP_FallSchedule 참조). 같은 컨트롤러의 최초 시작 시각을 공유하고 각 블록의 StartDelay / RepeatInterval로 절대 출발 시각을 계산한다. 공통 모드에서도 기존 Fall Cycle의 시간 변수를 그대로 수정. RepeatInterval은 양수 필수이며 0 이하면 대기. StartDelay는 0 이상으로 보정, 양수 주기는 최소 0.01초.
+- 새 `BP_FallSchedule`(BP_Activate 자식): 내부 ScheduleStarted=false, ScheduleStartTime=0. StartSchedule은 최초 한 번 Now를 기록하며 0번 Activate로 시작 가능. Deactivate나 반복 입력은 시계를 정지·재시작하지 않는다. 기존 블록 0번도 StartSharedFallSchedule을 통해 같은 시계를 시작한다. 연결된 블록 중 하나가 0번을 받으면 전체가 같은 기준 시각으로 합류. 하나라도 WaitForStartSignal=false면 그 블록 초기화가 전체 시계를 자동 시작하므로 신호 시작 그룹은 전부 true로 둔다.
+- StepSharedFallSchedule은 대기/공중/초록 정지/3번 정지 중에도 매 프레임 차례 번호를 소비한다. 이미 지난 차례는 재실행하지 않음. 출발 시각은 ClockStart+Max(StartDelay,0)+회차×Max(RepeatInterval,0.01). 프레임 허용 오차는 Min(0.1초, 주기×0.25). 준비되지 않은 차례나 큰 프레임 지연은 건너뛴다. LastSharedScheduleSlot=-1, SharedReleaseAllowed=false 내부 변수로 중복·직접 ReleaseFall 우회 방지.
+- 공통 모드: SetMove의 기존 초기화 뒤 InitializeSharedFallSchedule 실행. StepFallCycle → StepSharedFallSchedule, QueueNextFall → HoldForFall, ResumeFallSpawning → ResumeSharedFallSchedule(시계/남은 시간 수정 없이 정지 해제 후 다음 차례 대기). ReleaseFall은 SharedReleaseAllowed일 때만 기존 물리 출발 처리 실행. 공중 물리·플레이어 밀기용 속도 기록은 MaintainSharedFallState에서 유지. Freeze/Unfreeze·기존 리스폰·0/3번의 의미 유지. RepeatFalls=false는 첫 차례만 시도. UseSharedSchedule=false는 기존 개별 주기·남은 시간 재개를 유지한다.
+- Green 맵: `FallSchedule_Green_ThreeGroups` 하나 추가. 기존 12개(첫 묶음 BP_FallingHazardBlock~4 / 둘째 5~8 / 셋째 9~12)를 같은 시계에 연결. StartDelay=0 / 3 / 6초, RepeatInterval=모두 9초, RepeatFalls=true, WaitForStartSignal=true. 실제 Green에서 높은 블록의 정상 복귀까지 약 6.8초가 걸려 초기 제안 5.25초 대신 여유 있는 9초 주기와 균등한 3초 간격으로 확정. 다른 낙하 블록 2개와 기존 트리거 대상·위치·외형·색·밀기 설정 보존. 맵 수정 전 디스크 및 사용자 미저장 작업을 저장한 기준본을 각각 백업하고, 요청한 설정 적용 후 Green 저장.
+- 검증: 임시 12개 블록 및 기존 낙하·신호·정지 회귀 172개, 실제 Green 정지/재개 47개와 정상 반복 43개, 총 262개 검사 통과. 최종 9초 주기에서 12개 전부 4회씩 원래 차례에 출발했고, 정지 해제한 블록도 18초/21초 원래 차례에 합류. 공통 모드의 초록빛/3번 정지 회차 건너뛰기·고정 출발 시각·독립 시계·직접 호출 방어·실제 높이/리스폰 검증. 준비 지연으로 실제 레벨에서 더 많은 회차를 건너뛰어도 출발은 원래 시간표에만 일치. 공중에서 초록빛이 풀린 물체의 낙하 재개는 그대로이며 새 출발과는 별개. 컴파일 오류·경고 0. 변경은 이 BP·새 BP_FallSchedule·Green.umap 및 문서. 결과/백업 `Saved/CodexBackups/FallingHazardSharedSchedule-20261103`.
+- 개별 모드 정지 신호(2026-11-03): **3번 Activate = 다음 낙하 정지, Deactivate = 남은 대기 시간부터 재개**. 공통 모드는 위 시간표 정책을 따름. 낙하 중인 물체의 위치·속도·물리는 건드리지 않고 기존 BP_Respawn으로 돌아온 뒤 HoldForFall 상태에서 대기한다. HideWhileWaiting 설정을 그대로 사용. 0번 시작 신호는 기존 동작 유지. 영구 정지는 기존 BP_Trigger의 Targets에 이 블록/Channel=3, NextLevel 비움. Togle 버튼·발판은 유지되는 동안 정지, 해제 시 재개. ReOn은 바로 재개되므로 지속 정지용 아님.
+- 새 내부 FallSignalPaused(bool=false), PausedFallRemaining(real=0). PauseFallSpawning은 최초 정지에 Max(NextReleaseTime−Now,0)를 저장하고 대기 중인 본체만 HoldForFall. 중복 정지/재개 콜백은 무시. ResumeFallSpawning은 해제 후 초기화 완료라면 NextReleaseTime=Now+남은 시간 → StepFallCycle. 공중에서 재개해도 물리를 리셋하지 않는다.
+- ReleaseFall 시작 가드로 모든 재출발을 막고, QueueNextFall은 정지 중 주기를 건너뛰거나 시간을 다시 계산하지 않고 HoldForFall만 실행. RepeatFalls=false 또는 RepeatInterval<=0 경로도 정지 적용. InitializeFallCycle·StartFallSequence가 출발 시간을 정하면 CapturePausedFallDelay가 정지 중 남은 시간을 갱신하므로 초기화 전 정지·정지 중 0번 시작도 정상 처리. 초록 Freeze는 독립적으로 유지되어 두 정지 조건이 모두 해제되어야 출발.
+- 3번 외 OnChannelActive/Deactive와 IsStartOn은 기존 흐름 유지. ChannelRequired 기본 맵에 3→1 추가, 기존 키·사용자 값 보존. 실제 PIE 117개 검사 통과(기존 시작/낙하/밀기 회귀 포함), 컴파일 오류·경고 0. 배치된 14개 인스턴스 위치·기존 설정 보존(새 기본 채널 3만 추가). 다른 Content/Config·레벨 파일 해시 일치. 백업/결과: `Saved/CodexBackups/FallingHazardPause-20261103`.
+- 신호 시작 추가(2026-11-03): Fall Cycle의 WaitForStartSignal [I] 기본 false. true면 0번 Activate를 받을 때까지 무기한 대기. 0번을 한 번 받은 시점부터 StartDelay를 계산해 반복을 시작한다. 0번 Deactivate/재입력은 무시하므로 ReOn 펄스도 가능. 신호가 BeginPlay보다 빨라도 보존. 기본 false는 기존 자동 낙하 유지.
+- 새 내부 FallSequenceStarted/CycleInitialized. InitializeFallCycle은 NOT WaitForStartSignal OR 기존 시작 래치, CycleInitialized=true. ReleaseFall에 신호 가드. StartFallSequence는 옵션 켬 AND 아직 시작 전일 때만 래치 → 초기화 후면 NextReleaseTime=Now+Max(StartDelay,0) → StepFallCycle. OnChannelActive 0은 시작, 3은 정지, 나머지 부모 호출. OnChannelDeactive 0은 무시, 3은 재개, 나머지 부모. IsStartOn은 false로 부모 Patrol의 StartMoving 반전이 0번 시작 명령에 영향을 주지 않음. ChannelRequired 임계값은 그대로.
+- 플레이어 진입 연결: 기존 BP_Trigger의 Targets 배열(이름 주의)에 Target=이 낙하 블록, Channel=0, NextLevel 비움. 여러 블록을 함께 넣고 각 StartDelay로 순서 조절. 블록 진입용 BP_BlockSignalTrigger는 SignalTargets에 같은 Target/Channel 설정.
+- 신호 대기·실제 BP_Trigger 플레이어 진입·신호 기준 지연/반복·중복/꺼짐 무시·초기 신호·요구 개수·기존 낙하/밀기/초록 정지, 별도 PIE 77개 검사 통과. 기존 레벨 4개 인스턴스의 위치·회전·스케일·설정 보존. 결과 Saved/CodexBackups/FallingHazardSignal-20261103.
+- BP_AvilityBlock 자식. 기존 BP·플레이어·Levels 파일 수정 없음. Content/BluePrint/BP_FallingHazardBlock.uasset. 자연 중력 낙하 + 출발 지연/반복 위상 + 낙하 충돌 시 옆으로 밀기.
+- 부모 BeginPlay 상속. SetMove에서 Move=Physics 강제 → Parent SetMove → InitializeFallCycle. 이후 부모가 BaseSize/ResetLocation/ResetRotation 저장. CanGrab 기본 false. UserStaticMesh·색 반응·초록 충전/유지 시간 상속. 감쇠/최고속도/질량은 바꾸지 않음.
+- Fall Cycle [I]: StartDelay(0초), RepeatFalls(true), RepeatInterval(4초), HideWhileWaiting(true). 같은 높이에 배치하고 StartDelay 0/0.5/1/1.5/2/2.5/3/3.5, RepeatInterval=4로 8개 출발. 대기 중 본체 물리/충돌을 끄며 기본적으로 숨김. 빛 수신/잡기 불가. HideWhileWaiting=false면 보이기만 함.
+- 반복 복귀는 기존 BP_Respawn(ResetBlock=true)의 ResetToStart 사용. 자식이 Parent ResetToStart로 메시 복귀·속도 초기화 후 다음 절대 시간 슬롯까지 대기. RepeatInterval은 리스폰 후 추가 대기가 아니라 출발 간격. 늦게 돌아오면 지난 슬롯을 건너뛰며 공중/초록 정지 중 강제 복귀하지 않음. 리스폰 영역에 안 닿으면 자동 반복하지 않음. RepeatFalls=false 또는 RepeatInterval<=0은 초기 StartDelay만 사용하고 이후 리스폰 시 즉시 재낙하.
+- ReceiveTick: AvilityTick → StepFallCycle. 대기 중 HoldForFall로 능력 해제의 물리 재활성화 방지. Freeze/Unfreeze는 부모 호출, Freeze는 충돌 전 속도 기록도 0, Unfreeze는 대기 중 HoldForFall 재적용. 초록 정지 중 출발하지 않음.
+- Player Push [I]: EnablePlayerPush=true, PushSpeed=500cm/s, PushUpSpeed=100cm/s(현재 수직 속도에 추가), MinImpactSpeed=150cm/s, PushCooldown=0.5초, UseCustomPushDirection=false, PushDirection=(1,0,0)(액터 로컬), EscapeClearance=10cm, MaxEscapeDistance=500cm.
+- 실제 본체 Hit + Character만 허용. 직전/현재 아래쪽 물리 속도로 문턱 확인. 대기/정지/저속 접촉 제외. 실제 움직이는 StaticMesh Bounds 중심에서 플레이어 쪽 수평 방향, 중심이 같으면 액터 오른쪽/월드 X 대체. Custom은 로컬 방향을 액터 회전으로 월드 변환 후 수평 정규화.
+- 블록 밑 끼임을 줄이기 위해 메시 Bounds+캡슐 반경 바깥까지 필요한 거리만 Sweep 이동(MaxEscapeDistance 한도). 이 블록만 임시 MoveIgnore, 기존 상태 복원. 벽·바닥 콜리전 유지. 이어 LaunchCharacter(XY Override=true, Z Override=false), 쿨타임으로 중복 제한. 벽에 막혀 출구가 없거나 이탈 거리가 부족하면 완전 탈출 보장 안 됨. 멀티플레이 미검증.
+- 검증: 별도 PIE에서 실제 낙하 Hit·정지 플레이어 수평 탈출·벽 차단·밀기 설정·Freeze/Unfreeze·기존 BP_Respawn 겹침·8개 블록 반복, 56개 검사 통과. 컴파일 오류/경고 0. 결과 Saved/CodexBackups/FallingHazardBlock-20261103. 기존 레벨 자동 교체 없음.
+
+### BP_ReturnPlatform (시작점 귀환 플랫폼, BP_AvilityBlock 자식 — 로컬 추가 2026-11-02)
+기존 능력 블록은 유지하고 별도 자식 BP에 출발·귀환 상태를 구현했다. 경로는 부모의 MovePoint/WorldPatrolPoints, 속도는 MoveSpeed, 메시·빛 반응은 부모 설정을 사용한다.
+
+| 채널 / 내부 상태 | 동작 |
+|---|---|
+| Channel 0 켜짐 | 시작점 대기 중일 때만 StartForward. 진행 방향 +1, 경유지 인덱스 0, 이동 시작 |
+| Channel 3 켜짐 | 전진 중 또는 끝점 대기 중이면 ReturnToStart. 현재 목표의 이전 경유지부터 역순 귀환 |
+| Channel 0/3 꺼짐 | 명령형 채널이므로 이동을 취소하지 않음 |
+| Channel 1/2 | 이 전용 BP에서는 사용하지 않음. 기존 BP_AvilityBlock의 동작은 변경 없음 |
+| PlatformPhase 0/1/2 | 0 = 시작점 대기, 1 = 전진(마지막 경유지에서 대기 포함), 2 = 귀환 |
+
+- BeginPlay는 부모 것을 그대로 상속한다. SetMove만 오버라이드: Move=PatrolOnce(NewEnumerator8), WaitTrigger=true, StartMoving=false → **Parent SetMove**(물리·월드 경로 초기화) → FinishReturnPlatform. 자식 기본 경로는 (0,0,0) → (300,0,0), ChannelRequired는 0→1 / 3→1.
+- IsStartOn은 항상 false. 채널 신호는 출발/귀환 명령으로 처리하며 부모의 StartMoving 반전 규칙을 적용하지 않는다.
+- StartForward: Phase==0 AND 경유지 2개 이상이면 Phase=1, PatrollCount=1, PatrolIndex=0, TriggerPaused=false. 전진/귀환 중 재출발 입력은 무시.
+- ReturnToStart: Phase==1 AND 유효 경로이면 Phase=2, PatrollCount=-1, PatrolIndex=Clamp(현재 목표 인덱스-1, 0, 마지막), TriggerPaused=false. Phase==2에서 다시 받아도 뒤집히지 않는다.
+- ReceiveTick 오버라이드: 부모 AvilityTick → StepReturnPlatform(DeltaSeconds). 부모의 자동 Patrol 이동 Tick은 호출하지 않아 이중 이동을 피한다.
+- StepReturnPlatform: Phase>0, 경유지 2개 이상, !TriggerPaused, !IsFrozen, dt>0, MoveSpeed>0을 모두 검사. 인덱스를 유효 범위로 Clamp하고 현재 경유지를 로컬 RouteTarget에 저장 → VInterpTo_Constant → SetActorLocation(Sweep=false, Teleport=false) → 도착 거리 ≤0.01이면 AdvanceReturnRoute.
+- AdvanceReturnRoute: 전진이면 다음 경유지, 마지막이면 그 자리에서 TriggerPaused=true. 귀환이면 이전 경유지, 0번이면 FinishReturnPlatform(Phase=0, Pause=true, Index=0, Direction=+1). 시작점으로 이동하는 순간이동 노드는 없다.
+- 연결 예시: BP_Button RepeatOn / Channel 0 → 새 플랫폼, BP_BlockSignalTrigger ReOn / Channel 3 → 같은 플랫폼. 블록 리스폰은 기존 BP_Respawn으로 처리하며 신호 구역을 더 위에 배치한다.
+- 검증: 별도 임시 맵에서 실제 ReceiveBeginPlay/ReceiveTick과 버튼·트리거를 호출하는 34개 검사 통과. 프레임 이동 거리 제한, 중간/끝점 귀환, 꺾인 경로 역주행, 반복 신호 무시, 3회 왕복과 재출발, Freeze/Unfreeze, 빈/단일 경로·속도/시간 0, 변환 경로 확인. 새 프로세스 오류·경고 0. 실제 플레이어 탑승·실시간 PIE는 미실시.
+- 백업/검증: Saved/CodexBackups/ReturnPlatform-20261102. 기존 BP 및 Levels 파일은 해시 비교로 보존 확인.
+
+### BP_GreenGroupStop (초록빛 그룹 정지, 2026-11-01)
+사용자가 만든 BP_AvilityBlock 복제본을 완성한 로컬 BP. 부모는 BP_Activate이며 BP_AvilityBlock의 자식은 아니다. 기존 빛 반응·Freeze/Unfreeze 로직을 유지한다.
+
+| 추가 변수 | 형식 / 용도 |
+|---|---|
+| `StopTargets` [I] | BP_AvilityBlock Object Reference **배열**. 정지·재개할 Patrol 블록 목록 |
+| `GroupStopSent` | Bool, 기본 false. 같은 상태의 신호 중복 전송 방지 |
+
+- `SetGroupStopped(ShouldStop)` → Branch(ShouldStop != GroupStopSent) → True: Set GroupStopSent → ForEachLoop(StopTargets) → IsValid(ArrayElement) → Branch(ShouldStop) → True: BPI_Activatable.Activate(Target, Channel 0), False: Deactivate(Target, Channel 0). False 분기와 None 대상은 건너뛴다.
+- `Freeze`: 진입 → SetGroupStopped(true) → 기존 IsFrozen 검사 및 Freeze 처리.
+- `Unfreeze`: 진입 → SetGroupStopped(false) → 기존 IsFrozen 검사 및 해제 처리.
+- 수신 대상은 Patrol 모드 + WaitTrigger=true + StartMoving=true + ChannelRequired 0→1. 시작 상태 반전으로 Activate=정지, Deactivate=재개가 된다. Physics 블록용 그룹 정지는 아니다.
+- Green 레벨의 `BP_AvilityBlock3`(이 BP 인스턴스): 2026-11-01 재확인 시 ReactOnly / Green / PatrolRotation, 사용자 메시 사용 꺼짐. StopTargets에 `BP_AvilityBlock4`~`7` 연결. 이동 모드·경로와 대상 설정은 이번 감지 수정에서 변경하지 않음.
+- 손전등 미반응 원인: 이 복제본의 Construction ReactOnly 본체 메시가 None이고, 보이는 `SM_Floor_Plain_Light`는 NoCollision이어서 Visibility 레이가 통과함. 받침 모양을 유지하도록 **이 BP의 받침 컴포넌트만** Custom / QueryOnly로 변경: Visibility=Block, Camera·WorldStatic·WorldDynamic·Pawn·PhysicsBody·Vehicle·Destructible·Projectile=Ignore, LightSencer=Overlap. 공유 메시 에셋·원본 BP·플레이어 BP는 수정하지 않음.
+- 검증: 컴파일·저장 성공. PIE에서 3키로 실제 손전등을 초록으로 바꾸고 받침 아래 조준 → ActiveContributions에 플레이어의 (0,1,0,1), GroupStopSent=true, 대상 4개 TriggerPaused=true 확인. 플레이어 TurnOff 호출 후 네 대상 모두 false 복구 확인. 카메라 위치 조정은 PIE에서만 했으며 플레이 종료함. 기존 SIE 중복 Freeze/Unfreeze 검증도 통과.
+- 복제본이므로 이후 원본 BP_AvilityBlock 변경이 자동으로 반영되지 않는다. 원본으로 Cast하는 잡기·리스폰 기능의 호환성을 보장하지 않는다. 받침 메시가 제거되는 Fixed/사용자 메시 구성에서는 별도의 실제 수신 본체와 Visibility 충돌이 필요하다.
+
 ### BP_PressBlock (프레스 블록, BP_AvilityBlock 자식 — 2026-11-01 완료·동작 확인)
 **구성요소**: 부모 것 + `PressBox`(Box Collision, DefaultSceneRoot 자식, Hidden in Game, Custom Query Only, Object Type `LightCencer`, WorldDynamic/PhysicsBody/Pawn Overlap·나머지 Ignore — BP_Respawn Box와 같음, Visibility Ignore 필수).
 
@@ -385,6 +498,17 @@ PressBox Begin Overlap → Branch(OtherActor != Self) → Cast To BP_AvilityBloc
 - 자식 BP의 회색(비활성) `Event BeginPlay → Parent: BeginPlay`는 뒤에 노드를 이어야 활성화됨 — 이었더니 정상(처음엔 비활성이라 RespawnWorldLocation이 원점이었음).
 - 레벨에서 PressBox만 크기 조절: 액터 선택 → Details 컴포넌트 목록에서 PressBox → Box Extent(절반 크기)·Location Z. 액터 Scale은 메시·박스·다이아몬드 거리를 모두 키움.
 - 박스가 GetActorBounds에 포함돼 맵 광원 IsLit 표본점이 아래로 조금 넓어짐(얇게 두면 영향 작음).
+
+### BP_SmoothPushPressBlock (부드러운 옆면 밀기, BP_PressBlock 자식 — 2026-11-02)
+- 추가 컴포넌트 없음. 부모 BeginPlay·PressBox 리스폰 상속. 기본 Move=PatrolOnce, MovePoint [(0,0,0),(300,0,0)].
+- EnableSmoothPush [I] true / PushSkin [I] 0.5cm / StopWhenPlayerBlocked [I] true (Smooth Push 카테고리). PushObjectTypes는 내부 WorldStatic/WorldDynamic/PhysicsBody 배열.
+- ReceiveTick: AvilityTick → IsSmoothPatrol → StepSmoothPatrol(DeltaSeconds). 부모 Patrol Tick 중복 호출 없음. 모드 ordinal 2/3/4/5=Return/Rotation/Restart/Once.
+- StepSmoothPatrol: 경로>=2, !IsFrozen, !RestartWaiting, !(WaitTrigger && TriggerPaused), dt>0, MoveSpeed>0 → 인덱스 Clamp → RouteTarget 저장 → VInterpTo_Constant → SmoothPushMove(목표, GetPlayerCharacter(0)) → 실제 위치가 목표 1cm 안일 때 AdvanceSmoothRoute.
+- AdvanceSmoothRoute: 다음 인덱스 유효하면 진행. 끝에서 Return은 방향 반전, Rotation은 인덱스 0, Restart는 인덱스 0과 시작점 Teleport, Once는 대기. 0/1/2 신호는 원본 상속.
+- SmoothPushMove: 이동량 저장 → 켬·유효 플레이어·이동량 있음·MovementBaseActor != Self이면 FindPushContact → 접촉 시 PushCharacterForMove → 허용 이동 비율로 블록 이동. 그 외에는 일반 경로 이동.
+- FindPushContact: 플레이어 위치 → 위치−이동량으로 CapsuleTraceMultiForObjects(Radius+Max(PushSkin,0), 실제 HalfHeight), 단순 충돌. 플레이어 자신만 Ignore, bIgnoreSelf=false. HitActor==Self, HitComponent.Pawn==Block, |Normal.Z|<0.7, Dot(Delta,Normal)>0인 가장 이른 Time 반환. PressBox는 Pawn Overlap이라 밀기 후보 제외. 실제 충돌 모양 사용.
+- PushCharacterForMove: Delta×(1−Time)만 플레이어 Sweep 이동. 캡슐의 기존 MoveIgnoreActors에서 Self 존재 여부 저장 → 일시 Ignore → 이동 → 원래 상태 복구. 실제 변위/요청 변위 비율을 Clamp하여 블록 허용 비율 반환. StopWhenPlayerBlocked=false면 블록 이동량 제한 없음.
+- PressBox 리스폰 우선. 레벨 인스턴스에만 추가한 장식은 새 액터에 자동 이전되지 않음. 게임 월드 충돌 34개 및 실제 플레이 프레임 9개 검사 통과. 기존 레벨·BP·BP_Charactor 변경 없음.
 
 ### BP_Mirror (거울)
 **구성요소**:
@@ -556,6 +680,8 @@ CapsuleComponent (루트, Character 기본)
 ## 7. 갱신 기록
 | 날짜 | 변경 |
 |---|---|
+| 2026-11-01 | 로컬 BP_GreenGroupStop: StopTargets 배열 수정, 정지/재개 인터페이스 호출 및 Freeze/Unfreeze 연결. Green 레벨 대상 4개 지정, 컴파일·SIE 신호 검증 |
+| 2026-11-01 | BP_GreenGroupStop 받침 NoCollision으로 손전등이 통과하던 문제 수정. QueryOnly + Visibility Block, 물체 채널 Ignore. 실제 플레이어 초록 손전등 수신 → 대상 4개 정지 → TurnOff 후 재개 확인 |
 | 2026-10-23 | 문서 작성. BP_Respawn 13번 작업 중 상태 반영 |
 | 2026-10-23 | BP_Respawn: ResetBlock / ResetPlayer / PlayerRespawnLocation, 플레이어 소환 흐름 (13번 완료) |
 | 2026-10-24 | 작업 6: S_PlayerProgress, BP_GameInstance(함수 4개), BP_TestGameMode / BP_RealGameMode, BP_Charactor GI·UnlockAll 캐싱 |
