@@ -89,6 +89,7 @@
 
 <!-- ===================== 최근 변경 ===================== -->
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
+<p><strong>2026-11-05 — 빛 경로용 옅은 볼류메트릭 안개</strong></p><ul><li>Tutorial+Red·Green·Blue에 <a href="#spectrum-fog"><code>Fog_Spectrum_LightPaths</code></a>를 추가했습니다. 낮은 안개 밀도와 퍼즐 광원의 산란값을 함께 조절하여 기존 밝기와 원거리 시야를 유지하며 경로 표시를 보강합니다. 퍼즐 로직과 BP 기본값은 유지합니다.</li></ul>
 <p><strong>2026-11-05 — 플랫폼 조건부 출발·건너편 독립 왕복</strong></p><ul><li><a href="#platform-controller"><code>BP_PlatformController</code></a> 추가 후 사용자 테스트에 따라 재조정했습니다. 시작점 발판과 스위치가 모두 켜져야 출발하며, 하나라도 꺼지면 시작점으로 돌아옵니다. 건너편 ReOn 버튼은 이동·출발 지연 중에도 현재 목적지를 반대로 바꾸며 시작점 조건과 독립적으로 조작합니다. 기존 플랫폼 BP와 맵 배치는 유지합니다.</li></ul>
 <p><strong>2026-11-05 — 신호로 다음 리스폰 지점 지정</strong></p><ul><li><a href="#respawn-point-setter"><code>BP_RespawnPointSetter</code></a> 추가. 트리거·버튼·압력판의 0번 신호로 연결된 물리 블록의 복귀 위치만 바꾸며, 실제 이동은 기존 리스폰 구역에 닿아 리스폰할 때 수행합니다. 별도 지점 액터도 지정할 수 있고, 신호를 꺼도 변경 위치를 유지합니다.</li></ul>
 <p><strong>2026-11-04 — 낙하 블록 매 신호 대기 옵션</strong></p><ul><li><a href="#falling-hazard-each-signal"><code>Fall Cycle → Require Signal Each Fall</code></a> 추가. 켜면 0번 신호마다 한 번 낙하하고 리스폰 구역 접촉 후 다음 신호를 기다립니다. 끄면 기존 시작·반복 동작을 유지합니다. 기본값은 꺼짐이며 기존 맵 설정은 보존합니다.</li></ul>
@@ -1345,6 +1346,18 @@
 <dt>발광과 화면 효과</dt><dd>Bloom Intensity 0.12, Threshold 2.0. 발광 주변의 번짐을 줄여 띠와 모서리를 또렷하게 했습니다. 색수차·Motion Blur·Film Grain·Lens Flare Intensity는 0입니다.</dd>
 </dl>
 <p class="note">그림자가 없는 패널 조명을 거리 제한 없이 표시하므로 큰 방에서는 GPU 부하가 증가할 수 있습니다. 실제 플레이 FPS는 아직 측정하지 않았습니다. 필요하면 기본 환경광을 유지하면서 조명 수·반경을 조절합니다. 수광체의 색 판정과 퍼즐 로직은 변경하지 않았습니다.</p>
+</div></details>
+
+<details class="chapter" id="spectrum-fog"><summary><span class="chapter-number">9-2</span>퍼즐 빛 경로 · 옅은 안개</summary><div class="chapter-body">
+<p>Tutorial+Red·Green·Blue의 아웃라이너에서 <code>Lighting/Atmosphere/Fog_Spectrum_LightPaths</code>를 선택합니다. 표준 <strong>Exponential Height Fog</strong> 액터이며 Volumetric Fog가 켜져 있습니다.</p>
+<dl class="pins">
+<dt>안개 밀도와 흡수</dt><dd>Fog Density <code>0.006</code>, Fog Height Falloff <code>0.01</code>, Volumetric Extinction Scale <code>0.5</code>. 높은 방에서도 옅은 안개를 유지하며 먼 구조물을 가리는 효과를 줄입니다.</dd>
+<dt>옆에서 보이는 경로</dt><dd>Scattering Distribution <code>0.05</code>, Albedo RGB <code>230,230,230</code>, Emissive <code>0</code>. 안개 자체는 발광하지 않고 광원의 색을 받습니다.</dd>
+<dt>거리</dt><dd>View Distance <code>8000cm</code>, Volumetric Start Distance <code>20cm</code>, Near Fade In Distance <code>100cm</code>. 일반 Height Fog의 Start Distance <code>1000cm</code>와 Fog Max Opacity <code>0.04</code>는 별개입니다. <strong>Fog Max Opacity는 볼류메트릭 안개의 불투명도 제한으로 사용하지 않습니다.</strong></dd>
+<dt>퍼즐 광원</dt><dd>현재 배치된 BP_Light·BP_BlinkLight 9개의 SpotLight는 Volumetric Scattering Intensity <code>40</code>. 기존 Unitless Intensity <code>20</code>과 색·범위·그림자·켜짐 상태를 유지하고 안개에 주는 빛만 보강했습니다. BP 기본값은 바꾸지 않았으므로 새로 배치한 광원은 필요할 때 이 컴포넌트 값을 맞춥니다.</dd>
+<dt>환경 전등</dt><dd>환경 조명 패널의 산란값은 <code>0</code>을 유지합니다. Blue의 DirectionalLight도 산란 <code>0</code>이며, 안개의 Static Lighting Scattering Intensity는 <code>0</code>입니다. 방 전체를 흰 안개로 밝히지 않기 위한 설정입니다.</dd>
+</dl>
+<p class="note">저장된 세 맵의 안개·광원 설정을 새 프로세스에서 다시 확인했습니다. 기존 액터 배치·확인한 퍼즐 설정·PPV·아트·BP 파일을 보존했습니다. 원본 백업 <code>Saved/CodexBackups/LightPathFog-20261105</code>, 검사·렌더 <code>Saved/FogPass20261105</code>. 실제 플레이 FPS는 미측정입니다.</p>
 </div></details>
 
 </main>

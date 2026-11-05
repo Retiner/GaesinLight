@@ -1,5 +1,10 @@
 # GaesinLight 프로젝트 — AI 작업 컨텍스트
 
+## 2026-11-05 빛 경로용 옅은 안개
+- Tutorial+Red·Green·Blue에 `Lighting/Atmosphere/Fog_Spectrum_LightPaths`(ExponentialHeightFog) 각 1개 추가. Volumetric Fog 켜짐, Density .006, Height Falloff .01, Extinction Scale .5, Scattering Distribution .05, Albedo RGB230, Emissive0, View Distance8000cm, Volumetric Start20cm/Near Fade100cm, Static Lighting Scattering0. 일반 Height Fog의 Start1000cm/MaxOpacity.04는 볼류메트릭 안개의 불투명도 제한이 아니다.
+- 배치된 BP_Light/BP_BlinkLight 9개의 Volumetric Scattering Intensity만 2→40으로 조절. Unitless 밝기20·색·광각·그림자·켜짐 상태와 퍼즐 판정 유지. 환경 전등은 산란0 유지, Blue DirectionalLight만 산란1→0으로 변경해 전역의 흰 안개를 억제. BP 기본값이나 그래프는 변경하지 않았으므로 새로 배치한 퍼즐 광원은 필요한 경우 컴포넌트의 산란값을 조절한다.
+- 새 프로세스에서 세 맵 저장본 재로딩 검증 통과. 기존 액터 배치·확인한 게임 설정·PPV 보존, Content/Config 변경 파일은 맵3개만. 적용 전 백업 `Saved/CodexBackups/LightPathFog-20261105`, 검사·렌더 `Saved/FogPass20261105`. 실제 플레이/FPS 측정 및 커밋·푸시 미수행.
+
 RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작할 것.
 레벨 제작자용 상세 매뉴얼은 **`레벨 제작 가이드.html`**(저장소 맨 위. 2026-10-30 Docs에서 꺼냄, CSS·JS는 그대로 `Docs/assets/`. README.md는 2026-10-30 사용자 요청으로 삭제 — VS Code가 옛 README 미저장 버퍼를 계속 보여 줘서. 맨 위 `#channels` 채널 표, `#changes` 최근 변경 절을 매번 갱신)(2026-10-25 README에서 이전, 로그라이크 프로젝트 가이드 형식: 장·항목 `details` 접이식, `assets/guide.css`·`guide.js`). README.md는 그 HTML을 가리키는 짧은 안내만 둠. (이 파일은 AI / 개발 이어가기용 요약 + 구현 메모)
 **BP 내부 구조(구성요소·변수·함수·흐름)는 `BP_STRUCTURE.md`** — BP 수정 안내 전에 먼저 읽고, 구조가 바뀌면 같은 턴에 갱신(2026-10-23 사용자 지시).

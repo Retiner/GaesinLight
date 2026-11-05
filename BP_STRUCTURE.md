@@ -367,6 +367,9 @@ DefaultSceneRoot
 - `IsStartOn`: 0 → `StartOn`.
 
 ### BP_BlinkLight (신호로 반복 점멸 / 한 번 점등, BP_Light 자식 — 2026-11-03)
+
+2026-11-05 레벨 안개 표시: Tutorial+Red·Green·Blue의 기존 BP_Light/BP_BlinkLight 인스턴스 9개는 SpotLight의 Volumetric Scattering Intensity=40. 밝기20·색·켜짐 상태·그림자·빛 판정과 BP 기본값/그래프는 유지했다. 각 맵의 `Lighting/Atmosphere/Fog_Spectrum_LightPaths`는 Density .006, Extinction .5, Scattering Distribution .05, View Distance8000cm인 볼류메트릭 안개다. 환경 전등과 Blue의 DirectionalLight는 산란0. 일반 Fog Max Opacity는 볼류메트릭 안개의 불투명도를 제한하지 않는다. 새 광원을 배치하면 기존 기본 산란2가 적용되므로 필요할 때 인스턴스 컴포넌트에서 조절한다. 백업·검증 `Saved/CodexBackups/LightPathFog-20261105`, `Saved/FogPass20261105`.
+
 - Linear 이동 적용(2026-11-03): 부모 BP_Light의 MoveTimeline은 곡선 보간이라 MoveSpeed=200이어도 중간 최대 약 300cm/s. 자식의 기존 EventGraph BeginPlay → Parent: BeginPlay 뒤에 SetFloatCurve(MoveTimeline, CF_BlinkLight_MoveLinear, Alpha)를 연결했다. 새 CurveFloat `Content/BluePrint/CF_BlinkLight_MoveLinear.uasset`는 (0,0)→(1,1)의 Linear 키 두 개. 부모의 이동 범위·PlayRate 초기화·빛 스캔을 실행한 뒤 자식 인스턴스의 이동 트랙만 교체한다. 부모 BP_Light 및 BP_AvilityBlock 파일은 그대로. 기존 4번 이동·역방향과 7번 점멸·시작 지연을 유지하며 새 인스턴스 설정은 필요 없다.
 - Linear 검증: 450cm / 200cm/s에서 광원 2.250초, 기둥 2.267초. 매 프레임 광원 진행률=타임라인 시각, 이동 중 차이 최대 3.33cm(기둥의 첫 MovePoint[0] 처리 1프레임 차이). 종전 곡선에 의한 약 47cm 앞섬 제거. 이동 5개와 기존 점멸/시작 지연 회귀 125개, 총 130개 검사 통과. 컴파일 오류·경고 0. BlinkStartDelay는 점등에만 적용된다.
 - 작업 복구: 열린 에디터에서 미완성 BeginPlay 함수 그래프를 제거한 뒤 컴파일 중 비정상 종료되어, 이후 수정·검증은 별도 편집기로 진행했다. Blue_Auto4 자동 저장본의 액터 607개와 기록해 둔 광원·기둥 3개의 배치/설정을 확인한 뒤 엔진과 동일한 복사 방식으로 Blue.umap 복구. 원래 디스크 맵과 자동 저장본 모두 `Saved/CodexBackups/BlinkLightLinearMovement-20261103`에 보존. 사용자 편집기를 다시 열고 선택 액터 복원. 이 작업에서 GitHub PR 수정·추가 업로드 없음.
