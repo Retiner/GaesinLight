@@ -22,6 +22,9 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 [상호작용] BP_Charactor F키 ─ BPI_Interact.Interact ─→ BP_Button, BP_AvilityBlock(잡기), BP_Pickup(줍기), BP_FilterReturn(반납)
 
 [구역]  BP_Respawn ─ (Cast) ─→ BP_AvilityBlock.ResetToStart
+        발판/스위치 → BP_PlatformController ─ 조건 해제 귀환 / 상시 독립 왕복 ─→ BP_ReturnPlatform
+        신호 → BP_RespawnPointSetter ─ SetRespawnDestination ─→ 저장된 ResetLocation만 변경
+                                  └ BPI_RespawnDestination ─→ 사용자 정의 비블록 수신 BP
         BP_Trigger ─ OpenLevel(NextLevel)
         BP_Checkpoint ─ GI.SetCheckpoint ─→ SaveProgress ─→ Save0.sav
 
@@ -43,6 +46,8 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 | `BPI_Interact` | `Interact`, `GetInteractText`, `CanInteract` | BP_Button, BP_AvilityBlock, BP_Pickup, BP_FilterReturn | BP_Charactor |
 
 ### 구조체 / Enum (`Content/BluePrint/`)
+
+추가 인터페이스(2026-11-05): `Content/BluePrint/BPI_RespawnDestination` — `SetRespawnDestination(Location:Vector) → Accepted:Bool`. 사용자 정의 비블록 BP의 다음 리스폰 위치 저장용 계약이다. 구현부는 위치만 기록하고 실제 리스폰 이벤트에서 사용한다. 기본 물리 블록은 아래 공개 함수를 직접 호출하므로 이 인터페이스를 따로 구현하지 않는다.
 | 이름 | 내용 |
 |---|---|
 | `S_SignalTarget` | `Target`(Actor), `Channel`(Int, 기본 0) |
@@ -90,9 +95,11 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 ### 기타
 - `BP_TestGameMode`(옛 BP_GameMode): LightTestMap의 GameMode Override. 플레이어는 GameMode가 스폰(레벨에 BP_Charactor 배치 없음, 15번에서 배치 방식으로 바꿀 예정).
 - `BP_PlayerController`: Class Defaults `Should Perform Full Tick When Paused` 켬(2026-11-01, 리스폰 일시정지 중 카메라 암전 진행용). `IMC_Default` + `IA_*`(입력).
-- `BP_PlayerController` Event BeginPlay(2026-11-03, 작업 32): (기존 노드 뒤) Create Widget(`WBP_HUD`, Owning Player = Self) → Set `HUD`(WBP_HUD 참조 변수) → Add to Viewport. 그래프 미확인.
-- `Content/UI/WBP_HUD`(작업 32, 테스트 결과 미확인): Canvas Panel → `Crosshair`(Image 6×6, 정중앙 Anchors·Alignment 0.5, Rounded Box 반지름 3, 흰색 0.8) / `InteractText`(Text, 정중앙 + Y 40, Text 바인딩 `Get_InteractText_Text` = Cast BP_Charactor(Get Owning Player Pawn) → IsValid(HeldBlock) "F: 놓기" → IsValid(FocusTarget) → GetInteractText(FocusTarget) → Text Is Empty면 빈 글자 / 아니면 Format "F: {Action}". 2026-11-03 그래프 확인 시 GetInteractText Target이 캐릭터에 연결된 오류 → FocusTarget으로 수정 안내) / `ColorSlots`(Horizontal Box, 오른쪽 아래 −40, −40) 안에 `WBP_ColorSlot` 4개(1 흰색 UseFlashlight, 2 Red, 3 Green, 4 Blue).
+- `BP_PlayerController` Event BeginPlay(2026-11-03, 작업 32): Create Widget(`WBP_HUD`, Owning Player = Self) → Set `HUD`(WBP_HUD 참조 변수) → Add to Viewport. 2026-11-04 로컬 적용, 생성·Viewport 연결을 실제 PIE에서 확인. 기존 ShouldPerformFullTickWhenPaused 유지.
+- `Content/UI/WBP_HUD`(작업 32, 2026-11-04 로컬 적용·PIE 검증): Canvas Panel → `Crosshair`(Image 6×6, 정중앙 Anchors·Alignment 0.5, Rounded Box 반지름 3, 흰색 0.8) / `InteractText`(Text, 정중앙 + Y 40, Text 바인딩 `Get_InteractText_Text` = Cast BP_Charactor(Get Owning Player Pawn) → IsValid(HeldBlock) "F: 놓기" → IsValid(FocusTarget) → GetInteractText(FocusTarget) → Text Is Empty면 빈 글자 / 아니면 Format "F: {Action}". 실제 반영 커밋의 메시지 Target은 FocusTarget에 연결되어 있음) / `ColorSlots`(Horizontal Box, 오른쪽 아래 −40, −40) 안에 `WBP_ColorSlot` 4개(1 흰색 UseFlashlight, 2 Red, 3 Green, 4 Blue).
 - `Content/UI/WBP_ColorSlot`: Vertical Box → Overlay(`OuterCircle` 44 반지름 22 / `InnerCircle` 26 반지름 13) + `KeyText`. 변수 `SlotColor`·`KeyLabel`·`UseFlashlight`·`FilterColor`[I]. Event Pre Construct → InnerCircle 색 = SlotColor, OuterCircle 색 = SlotColor(A 0.3), KeyText = KeyLabel. InnerCircle Visibility 바인딩 = Cast BP_Charactor → Select(UseFlashlight ? CanUseFlashlight : CanUseColor(FilterColor)) → Visible/Hidden (사용자 결정: 바깥 원 항상, 안쪽 원은 가진 것만).
+- HUD 선택 업데이트(2026-11-04): a1e97b7→92a6a5e의 HUD 구현·병합 두 커밋 중 자산 4개만 반영하고 문서 3개를 현재 로컬 설명과 병합했다. BP_Charactor의 유일한 그래프 변경은 FindTarget의 벽 확인 DrawDebugType=ForDuration→None이며 상호작용 로직은 동일하다. 새 컨트롤러 HUD 연결 및 위젯 2개 적용. 기존 캐릭터·컨트롤러 파일이 기준본과 같아 로컬 수정 충돌 없음.
+- 별도 복사본의 실제 PIE 16개 검사: HUD 생성, 조준점·빈/버튼/들기 문구, 색 슬롯 4개·키 1~4, 미획득 숨김·손전등/빨강 획득·반납·테스트 모드 표시 통과. 임시 상태 설정 함수는 검증 복사본의 메모리에서만 사용하고 저장하지 않았다. 적용한 원본 파일 4개는 Git 객체와 동일하다. 실제 로컬에서 HUD와 최근 장치 BP 9개 컴파일 오류·경고 0, Blue/Tutorial+Red/Green 로딩 및 일시정지 카메라 지원 확인. 모든 레벨 6개와 다른 BP·Config 해시 보존. 백업/결과 Saved/CodexBackups/HUDUpdate-20261104.
 - `BP_LightBlock`: BP_AvilityBlock 리다이렉터(사용 안 함).
 
 ---
@@ -254,6 +261,29 @@ OnComponentBeginOverlap(Box)
 
 ## 4. 수신 장치 (BP_Activate 자식)
 
+### BP_PlatformController — 시작점 AND 조건·건너편 왕복 (2026-11-05)
+
+- 부모 BP_Activate, 상속 DefaultSceneRoot. 플랫폼 BP의 그래프는 수정하지 않는다. Platform Control의 `TargetPlatform` [I]는 BP_ReturnPlatform 참조 하나. 내부 `ControlMode` Int(0=미조작/1=조건부/2=독립), `HomeGatePaused` Bool(이전 정지 모드 호환용, 현재 false만 기록), `ControllerInitialized` Bool. 기본 ChannelRequired={0:1,1:1,3:1}.
+- 0번=시작점 발판 유지, 1번=시작점 Togle 스위치 유지, 3번=건너편 ReOn 펄스. OnChannelActive(0/1), OnChannelDeactive(0/1) → EvaluateHomeConditions. OnChannelActive(3) → HandleRemoteButton. 3번 해제 및 다른 채널은 무동작. 부모 ChannelCount/ActiveChannels/ChannelRequired 임계값 계산 그대로 사용.
+- 순수 질의: IsPlatformReady는 유효 대상·HasReturnPath 검사. IsPlatformBusy는 미준비면 true, 준비되면 PlatformPhase==3 OR !TriggerPaused이며 독립 이동에 시작점 조건이 개입하지 않도록 검사할 때 사용한다. IsAtFarEndpoint는 유효 경로 마지막 점과 플랫폼 ActorLocation 거리≤0.01 AND TriggerPaused(진단용 유지, 현재 건너편 버튼 분기에 사용하지 않음). BothHomeInputsActive는 ActiveChannels의 0·1 모두 포함 여부. 무효 대상 분기는 로컬 결과를 저장하여 객체 접근을 방지한다.
+- EvaluateHomeConditions(사용자 재조정 2026-11-05): 대상 미준비, 또는 ControlMode=2이고 Busy면 무시한다. 두 조건 충족 AND PlatformPhase=0일 때 Mode=1/GatePaused=false → ReleaseReturnHold로 출발. 미충족 AND Mode=1이면 GatePaused=false → HoldReturnToStart로 귀환한다. 이동 중·건너편 대기 중 모두 귀환하며 출발 지연은 취소된다. 귀환 도중 조건 복구는 방향을 바꾸지 않고 시작점까지 복귀 완료 후 대기한다. 유지 입력으로 자동 재출발하지 않으며 새 조건 활성 전이가 필요하다.
+- HandleRemoteButton(사용자 재조정 2026-11-05): Ready만 검사하고 Busy는 검사하지 않는다. Mode=2/GatePaused=false → 현재 PlatformPhase가 1(전진/건너편 대기) 또는 3(출발 지연)이면 HoldReturnToStart, 0(시작점) 또는 2(귀환)이면 ReleaseReturnHold. 매 새 3번 활성 전이마다 현재 목적지를 반대로 바꾸며 지연 중에도 즉시 취소 가능. 중간 위치에서 기존 경로를 따라 반전하고 순간이동/예약/신호 누적 없음. 초록 Freeze는 유지하면서 방향만 변경한다. 독립 왕복 중 시작점 신호는 집계만 갱신하고 이동에는 개입하지 않는다.
+- ReceiveBeginPlay/ReceiveTick → InitializeController. 초기화되지 않았고 경로가 준비되면 Initialized=true → EvaluateHomeConditions → SetActorTickEnabled(false). 대상 BeginPlay보다 먼저 받은 시작점 입력도 보존한다. Tick에서 계속 이동/조건/도착을 재평가하지 않는다.
+- 기존 함수만 호출하여 경유지 순서·구간 속도·출발 지연·초록 Freeze·PressBox 기능을 유지한다. 플랫폼 채널 신호를 인위적으로 추가하지 않아 5번 유지 래치/0번 필요 개수와 충돌하지 않는다. 직접 플랫폼 신호와 혼용하지 말고 플랫폼 하나당 제어 BP 하나만 사용한다. ReturnOnSignalOff=false 권장. 시작점=MovePoint[0], 건너편=마지막 MovePoint. 연결표는 HTML #platform-controller. 백업·검증 Saved/CodexBackups/PlatformController-20261105.
+- 최초 정지/이동 중 입력 무시 구현 검증은 Saved/CodexBackups/PlatformController-20261105(54개 및 저장본 재검사). 현재 귀환/상시 반전 변경의 백업·검증은 Saved/CodexBackups/PlatformControllerReturn-20261105. 현재 동작은 위 재조정 설명을 따른다.
+- 재조정 검증: 직접 36개 + 실제 큐브 압력판 진입/제거와 Togle/ReOn 버튼 PIE 19개, 총 55개 및 저장본 55개 재검사 통과. 이동 중 조건 해제/건너편 도착 후 조건 해제 귀환, 귀환 중 조건 복구 유지, 양방향 이동/출발 지연/Freeze 중 원격 목적지 전환, 조건 우회·구간 속도·경유지 인덱스·준비 전 신호·무효 대상 확인. 관련 BP 6개 컴파일 오류·경고 0. 열린 Blue 액터 2,365개 배치·선택·기존 신호/설정·dirty map 상태 보존, 기존 에셋 해시 변경은 BP_PlatformController 한 개뿐이다.
+
+### BP_RespawnPointSetter — 다음 리스폰 위치 지정 (2026-11-05)
+
+- 부모 BP_Activate. 상속 DefaultSceneRoot + ArrowComponent `RespawnPointPreview`(HiddenInGame), 별도 Tick/콜리전·직접 이동/리스폰 호출 없음.
+- Respawn Point: `RespawnTargets` [I] Actor 배열(빈 배열), `DestinationActor` [I] Actor(기본 None). Respawn Internal: `LastAppliedLocation` Vector, `AppliedTargetCount` Int. 기본 ChannelRequired={0:1}; IsStartOn은 부모 false 유지, 신호 수 합산·임계값 전이 사용.
+- OnChannelActive → Parent → Channel==0이면 ApplyRespawnDestination. 해제는 부모의 빈 OnChannelDeactive로 끝나 저장 지점을 유지한다. 다시 적용하려면 새 활성 전이가 필요하며 ReOn/RepeatOn 버튼을 사용할 수 있다.
+- ApplyRespawnDestination: AppliedTargetCount=0 → DestinationActor IsValid 분기 → 유효하면 그 ActorLocation, 아니면 자신의 ActorLocation을 로컬 ResolvedDestination에 저장 → LastAppliedLocation 갱신 → RespawnTargets ForEach. 무효/None은 건너뛰고 BP_AvilityBlock 캐스트 성공이면 공개 SetRespawnDestination 호출. 실패이면 DoesImplementInterface(BPI_RespawnDestination) → 인터페이스 캐스트 → SetRespawnDestination 호출. Accepted일 때만 AppliedTargetCount 증가. 대상/지점이 움직여도 한 호출 내 모든 대상은 같은 저장 좌표를 받는다.
+- 새 BP_AvilityBlock.SetRespawnDestination(Location)→Accepted: Move==Physics 검사 후 RespawnDestinationOverride=Location, HasRespawnDestinationOverride=true, ResetLocation=Location. 지원하지 않는 Move는 false이며 변경 없음. 두 새 내부 변수는 Instance Editable=false, 기본 false/0. BeginPlay의 기존 ResetLocation 대입 값만 SelectVector(override? RespawnDestinationOverride : 기존 메시 월드 위치)로 감싸 초기 신호를 보존한다. ResetRotation·물리·속도·HeldBlock·능력·위치·낙하 상태는 변경하지 않는다.
+- 실제 복귀는 기존 BP_Respawn/PressBox/ResetButton 등이 ResetToStart를 호출할 때 수행된다. 부모 ResetToStart/자식 FallingHazardBlock.ResetToStart는 그대로 사용한다. 메타데이터를 바꿀 때 실제 리스폰을 호출하지 않는다. 기존 Fixed·Patrol·ReturnPlatform 경로는 대상이 아니며 새 함수에서 거절한다. 비블록 BP는 새 인터페이스를 구현하고 자체 리스폰 경로가 저장 위치를 사용하도록 해야 한다.
+- 설정 예: 새 지점에 BP_RespawnPointSetter 배치 → RespawnTargets=[해당 Physics 블록] → 버튼/압력판 SignalTargets Target=중간 BP/Channel=0, BP_Trigger는 Targets 사용. BP_Respawn.ResetBlock=true 유지. DestinationActor를 지정하면 그 지점의 현재 월드 위치를 사용하며, 비우면 중간 BP 위치. 위치는 메시 피벗 기준이며 회전·스케일을 바꾸지 않는다. 최신 활성화가 마지막 저장 위치를 결정하고 신호 해제는 되돌리지 않는다. SaveGame과 무관한 현재 플레이 상태이다.
+- 검증: 신규 PIE 46개(실제 기존 버튼·압력판·플레이어 트리거와 BP_Respawn 접촉 포함), 기존 ReturnPlatform 118개·낙하 신호 62개·물리/밀기/주기 56개 회귀 통과. 저장본 신규 46개 재확인 및 관련 9개 BP 컴파일 오류·경고 0. 비블록 인터페이스 경로는 컴파일 검증이며 사용자 정의 수신 BP의 자체 리스폰 구현은 별도 필요하다. Tutorial+Red 액터 6,319개 배치·선택, 기존 블록/메시 12개 설정, dirty map/content 상태 보존. 기존 에셋 해시 변경은 BP_AvilityBlock 1개이며 새 에셋은 BP_RespawnPointSetter/BPI_RespawnDestination. 결과 Saved/CodexBackups/RespawnPointSetter-20261104.
+
 ### BP_Door / BP_Door2 (미닫이 문)
 **구성요소**: `DefaultSceneRoot` → `SM_DoorFrame_Light`, `LeftDoor`, `RightDoor`. BP_Door2는 메시만 다르고 그래프 동일.
 
@@ -278,14 +308,27 @@ OnComponentBeginOverlap(Box)
 
 | 변수 | 설명 |
 |---|---|
-| `WaitTrigger` [I], `IsDown` [I], `StartOpen` [I], `UseUserStaticMesh` [I] + `UserStaticMesh` [I], `OpenTime` [I](1), `HatchWait` [I](2) | README 7장 |
+| `WaitTrigger` [I], `IsDown` [I], `StartOpen` [I], `UseUserStaticMesh` [I] + `UserStaticMesh` [I], `OpenTime` [I](1.5), `HatchWait` [I](2) | 레벨 제작 가이드 7장 |
+| `OpenDelay` / `CloseDelay` [I] | Hatch 카테고리, 각각 기본 0초. 열기/닫기 동작 시작 전 지연. 0 이하면 즉시 실행 |
+| `CloseAfterFullyOpen` [I] | Hatch 카테고리, 기본 false. 신호형에서 켜면 완전히 열린 경우에만 닫기 요청(기본 StartOpen=false에서는 신호 해제)부터 Max(CloseDelay,0)초 대기. 열림 미완료 상태의 해제는 즉시 닫기 |
+| `FullyOpenCloseQueued` / `HatchHasFullyOpened` / `HatchFullyOpenTime` / `FullyOpenCloseTimerHandle` (내부) | 닫기 요청 래치 / 열림 완료 여부·게임 시각 / 별도 단발 타이머 |
+| `HatchDelayPending` / `PendingHatchOpen` / `HatchDelayTimerHandle` (내부) | 대기 여부 / 예약 방향 / 인스턴스별 단발 타이머 |
 | `MeshClosedTransform ` (내부, **이름 끝에 공백**) | Construction에서 저장 |
 | `HatchStartLoc` / `HatchStartRot` / `HingePoint` / `HingeAxis` (내부) | BeginPlay에서 계산 |
 
 - Timeline Update → `Angle = Alpha × Select(IsDown: −90 / 90)` → `SetActorLocationAndRotation(Hinge + RotateAngleAxis(StartLoc − Hinge, Angle, Axis), Compose(StartRot, RotatorFromAxisAndAngle(Axis, Angle)))`.
-- `HatchOpen` / `HatchClose`: `SetPlayRate(1/OpenTime)`(Timeline 컴포넌트에서 끌 것) → Play / Reverse.
+- `HatchOpen` / `HatchClose`: 기존 Custom Event 이름 유지 → 새 `RequestHatchOpen` / `RequestHatchClose`. 같은 방향을 이미 예약 중이면 무시. 반대 요청이면 타이머 해제·새 방향 저장. 지연 >0이면 Timeline.Stop(현재 자세 유지) → Pending=true → FinishHatchDelay 단발 예약. 지연 ≤0이면 즉시 ExecuteHatchOpen/Close.
+- `FinishHatchDelay`: Pending 가드 → 타이머 해제·Pending=false → 예약 방향의 ExecuteHatchOpen/Close. 새 Execute Custom Event는 기존 SetPlayRate(1/OpenTime) → Timeline Play/Reverse에 연결되어 경첩·속도·현재 진행률을 유지한다. 함수/타임라인 삭제 없이 이벤트 실행 경로만 확장했다.
 - Finished → WaitTrigger 꺼짐이면 Delay(HatchWait) → 방향 반대로 (반복형 루프).
-- `OnChannelActive/Deactive`: Parent → Switch 0 → WaitTrigger 켜짐이면 `HatchOpen` / `HatchClose`.
+- `OnChannelActive/Deactive`: 현재 실물 그래프는 Parent → WaitTrigger 켜짐이면 `HatchOpen` / `HatchClose`(Channel 분기 없음; 이번 변경에서 기존 수신 규칙 유지). IsStartOn의 0번은 StartOpen으로 신호 반전. StartOpen 초기 열린 자세는 지연 없이 설정한다.
+- 반복형: 기존 HatchWait 뒤 새 방향의 OpenDelay/CloseDelay가 추가된다. 최초 자동 열림에도 OpenDelay 적용. 신호형의 대기 중 반대 입력은 이전 예약을 취소하며, 이동 중 양수 지연 요청은 현재 자세에서 멈춘 뒤 해당 지연 후 이어 움직인다.
+- 지연 추가 검증(2026-11-03): 별도 PIE에서 개별 열림/닫힘 시간, 중복 입력, 양방향 예약 취소, 중간 각도 정지·재개, 0/음수, StartOpen 반전, 다중 신호·필요 개수 및 자동 반복 확인. 컴파일 오류·경고 0. 백업/결과 `Saved/CodexBackups/HatchDelay-20261103`.
+- 완전 열림 조건부 대기(2026-11-04, 신호 해제 기준으로 정정): `UseFullyOpenClose` = CloseAfterFullyOpen AND WaitTrigger. RequestFullyOpenClose에서 IsHatchFullyOpen=true일 때만 RecordHatchFullyOpen → QueueFullyOpenClose로 닫기 요청 시점부터 전체 CloseDelay를 예약한다. false면 HatchDelayTimerHandle 해제 → HatchDelayPending=false → ExecuteHatchClose로 현재 각도에서 즉시 역방향 이동. OpenDelay 중 해제도 열기 예약을 취소한다. 조기 해제에 강제로 끝까지 열던 동작은 사용하지 않는다.
+- Timeline Finished → HandleHatchMotionFinished → 기존 반복 모드 분기. 정방향 완료는 RecordHatchFullyOpen에서 최초 완료 여부·시각을 기록한다. HatchFullyOpenTime은 더 이상 닫힘 지연 계산에 사용하지 않는다. QueueFullyOpenClose는 모드·닫기 요청·완료 여부를 확인하고, K2_IsTimerActiveHandle=true면 중복 예약을 무시한다. 대기 시간 = Max(CloseDelay,0), 양수면 별도 단발 타이머, 0이면 즉시 FinishFullyOpenClose → ExecuteHatchClose. 실제 닫기 시작에서 ResetFullyOpenClose로 플래그·타이머 정리.
+- 새 열기 요청은 닫기 래치·타이머를 취소한다. 계속 밟으면 열린 채 유지하며, 얼마나 오래 열린 상태였든 신호가 끊긴 순간부터 전체 CloseDelay를 기다린다. 다시 밟았다 떼면 새 해제 시점부터 전체 지연을 적용한다. StartOpen 초기 자세·신호 반전은 유지하며 반전된 닫기 요청부터 대기한다. 자동 모드와 옵션 꺼짐은 기존 경로 유지.
+- 검증: 실제 PressurePlate의 OpenDelay 중 이탈/이동 중 이탈, 완전 열림 뒤 유지 시간, 정지한 중간 각도 회복, 닫기 예약 중 재입력·늦은 해제, StartOpen, 0/음수, 필요 신호 수, 자동 반복 및 기존 지연 회귀 검사 통과. Blue의 발판 BP_PressurePlate_C_3 연결 Hatch 8개(BP_Hatch~3, 5~9)에 CloseAfterFullyOpen=true 적용, 기존 CloseDelay=1초·배치·속도·메시·신호 목록 보존. BP_Hatch4는 기존 설정 유지. 사용자 편집 상태 675개 액터 백업·저장. `Saved/CodexBackups/HatchFullyOpenClose-20261104`.
+- 정정 검증: 실제 발판으로 열림 지연 중 해제→예약 취소, 중간 해제→즉시 역방향/완전 열림 미도달, 완전히 연 뒤 해제→완료 시각 기준 대기를 연속 확인. 부분 개방 정지 상태도 즉시 닫히며, 필요 신호 수·재입력·늦은 해제·StartOpen·0/음수·기존 옵션 꺼짐과 자동 반복도 통과. 현재 사용자 편집 상태 667개 액터 및 Hatch 9개 설정·선택·발판 연결 보존. `Saved/CodexBackups/HatchEarlyReleaseClose-20261104`.
+- 신호 해제 기준 변경 검증(2026-11-04): 실제 발판을 완전 열림 뒤 CloseDelay보다 오래 밟아도 해제부터 전체 지연을 기다림. 직접 신호·마지막 송신자 해제·중복 닫기 요청의 예약 유지·재입력 취소 후 새 해제·StartOpen·0/음수·조기 해제·기존 옵션 꺼짐·자동 반복 확인. 컴파일 오류·경고 0. 현재 Blue 사용자 편집 상태 802개 액터를 백업·저장하고 Hatch 9개 설정·배치·선택·발판 연결 보존. 닫힘 대기의 현재 기준은 신호 해제이며, 위 과거 검증의 완료 시각 기준을 대체한다. `Saved/CodexBackups/HatchSignalOffDelay-20261104`.
 
 ### BP_Light (맵 광원)
 **구성요소**:
@@ -323,7 +366,10 @@ DefaultSceneRoot
 - `OnChannelActive`: Parent → Switch — 0 전원 켬(TurnOn + SetVisibility) / 1 색(ChangeColor) / 2 ActiveRotatePitch / 3 ActiveRotateYaw / 4 ActiveMove. `OnChannelDeactive`는 각 반대(1번 Rotate는 무시). **(미확인: Deactive 4 → DeactiveMove 연결)**
 - `IsStartOn`: 0 → `StartOn`.
 
-### BP_BlinkLight (신호로 반복 점멸, BP_Light 자식 — 2026-11-03)
+### BP_BlinkLight (신호로 반복 점멸 / 한 번 점등, BP_Light 자식 — 2026-11-03)
+- Linear 이동 적용(2026-11-03): 부모 BP_Light의 MoveTimeline은 곡선 보간이라 MoveSpeed=200이어도 중간 최대 약 300cm/s. 자식의 기존 EventGraph BeginPlay → Parent: BeginPlay 뒤에 SetFloatCurve(MoveTimeline, CF_BlinkLight_MoveLinear, Alpha)를 연결했다. 새 CurveFloat `Content/BluePrint/CF_BlinkLight_MoveLinear.uasset`는 (0,0)→(1,1)의 Linear 키 두 개. 부모의 이동 범위·PlayRate 초기화·빛 스캔을 실행한 뒤 자식 인스턴스의 이동 트랙만 교체한다. 부모 BP_Light 및 BP_AvilityBlock 파일은 그대로. 기존 4번 이동·역방향과 7번 점멸·시작 지연을 유지하며 새 인스턴스 설정은 필요 없다.
+- Linear 검증: 450cm / 200cm/s에서 광원 2.250초, 기둥 2.267초. 매 프레임 광원 진행률=타임라인 시각, 이동 중 차이 최대 3.33cm(기둥의 첫 MovePoint[0] 처리 1프레임 차이). 종전 곡선에 의한 약 47cm 앞섬 제거. 이동 5개와 기존 점멸/시작 지연 회귀 125개, 총 130개 검사 통과. 컴파일 오류·경고 0. BlinkStartDelay는 점등에만 적용된다.
+- 작업 복구: 열린 에디터에서 미완성 BeginPlay 함수 그래프를 제거한 뒤 컴파일 중 비정상 종료되어, 이후 수정·검증은 별도 편집기로 진행했다. Blue_Auto4 자동 저장본의 액터 607개와 기록해 둔 광원·기둥 3개의 배치/설정을 확인한 뒤 엔진과 동일한 복사 방식으로 Blue.umap 복구. 원래 디스크 맵과 자동 저장본 모두 `Saved/CodexBackups/BlinkLightLinearMovement-20261103`에 보존. 사용자 편집기를 다시 열고 선택 액터 복원. 이 작업에서 GitHub PR 수정·추가 업로드 없음.
 - 시작 지연 검증(2026-11-03): 실제 PIE 125개 검사 통과. 트리거 수신 후 0.8초 대기, 이후 0.3초 켜짐/0.2초 꺼짐 유지, 지연 중 취소·재시작·중복 입력·0/음수·기존 반복 동작 확인. Green 맵의 기존 광원 3개 위치·설정과 기존 파일 해시 보존. 결과 `Saved/CodexBackups/BlinkLightStartDelay-20261103/verification.json`.
 `Content/BluePrint/BP_BlinkLight.uasset`. BP_Light를 부모로 하는 자식이며 메시·색·회전·이동·빛 판정과 BeginPlay를 상속한다. 기존 광원과 레벨은 자동 교체하지 않는다.
 
@@ -331,6 +377,7 @@ DefaultSceneRoot
 |---|---|
 | `BlinkOnTime` [I] | Blink Timer 카테고리, 켜짐 유지 시간(초), 기본 3 |
 | `BlinkOffTime` [I] | Blink Timer 카테고리, 꺼짐 유지 시간(초), 기본 2 |
+| `RepeatBlink` [I] | Blink Timer 카테고리, 기본 true. false면 시작 지연 뒤 한 번 켜고 BlinkOnTime 만료 시 자동 소등·대기. BlinkOffTime 사용 안 함 |
 | `BlinkStartDelay` [I] | Blink Timer 카테고리, 7번 수신 후 최초 켜짐까지 지연(초), 기본 0. 0 이하면 즉시 시작 |
 | `BlinkRunning` / `BlinkPhaseOn` | 내부 실행 상태 / 현재 켜짐 단계 |
 | `BlinkTimerHandle` | 내부 단발 타이머 핸들. 부모 LightScan 타이머와 별개 |
@@ -339,11 +386,13 @@ DefaultSceneRoot
 - `OnChannelActive(7)` → `StartBlink`: 실행/지연 중이면 무시. 아니면 BlinkRunning=true → BlinkPhaseOn=false → ApplyBlinkPower(false). BlinkStartDelay>0이면 동일 BlinkTimerHandle로 BeginBlinkCycle 단발 예약, 아니면 즉시 호출. 시작 지연은 첫 켜짐에 한 번만 적용하며 반복 단계에는 추가하지 않는다.
 - `BeginBlinkCycle`: BlinkRunning일 때만 BlinkPhaseOn=true → ApplyBlinkPower(true) → QueueBlinkPhase. 취소 후 이전 시작 콜백을 호출해도 재점등하지 않는다.
 - `QueueBlinkPhase`: 현재 단계의 BlinkOnTime/BlinkOffTime을 Select → Max(시간, 0.01초) → SetTimerByFunctionName(AdvanceBlinkPhase, Looping=false) → BlinkTimerHandle 저장. 단계 시작마다 시간을 읽으므로 실행 중 변경은 다음 해당 단계부터 적용.
-- `AdvanceBlinkPhase`: 실행 중일 때만 BlinkPhaseOn 반전 → ApplyBlinkPower → QueueBlinkPhase. 새 신호마다 타이머를 추가하거나 매 프레임 시간을 계산하지 않는다.
+- `AdvanceBlinkPhase`: RepeatBlink=true이면 기존 실행 가드 → BlinkPhaseOn 반전 → ApplyBlinkPower → QueueBlinkPhase. false이면 StopBlink로 타이머·단계·빛 기여를 정리하고 대기한다. 새 신호마다 타이머를 추가하거나 매 프레임 시간을 계산하지 않는다.
 - `ApplyBlinkPower(PowerOn)`: 부모 TurnOn과 SpotLight Visibility를 함께 갱신. false면 부모 ClearLitActor 즉시 호출해 블록·거울에 남은 빛 기여도 제거.
-- `OnChannelDeactive(7)` / `ReceiveEndPlay` → StopBlink: BlinkRunning=false → ClearAndInvalidateTimerHandle → BlinkPhaseOn=false → ApplyBlinkPower(false). 지연 중에도 취소 가능. 재활성화하면 시작 지연 전체부터 다시 기다리고 켜짐 단계를 시작한다.
+- `OnChannelDeactive(7)`: RepeatBlink=true일 때만 StopBlink로 지연·반복 취소. 단발 모드(false)는 신호 해제를 무시하여 ReOn처럼 즉시 해제되는 펄스도 전체 지연과 켜짐 시간을 유지한다. ReceiveEndPlay는 모드에 관계없이 StopBlink. StopBlink = BlinkRunning=false → ClearAndInvalidateTimerHandle → BlinkPhaseOn=false → ApplyBlinkPower(false).
 - 7번 외 OnChannelActive/Deactive는 부모 호출. 부모 IsStartOn을 상속하여 7번은 StartLightOn의 반전을 받지 않음. ChannelRequired의 합산·임계값 유지.
 - 연결: BP_Trigger의 **Targets** 배열에 이 자식과 Channel=7, NextLevel 비움. 트리거는 Activate만 보내므로 통과 후 계속 점멸. 버튼 JustOn/Togle/Timed·발판도 가능. ReOn은 즉시 Deactivate해서 점멸을 바로 중지하므로 지속 점멸용으로 쓰지 않는다. 점멸 전원은 7번으로 제어하고, 실행 중 0번 전원 신호와 혼용하면 다음 단계에서 타이머가 전원을 다시 설정한다.
+- 단발 모드 사용(2026-11-04): RepeatBlink=false, BlinkOnTime=켜짐 시간, BlinkStartDelay=필요한 시작 지연. BP_Button 또는 BP_BlockSignalTrigger의 ReOn과 Channel=7을 연결하면 매 입력에 한 번 점등한다. RepeatOn도 가능. 실행/지연 중 새 입력은 기존 StartBlink 가드로 무시하며 완료 시각을 미루지 않는다. 완료 뒤 새로운 7번 활성화에서 전체 지연부터 다시 시작한다. 타이머 완료는 ChannelCount를 임의로 초기화하지 않는다. 계속 유지된 신호는 한 번 꺼졌다 다시 켜져야 재작동한다. BP_Trigger는 기본 한 번 작동하는 장치이므로 반복 재점등에는 재입력 가능한 버튼/신호 구역을 사용한다.
+- 단발 검증: 실제 PIE 34개 검사(ReOn 재점등, 정확한 ON 시간·자동 정지·신호 유지 시 재점등 없음·중복 무시·지연·0/음수·필요 신호 수·빛 기여 정리·EndPlay) 및 기존 반복/시작 지연 PIE 125개 통과. 기존 Linear 이동 그래프·부모 BP 보존. 백업/결과 Saved/CodexBackups/BlinkLightSingleShot-20261104.
 - 검증 결과: 임시 PIE 77개 검사 통과. 실제 플레이어 진입·시간·독립 인스턴스·정지/재시작·부모 상속·빛 기여 해제 확인. 빌드 컴파일 오류·경고 0. 결과 `Saved/CodexBackups/BlinkLight-20261103/verification.json`. 기존 Content/Config 파일 해시 일치, 새 광원만 추가.
 
 ### BP_Light2 (상자형 맵 광원, 2026-10-25 완료)
@@ -412,6 +461,13 @@ DefaultSceneRoot
 - Tick (2026-10-30): `AvilityTick` → Branch(`RestartWaiting`) F → Branch(`WaitTrigger`) → (T면 Branch(`TriggerPaused`) F) → Switch(`Move`). Patrol 핀마다 `Branch(MoveCheck)` → `SetActorLocation(Movelocation(DeltaTime))` → `Branch(getDistance)`(경유지 도착) → `Branch(CheckChange)`(마지막 경유지): Return T → `PatrollCount × -1` → `PatrolIndex += PatrollCount` / Rotation T → `PatrolIndex = 0` / Restart T → `PatrolIndex = 0` → `SetActorLocation(WorldPatrolPoints[0], Teleport)` / **Once T → 없음(끝에서 멈춤)** / 모두 F → `PatrolIndex += PatrollCount`.
 
 ### BP_FallingHazardBlock (낙하 주기·플레이어 밀기, BP_AvilityBlock 자식 — 2026-11-03)
+- 매 낙하 신호 대기 추가(2026-11-04): **Fall Cycle → RequireSignalEachFall** [I], bool 기본 false. true이면 처음부터 0번 신호 대기 → 신호 후 StartDelay만큼 기다려 한 번 낙하 → 기존 BP_Respawn(ResetBlock=true) 접촉으로 원래 위치 복귀 → 시작 허가를 해제하고 다음 0번 신호 대기. false이면 기존 자동 시작/최초 1회 시작 신호/반복/공통 시간표를 유지한다. BP_Respawn·BP_AvilityBlock은 수정하지 않는다.
+- 새 `RequestSignalFall`: 아직 허가되지 않았고 초기화 전 또는 WaitingForFall일 때만 FallSequenceStarted=true. 초기화 후 NextReleaseTime=Now+Max(StartDelay,0) → CapturePausedFallDelay → StepSignalFall. 대기 지연 중 중복 입력은 만료 시각을 바꾸지 않고, 공중 입력은 다음 낙하로 예약하지 않는다. 기존 StartFallSequence 맨 앞에 이 모드 분기를 추가하여 0번 및 초기화 전 입력을 보존한다.
+- `StepSignalFall`은 MaintainSharedFallState로 대기 물리/가시성·낙하 속도 기록을 유지한 뒤 CycleInitialized/WaitingForFall/FallSequenceStarted/출발 시각을 확인하여 ReleaseFall 호출. ReleaseFall의 새 모드 분기는 허가+대기를 검사하고 기존 공통 시계 전용 가드만 건너뛴다. 기존 3번 정지·신호 허가·IsFrozen 및 실제 물리 출발 처리는 그대로다. QueueNextFall에서 모드 켬이면 FallSequenceStarted=false → HoldForFall. ResetToStart의 부모 리셋/속도 초기화·연속 리셋 방지는 유지한다.
+- 새 모드는 RepeatFalls/RepeatInterval/UseSharedSchedule보다 우선하며 공통 시계를 자동 시작·합류시키지 않는다. 신호마다 StartDelay를 적용한다. WaitForStartSignal 값과 무관하게 첫 신호도 필요하며, HideWhileWaiting은 그대로 사용한다. ResumeSignalFall은 3번 해제 시 허가된 대기의 남은 시간만 복원하고, 허가되지 않은 블록은 계속 대기시킨다. Freeze/Unfreeze 역시 새 허가를 만들지 않는다.
+- 연결: 블록의 RequireSignalEachFall=true. 반복 입력 장치는 BP_Button ReOn 또는 BP_BlockSignalTrigger ReOn, Target=이 블록 / Channel=0. 리스폰 구역의 ResetBlock=true. 부모 ChannelCount/ChannelRequired 유지. 유지형 신호는 끊겼다가 다시 켜져 임계값을 넘어야 다음 허가가 생기며, 기본 BP_Trigger는 1회 송신이므로 반복 출발에는 반복 송신 장치를 사용한다. 기존 레벨 인스턴스는 새 옵션 기본 false로 보존한다.
+- 검증: 새 모드 및 경계 조건 PIE 62개(신호 전 대기·실제 BP_Respawn 왕복·공중 입력 미예약·지연 중 중복·초기화 전 신호·다중 필요 신호·Freeze/3번 정지·독립 인스턴스·기존 공통 시간표), 기존 물리/밀기/반복 낙하 회귀 PIE 56개 통과. 컴파일 오류·경고 0. 열린 Tutorial+Red의 6,319개 액터 Transform과 낙하 블록 1개 기존 설정·선택, 맵 clean 상태를 보존하고 BP_FallingHazardBlock만 저장했다. 첫 병렬 회귀의 프레임 지연으로 주기 허용 오차 검사가 실패했으나 단독 재검사에서 기존 56개 전부 통과했다. 백업·결과 Saved/CodexBackups/FallingHazardEachSignal-20261104.
+- 저장본을 새 언리얼 프로세스에서 다시 로딩해 컴파일 오류·경고 0 및 새 모드/경계 조건 실제 PIE 62개 재확인. Content/Config 전체 비교에서 BP_FallingHazardBlock만 변경되었고 맵 파일·부모·리스폰·ReturnPlatform 및 다른 BP는 보존했다.
 - 공통 시간표 추가(2026-11-03): 디테일 **Shared Schedule → UseSharedSchedule**(기본 false), **ScheduleController**(BP_FallSchedule 참조). 같은 컨트롤러의 최초 시작 시각을 공유하고 각 블록의 StartDelay / RepeatInterval로 절대 출발 시각을 계산한다. 공통 모드에서도 기존 Fall Cycle의 시간 변수를 그대로 수정. RepeatInterval은 양수 필수이며 0 이하면 대기. StartDelay는 0 이상으로 보정, 양수 주기는 최소 0.01초.
 - 새 `BP_FallSchedule`(BP_Activate 자식): 내부 ScheduleStarted=false, ScheduleStartTime=0. StartSchedule은 최초 한 번 Now를 기록하며 0번 Activate로 시작 가능. Deactivate나 반복 입력은 시계를 정지·재시작하지 않는다. 기존 블록 0번도 StartSharedFallSchedule을 통해 같은 시계를 시작한다. 연결된 블록 중 하나가 0번을 받으면 전체가 같은 기준 시각으로 합류. 하나라도 WaitForStartSignal=false면 그 블록 초기화가 전체 시계를 자동 시작하므로 신호 시작 그룹은 전부 true로 둔다.
 - StepSharedFallSchedule은 대기/공중/초록 정지/3번 정지 중에도 매 프레임 차례 번호를 소비한다. 이미 지난 차례는 재실행하지 않음. 출발 시각은 ClockStart+Max(StartDelay,0)+회차×Max(RepeatInterval,0.01). 프레임 허용 오차는 Min(0.1초, 주기×0.25). 준비되지 않은 차례나 큰 프레임 지연은 건너뛴다. LastSharedScheduleSlot=-1, SharedReleaseAllowed=false 내부 변수로 중복·직접 ReleaseFall 우회 방지.
@@ -437,26 +493,53 @@ DefaultSceneRoot
 - 검증: 별도 PIE에서 실제 낙하 Hit·정지 플레이어 수평 탈출·벽 차단·밀기 설정·Freeze/Unfreeze·기존 BP_Respawn 겹침·8개 블록 반복, 56개 검사 통과. 컴파일 오류/경고 0. 결과 Saved/CodexBackups/FallingHazardBlock-20261103. 기존 레벨 자동 교체 없음.
 
 ### BP_ReturnPlatform (시작점 귀환 플랫폼, BP_AvilityBlock 자식 — 로컬 추가 2026-11-02)
-기존 능력 블록은 유지하고 별도 자식 BP에 출발·귀환 상태를 구현했다. 경로는 부모의 MovePoint/WorldPatrolPoints, 속도는 MoveSpeed, 메시·빛 반응은 부모 설정을 사용한다.
+
+즉시 정지·유지형 귀환 추가(2026-11-04): 기존 0/3번 명령과 0번 해제 복귀 옵션은 유지한다. 새 **4번 Activate → StopReturnMovement**는 현재 위치에서 `ReturnSignalStopped=true`, `TriggerPaused=true`로 정지한다. Deactivate는 무시하므로 ReOn 펄스가 끝나도 정지 상태를 유지한다. 출발 지연 중이면 기존 예약을 취소한다. 경로·위치·초록 `IsFrozen`은 변경하지 않는다.
+
+- **5번 Activate → HoldReturnToStart**: 진행 중·접촉 정지 중에도 현재 구간을 역으로 따라 MovePoint[0]으로 이동. 이미 귀환 중이면 재개, 0번 도착 후 계속 밟고 있으면 그 자리에서 대기. **5번 Deactivate → ReleaseReturnHold**: 현재 위치에서 마지막 경유지 방향으로 전환. 귀환 중 재진입/이탈도 즉시 전환하며 지나온 모서리를 건너뛰지 않는다. 상단에서 내려갈 때는 기존 StartDelay를 사용한다. 새 0번 출발 입력은 유효한 5번 유지 신호가 있으면 무시한다. 부모의 ChannelCount/ActiveChannels(Set)/ChannelRequired 집계는 그대로 사용한다. 기본 ChannelRequired에 4→1, 5→1 추가(기존 인스턴스의 미지정 채널도 부모 기본 1).
+- 새 **Return Platform → StopOnAbilityBlockContact** [I], 기본 false. true이면 전진(Phase=1) 중 `PressBox`가 다른 BP_AvilityBlock 계열의 본체 StaticMesh를 감지할 때 StopReturnMovement 호출. 위로 귀환할 때는 이 접촉 정지를 적용하지 않아 받침에서 빠져나갈 수 있다. PressBox BeginOverlap의 기존 리스폰 분기 앞에 `HandleReturnBlockContact(OtherActor,OtherComp)`를 연결했다. ResetPlayer/ResetBlock은 독립이며 기존 설정을 보존한다.
+- `MoveReturnWithBlockStop(NewLocation)`가 기존 StepReturnPlatform의 SetActorLocation 한 곳을 대체한다. PressBox의 현재 위치→이번 이동 끝 위치를 회전·실제 스케일이 반영된 BoxTraceMultiForObjects로 검사한다. WorldDynamic/PhysicsBody만 검사하는 내부 ReturnBlockObjectTypes, Self 제외, BP_AvilityBlock 본체 필터를 적용하고 가장 이른 Hit.Time으로 실제 이동을 제한한다. 따라서 큰 프레임 이동도 블록을 통과하지 않는다. 접촉 후 정지 래치 설정. StepReturnPlatform 진입과 이동 직후 도착 처리에 래치 가드를 두어 정지 신호/Overlap 이후 경유지 전진을 막는다. 기존 속도 계산·부모 AvilityTick·Freeze는 유지한다.
+- **상단 0번/하단 1번 설정:** 플랫폼을 상단에 배치, MovePoint[0]=(0,0,0), [1]=(0,0,-하강거리), StartDelay=0, ReturnOnSignalOff=false, StopOnAbilityBlockContact=true, ResetBlock=false. PressBox는 실제 플랫폼 아랫면에 얇고 넓게 맞춘다(액터·컴포넌트 스케일 포함). 최초 BP_Trigger의 Targets=플랫폼/Channel0, NextLevel 비움. BP_PressurePlate의 SignalTargets=플랫폼/Channel5. 여러 유지 신호 중 마지막 신호가 해제되어야 하강한다(Required=1).
+- 선택 신호 정지 구성: BP_BlockSignalTrigger ButtonMode=ReOn, OnlyPhysicsBlocks=false, TriggerBlock=플랫폼, SignalTargets=플랫폼/Channel4. 플랫폼 본체가 이 신호 구역에 들어오면 즉시 정지. 실제 아래 블록 접촉은 위 StopOnAbilityBlockContact 옵션을 사용하면 별도 정지 구역 없이 처리한다. 4번은 펄스로 사용하고, 5번은 유지형 압력판에 연결한다.
+- 검증: 기존 경로·0/3번·신호 해제·속도 88개 + 신규 30개 직접 검사 통과. 저장본을 새 프로세스로 다시 읽어 118개 재확인, 컴파일 오류·경고 0. 실제 캐릭터 압력판 진입/이탈·중간 재입력·상단 유지·반복 접촉 정지·빠른 1프레임 관통 방지 PIE 10개, 기존 플레이어·블록 접촉 리스폰 회귀 PIE 13개 통과. 테스트용 송신 대상 setter/직접 신호 연결은 다른 BP의 메모리에만 추가하고 저장하지 않았다. 열린 Blue 액터 1,126개·플랫폼 3개·모든 Transform/기존 설정/선택·미저장 맵 상태 보존, Content/Config 해시상 BP_ReturnPlatform만 변경. 백업·결과 Saved/CodexBackups/ReturnPlatformHoldStop-20261104. 맵 설정은 자동 변경하지 않는다.
+접촉 리스폰 추가(2026-11-04): 부모는 BP_AvilityBlock 그대로 유지하고, BP_PressBlock과 같은 `PressBox` BoxCollision을 루트 아래에 추가했다. 상대 위치 (0,0,-15), BoxExtent (32,32,32), 상대 스케일 (3.8,3.8,0.2), HiddenInGame, Custom QueryOnly, ObjectType LightSencer, Pawn/WorldDynamic/PhysicsBody Overlap 및 그 외 Ignore. 레벨에서 PressBox의 위치·크기를 조절한다.
+
+- 디테일 **Press**: `ResetPlayer` [I], `ResetBlock` [I], `PlayerRespawnLocation` [I] 로컬 Vector(3D 위젯 표시). 두 옵션은 기존 플랫폼 보호를 위해 기본 false. 플레이어 소환 위치 기본 (0,0,150). ResetBlock은 기존 ResetToStart를 호출하므로 Physics 블록에 적용된다.
+- 기존 EventGraph BeginPlay→Parent: BeginPlay 뒤 `InitializePressRespawn` 추가: `RespawnWorldLocation = TransformLocation(GetTransform, PlayerRespawnLocation)` → `PressRespawnReady=true`. 부모 초기화 유지. 월드 소환 위치는 시작 시 한 번 계산하여 이동 중에도 고정한다. 기존 SetMove·ReceiveTick 및 신호/속도 함수는 수정하지 않았다.
+- PressBox BeginOverlap → PressRespawnReady → OtherActor!=Self → Cast BP_AvilityBlock. 성공 시 ResetBlock이면 대상 ResetToStart, 실패 시 ResetPlayer AND OtherActor==GetPlayerCharacter(0) → Cast BP_Charactor → RespawnAt(RespawnWorldLocation). 암전·들고 있는 블록 해제·중복 방지·일시정지는 기존 캐릭터 RespawnAt 사용. PressBox는 플랫폼과 이동한다. 정상 탑승 면과 겹치지 않도록 실제 압사 면에만 배치한다.
+- 기존 경로·속도·신호 회귀 88개 및 새 초기화/설정 검사 9개, 실제 접촉 PIE 13개 통과. 백업/검증 Saved/CodexBackups/ReturnPlatformRespawn-20261104. 다른 레벨과 BP 파일 유지.
+
+기존 능력 블록은 유지하고 별도 자식 BP에 출발·귀환 상태를 구현했다. 경로는 부모의 MovePoint/WorldPatrolPoints, 기본 속도는 MoveSpeed, 구간별 속도는 선택 설정 MovePointSpeeds를 사용한다. 메시·빛 반응은 부모 설정을 사용한다.
 
 | 채널 / 내부 상태 | 동작 |
 |---|---|
-| Channel 0 켜짐 | 시작점 대기 중일 때만 StartForward. 진행 방향 +1, 경유지 인덱스 0, 이동 시작 |
+| Channel 0 켜짐 | 시작점 대기 중일 때만 StartForward. StartDelay 뒤 진행 방향 +1, 경유지 인덱스 0으로 출발 |
 | Channel 3 켜짐 | 전진 중 또는 끝점 대기 중이면 ReturnToStart. 현재 목표의 이전 경유지부터 역순 귀환 |
-| Channel 0/3 꺼짐 | 명령형 채널이므로 이동을 취소하지 않음 |
+| Channel 0 꺼짐 | ReturnOnSignalOff=true이면 ReturnToStart. false이면 기존 이동 유지 |
+| Channel 3 꺼짐 | 무시. 귀환 유지 |
+| Channel 4 켜짐 / 꺼짐 | 현재 위치 즉시 정지·출발 예약 취소 / 정지 유지. 별도 ReturnSignalStopped 래치 사용 |
+| Channel 5 켜짐 / 꺼짐 | 현재 위치에서 0번으로 귀환·도착 후 고정 / 현재 위치에서 마지막 경유지 방향으로 이동 |
 | Channel 1/2 | 이 전용 BP에서는 사용하지 않음. 기존 BP_AvilityBlock의 동작은 변경 없음 |
-| PlatformPhase 0/1/2 | 0 = 시작점 대기, 1 = 전진(마지막 경유지에서 대기 포함), 2 = 귀환 |
+| PlatformPhase 0/1/2/3 | 0 = 시작점 대기, 1 = 전진(마지막 경유지에서 대기 포함), 2 = 귀환, 3 = 출발 지연 중 |
 
-- BeginPlay는 부모 것을 그대로 상속한다. SetMove만 오버라이드: Move=PatrolOnce(NewEnumerator8), WaitTrigger=true, StartMoving=false → **Parent SetMove**(물리·월드 경로 초기화) → FinishReturnPlatform. 자식 기본 경로는 (0,0,0) → (300,0,0), ChannelRequired는 0→1 / 3→1.
+- BeginPlay는 Parent: BeginPlay 실행 후 접촉 리스폰 위치를 초기화한다. SetMove 오버라이드: Move=PatrolOnce(NewEnumerator8), WaitTrigger=true, StartMoving=false → **Parent SetMove**(물리·월드 경로 초기화) → FinishReturnPlatform. 자식 기본 경로는 (0,0,0) → (300,0,0), ChannelRequired는 0→1 / 3→1.
 - IsStartOn은 항상 false. 채널 신호는 출발/귀환 명령으로 처리하며 부모의 StartMoving 반전 규칙을 적용하지 않는다.
-- StartForward: Phase==0 AND 경유지 2개 이상이면 Phase=1, PatrollCount=1, PatrolIndex=0, TriggerPaused=false. 전진/귀환 중 재출발 입력은 무시.
-- ReturnToStart: Phase==1 AND 유효 경로이면 Phase=2, PatrollCount=-1, PatrolIndex=Clamp(현재 목표 인덱스-1, 0, 마지막), TriggerPaused=false. Phase==2에서 다시 받아도 뒤집히지 않는다.
+- StartForward: Phase==0 AND 경유지 2개 이상이면 StartDelay>0을 검사. 양수는 Phase=3, TriggerPaused=true → StartDelayTimerHandle에 FinishStartDelay 단발 예약. 0 이하는 기존 Phase=1, PatrollCount=1, PatrolIndex=0, TriggerPaused=false 즉시 출발. 지연/전진/귀환 중 재출발 입력은 무시하여 대기 만료 시각을 연장하지 않는다.
+- StartDelay [I]: Return Platform 카테고리, 기본 0초. 매번 시작점에서 정방향 출발하기 전에만 적용하며 경유지 사이·귀환에는 추가 대기 없음. FinishStartDelay는 Phase==3일 때 타이머 해제 → 유효 경로 재검사 → 기존 전진 상태로 전환, 무효 경로면 FinishReturnPlatform. 초록 정지 중에도 게임 시간 기준 지연은 만료되고 실제 이동은 기존 IsFrozen 가드로 대기한다.
+  - MovePointSpeeds [I] (2026-11-04): Return Platform 카테고리의 실수 배열, 기본 빈 배열. 단위 cm/s. [1]은 MovePoint[0]↔[1], [2]는 [1]↔[2] 구간 속도. [0]은 액터 초기 위치에서 MovePoint[0]까지의 접근 속도이며 보통 MovePoint[0]=(0,0,0)이므로 이동 거리가 없다. 배열에 해당 값이 없거나 0 이하면 기존 MoveSpeed를 사용한다. 여분 항목은 사용하지 않는다. 기본 빈 배열인 기존 인스턴스는 종전 속도를 유지한다.
+  - GetReturnMoveSpeed (pure): ResolvedSpeed=MoveSpeed로 시작. 목표 인덱스를 경로 범위로 Clamp하고 전진은 그 인덱스, 귀환(Phase=2)은 목표 인덱스+1을 다시 Clamp하여 SpeedIndex 계산. 배열 범위 검사 뒤 양수일 때만 ResolvedSpeed 교체. StepReturnPlatform의 기존 MoveSpeed 읽기 2개(양수 가드·보간 속도)만 이 함수 결과로 교체하여 경로·도착 판정·출발 지연·초록 정지 유지. 중도 귀환도 현재 물리 구간의 속도를 사용한다.
+- ReturnToStart: Phase==3이면 FinishReturnPlatform으로 출발 예약 취소(위치 유지). Phase==1 AND 유효 경로이면 Phase=2, PatrollCount=-1, PatrolIndex=Clamp(현재 목표 인덱스-1, 0, 마지막), TriggerPaused=false. Phase==2에서 다시 받아도 뒤집히지 않는다. FinishReturnPlatform은 기존 대기 초기화 전에 StartDelayTimerHandle을 해제한다.
+- ReturnOnSignalOff [I]: bool 기본 false, 디테일 Return Platform 카테고리. OnChannelDeactive 진입 → Branch(Channel==0) → Branch(ReturnOnSignalOff) → ReturnToStart. 0번 신호 개수가 ChannelRequired 아래로 내려갈 때 기존 BP_Activate에서 호출한다. 신호가 하나라도 유지되면 필요 개수=1인 플랫폼은 복귀하지 않는다. 귀환 중 0번 재활성화는 기존 StartForward의 Phase==0 가드로 무시한다.
 - ReceiveTick 오버라이드: 부모 AvilityTick → StepReturnPlatform(DeltaSeconds). 부모의 자동 Patrol 이동 Tick은 호출하지 않아 이중 이동을 피한다.
-- StepReturnPlatform: Phase>0, 경유지 2개 이상, !TriggerPaused, !IsFrozen, dt>0, MoveSpeed>0을 모두 검사. 인덱스를 유효 범위로 Clamp하고 현재 경유지를 로컬 RouteTarget에 저장 → VInterpTo_Constant → SetActorLocation(Sweep=false, Teleport=false) → 도착 거리 ≤0.01이면 AdvanceReturnRoute.
+  - StepReturnPlatform: Phase!=3, Phase>0, 경유지 2개 이상, !TriggerPaused, !IsFrozen, dt>0, GetReturnMoveSpeed.Speed>0을 모두 검사. 인덱스를 유효 범위로 Clamp하고 현재 경유지를 로컬 RouteTarget에 저장 → VInterpTo_Constant(InterpSpeed=GetReturnMoveSpeed.Speed) → SetActorLocation(Sweep=false, Teleport=false) → 도착 거리 ≤0.01이면 AdvanceReturnRoute.
 - AdvanceReturnRoute: 전진이면 다음 경유지, 마지막이면 그 자리에서 TriggerPaused=true. 귀환이면 이전 경유지, 0번이면 FinishReturnPlatform(Phase=0, Pause=true, Index=0, Direction=+1). 시작점으로 이동하는 순간이동 노드는 없다.
 - 연결 예시: BP_Button RepeatOn / Channel 0 → 새 플랫폼, BP_BlockSignalTrigger ReOn / Channel 3 → 같은 플랫폼. 블록 리스폰은 기존 BP_Respawn으로 처리하며 신호 구역을 더 위에 배치한다.
+- 기존 0번 PressurePlate 구성: ReturnOnSignalOff=true, 발판 SignalTargets에 Target=플랫폼 / Channel=0. 밟으면 출발하고 떼면 귀환. 기존 RepeatOn + 3번 별도 복귀 구성은 옵션 false 유지(RepeatOn 재입력은 해제→활성화를 연달아 전송). 위쪽 0번으로 밟는 동안 올라가려면 새 Channel=5 구성을 사용한다.
 - 검증: 별도 임시 맵에서 실제 ReceiveBeginPlay/ReceiveTick과 버튼·트리거를 호출하는 34개 검사 통과. 프레임 이동 거리 제한, 중간/끝점 귀환, 꺾인 경로 역주행, 반복 신호 무시, 3회 왕복과 재출발, Freeze/Unfreeze, 빈/단일 경로·속도/시간 0, 변환 경로 확인. 새 프로세스 오류·경고 0. 실제 플레이어 탑승·실시간 PIE는 미실시.
 - 백업/검증: Saved/CodexBackups/ReturnPlatform-20261102. 기존 BP 및 Levels 파일은 해시 비교로 보존 확인.
+  - 구간 속도 검증(2026-11-04): 기존 직접 회귀 60개와 신규 이동 검사 28개, 출발 지연 PIE 27개와 실제 압력판 구간 속도 PIE 12개 통과. 정방향·중도/끝점 복귀·빈/짧은/0/음수 배열·독립 인스턴스·초록 Freeze·회전/스케일 경로 확인. 실제 플레이 프레임에서 120/300cm/s의 두 구간 및 역순 복귀 속도 측정. 컴파일 오류·경고 0. Blue 파일·802개 액터와 기존 플랫폼 설정, 다른 Content/Config 해시 보존. 백업/결과 Saved/CodexBackups/ReturnPlatformPointSpeeds-20261104.
+- 신호 해제 복귀 추가 검증(2026-11-03): 기존 34개 포함 직접 검사 60개, 실제 캐릭터 PressurePlate 진입/이탈 PIE 10개 통과. 컴파일 오류·경고 0. 현재 Blue 편집 상태 백업·저장 후 적용, 기존 플랫폼 배치·설정 보존. `Saved/CodexBackups/ReturnOnSignalOff-20261103`.
+- 출발 지연 검증(2026-11-04): 기존 직접 검사 60개 + 실제 PIE 27개 통과. 독립 지연, 반복 왕복마다 재적용, 지연 중 3번/옵션 켠 0번 해제로 취소, 옵션 끈 해제 유지, 중복 입력, 다중 송신자, 0/음수, Freeze/Unfreeze, 실제 PressurePlate 취소·재출발·귀환과 이동 속도 상한 확인. 컴파일 오류·경고 0. 기존 플랫폼 설정과 사용자 Blue 편집 상태 보존. 백업/결과 `Saved/CodexBackups/ReturnPlatformStartDelay-20261103`.
 
 ### BP_GreenGroupStop (초록빛 그룹 정지, 2026-11-01)
 사용자가 만든 BP_AvilityBlock 복제본을 완성한 로컬 BP. 부모는 BP_Activate이며 BP_AvilityBlock의 자식은 아니다. 기존 빛 반응·Freeze/Unfreeze 로직을 유지한다.
@@ -789,3 +872,7 @@ BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼�
 - Global Contrast W 1.04, Film Toe .47, Vignette .08, Bloom Intensity .12, Threshold 2.0.
 - Manual 노출 +1, 중립 색·기본 환경광, 조명 거리 제한 해제 유지. 두 맵에 ExponentialHeightFog가 없는 것도 확인.
 - 조명 BP·강도·색·반경 및 게임 로직 변경 없음. 원본 백업 C:/lightgame_ai/Backups/BeforeContrastPass_20261103. 가이드 #spectrum-look에 현재값 반영.
+
+### 2026-11-04 팀원 환경 조명 업데이트 로컬 적용
+- PR #13(18aec1b) 이후 a4c7332의 신규 환경 조명 BP 4종과 Green/Tutorial+Red의 저장 맵·검증 도구를 선택 반영. 두 맵의 적용 전 로컬 파일이 PR 기준과 같음을 확인했다. Blue는 로컬 저장본을 유지하고 기존 BluePrint 파일 41개 및 Config·다른 맵의 해시 일치를 확인했다. 오늘 추가한 개폐·복귀·출발 지연과 광원 이동 동작 보존.
+- Tools/Verify-EnvironmentLights.py의 저장 조명 264개·원본 배치 서명 검사와 두 맵 PPV 최종값 확인 통과. 새 BP 4종과 기존 BP_Hatch/BP_ReturnPlatform/BP_BlinkLight 컴파일 오류·경고 0. Blue 802개 액터 로딩 확인, 파일 저장 없이 검사. 문서 3개는 로컬 변경과 병합. 백업/결과 Saved/CodexBackups/EnvironmentUpdate-20261104. 이번 작업에서 실제 플레이/FPS 측정·커밋·푸시는 하지 않았다.
