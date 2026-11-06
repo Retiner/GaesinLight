@@ -118,9 +118,17 @@
 <ul><li>Tutorial+Red·Green의 임시 PostProcessVolume을 <a href="#spectrum-look"><code>PPV_Spectrum_Look_01</code></a>로 교체했습니다. 노출 고정, 약한 청회색 암부, 블룸 0.20, 비네팅 0.12. 실제 플레이 화면을 받은 뒤 2차 조정할 기준값입니다.</li></ul>
 <p><strong>2026-11-03 — 환경 조명 패널 적용</strong></p>
 <ul><li><a href="#environment-lights"><code>BP_Floor_Plain_Light</code> / <code>BP_Wall_Light</code></a> 추가. Tutorial+Red의 바닥 140개·벽 16개와 Green의 바닥 108개를 교체했습니다. 기존 메시·재질·위치·회전·크기·충돌을 유지하고 하늘색 면광원을 붙였습니다. 퍼즐 반응과 신호 채널 없이 주변만 밝힙니다.</li></ul>
+<p><strong>2026-11-06</strong></p>
+<ul>
+<li>(설계, 미구현) 메뉴: 시작 화면(새 게임·이어하기·설정·게임 종료)과 ESC 메뉴(계속·설정·사전·스테이지 초기화·종료→시작 화면). 스테이지 초기화는 퍼즐만 처음으로, 주운 필터는 유지.</li>
+<li>(테스트 전) 파랑 끌어오기: 블록이 <strong>위쪽 광원 쪽으로도</strong> 끌려오고, 손전등(<code>PL…</code>)과 맵 광원·거울(<code>ML…</code>)의 세기를 따로 정할 수 있음.</li>
+<li>플레이어 <strong>걷기 속도·점프 높이</strong>를 낮춤(동작 확인).</li>
+<li>(테스트 전) 점프에 <strong>쿨타임</strong>: 착지 후 잠깐 기다려야 다시 뜀. 쿨타임이 끝나기 직전에 누른 점프는 기억했다가 끝나는 순간 뜀.</li>
+<li>필터의 가운데(유리) 부분이 <strong>필터 색에 맞게</strong> 보임. 리셋 버튼·플레이 화면 HUD 동작 확인.</li>
+</ul>
 <p><strong>2026-11-03</strong></p>
 <ul>
-<li>(테스트 결과 미확인) <strong>플레이 화면 HUD</strong>: 조준점, 상호작용 문구(<code>F: …</code>), 오른쪽 아래 1~4 색 슬롯(가진 필터만 안쪽 원 표시). <a href="#player-controls">1장</a></li>
+<li>(2026-11-06 동작 확인) <strong>플레이 화면 HUD</strong>: 조준점, 상호작용 문구(<code>F: …</code>), 오른쪽 아래 1~4 색 슬롯(가진 필터만 안쪽 원 표시). <a href="#player-controls">1장</a></li>
 </ul>
 <p><strong>2026-11-03 — 낙하 블록 공통 시간표 추가</strong></p><ul><li><a href="#falling-hazard-schedule">공통 시간표</a>: 초록빛·정지 신호·늦은 복귀로 놓친 차례는 건너뛰고 다음 자기 차례에 출발합니다. Green의 3묶음 12개에 0 / 3 / 6초, 반복 9초로 적용했습니다.</li></ul>
 <p><strong>2026-11-03 — 낙하 블록 정지 신호 추가</strong></p><ul><li><a href="#falling-hazard-stop"><code>BP_FallingHazardBlock</code> 3번</a>: 신호가 켜진 동안 다음 낙하를 막습니다. 떨어지는 물체는 기존 리스폰으로 돌아와 대기하며, 신호 해제 후 남은 시간부터 재개합니다.</li></ul>
@@ -147,7 +155,7 @@
 <ul><li>로컬 <code>BP_GreenGroupStop</code>: 초록빛 효과가 발동하면 등록한 Patrol 블록들을 함께 정지하고, 효과가 풀리면 함께 재개. Green 레벨의 받침에 대상 4개 연결. 받침의 충돌 꺼짐으로 손전등이 통과하던 문제도 수정했으며 실제 손전등으로 정지·해제 확인. <a href="#green-group-stop">6-1장 사용법</a></li></ul>
 
 <ul>
-<li>(만듦, 테스트 전) 새 장치 <strong>리셋 버튼 <code>BP_ResetButton</code></strong> (버튼의 자식): 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 <code>ResetArea</code> 안</strong>인 Physics 블록이 전부 처음 자리로. 영역 밖으로 던진 블록도 돌아옴, 들고 있던 블록은 손에서 놓음. 영역 크기·위치·회전은 레벨에서 버튼을 선택하고 컴포넌트 목록의 <code>ResetArea</code>(Box Extent, 위치, 회전)로 조절. 버튼 기능(<code>SignalTargets</code>)도 그대로라 Patrol 블록은 같은 버튼에 1번 채널 "처음으로"로 연결. <code>ButtonMode</code>는 <code>ReOn</code>. 초록으로 멈춘 블록은 자리만 돌아가고 멈춘 상태는 능력이 끝날 때까지 유지. <a href="#resetbutton">2-1장</a></li>
+<li>(2026-11-06 동작 확인) 새 장치 <strong>리셋 버튼 <code>BP_ResetButton</code></strong> (버튼의 자식): 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 <code>ResetArea</code> 안</strong>인 Physics 블록이 전부 처음 자리로. 영역 밖으로 던진 블록도 돌아옴, 들고 있던 블록은 손에서 놓음. 영역 크기·위치·회전은 레벨에서 버튼을 선택하고 컴포넌트 목록의 <code>ResetArea</code>(Box Extent, 위치, 회전)로 조절. 버튼 기능(<code>SignalTargets</code>)도 그대로라 Patrol 블록은 같은 버튼에 1번 채널 "처음으로"로 연결. <code>ButtonMode</code>는 <code>ReOn</code>. 초록으로 멈춘 블록은 자리만 돌아가고 멈춘 상태는 능력이 끝날 때까지 유지. <a href="#resetbutton">2-1장</a></li>
 <li>리스폰(되돌리기 구역·프레스 블록) 동안 <strong>세상이 멈춤</strong>: 어둡고 소환되는 사이 움직이는 장치가 정지했다가 밝아질 때 다시 움직임. 소환 처리는 플레이어 한 곳(<code>BP_Charactor.RespawnAt</code>)으로 모음. <a href="#respawn-player">3-2장</a></li>
 <li>블록 들기: 큰 블록도 시야를 덮지 않게 거리를 블록 앞면부터 재고, 화면 가운데보다 조금 아래에 들게 함 (동작 확인). <a href="#block-grab">6장 들기</a></li>
 <li>능력 블록 <strong>2번 채널 "방향 바꾸기"</strong>: 신호 켜짐 → 그 자리에서 돌아서 반대 방향, 꺼짐 → 원래 방향. <code>Togle</code>·<code>Timed</code>·발판으로 연결. <a href="#block-reverse">6장</a></li>
@@ -299,7 +307,7 @@
 
 <!-- ===================== 2-1 리셋 버튼 ===================== -->
 <details class="chapter" id="resetbutton"><summary><span class="chapter-number">2-1</span>BP_ResetButton — 리셋 버튼 (블록 배치 초기화) <span class="tag send">송신</span></summary><div class="chapter-body">
-<p>F로 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 안</strong>인 Physics 능력 블록을 전부 처음 위치·회전으로 되돌리는 버튼입니다. 퍼즐을 망쳤을 때 방을 다시 시작하게 하는 용도입니다. <code>BP_Button</code>의 자식이라 버튼 설정(<a href="#button-settings">2장</a>)도 전부 그대로 쓸 수 있습니다. <span class="note">(2026-11-01 만듦, 테스트 전)</span></p>
+<p>F로 누르면 <strong>처음 놓인 자리가 버튼의 사각 영역 안</strong>인 Physics 능력 블록을 전부 처음 위치·회전으로 되돌리는 버튼입니다. 퍼즐을 망쳤을 때 방을 다시 시작하게 하는 용도입니다. <code>BP_Button</code>의 자식이라 버튼 설정(<a href="#button-settings">2장</a>)도 전부 그대로 쓸 수 있습니다. <span class="note">(2026-11-01 만듦, 2026-11-06 동작 확인)</span></p>
 <details class="node" id="resetbutton-settings" open><summary>설정</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>항목</th><th>설명</th><th>기본값</th></tr></thead><tbody>
 <tr><td><code>ResetArea</code> (컴포넌트)</td><td>초기화 범위인 주황 상자. 레벨에서 버튼 선택 → Details 위쪽 컴포넌트 목록에서 <code>ResetArea</code> → <strong>Box Extent</strong>(절반 크기)·Location·Rotation으로 방을 덮게 맞춥니다. 버튼과 떨어뜨려 놓아도 되고, 돌려 놓아도 정확합니다. 게임 중엔 안 보이고 아무것과도 부딪히지 않습니다</td><td>버튼 둘레</td></tr>
@@ -1078,9 +1086,11 @@
 <li>그 외: 플레이어가 블록 쪽으로 끌려감. 단 <strong>플레이어가 손전등으로 그 블록을 비추고 있는 동안만</strong> (맵 광원만 비출 때는 안 끌려감)</li>
 </ul>
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
-<tr><td><code>MaxPullSpeed</code></td><td>블록이 끌려오는 최대 속도 (<code>Physics</code>일 때)</td><td>3000</td></tr>
+<tr><td><code>PLMaxPullSpeed</code> [I]</td><td>(2026-11-06 추가, 테스트 전) <strong>PL = Player(플레이어 손전등)</strong>. 손전등으로 비춘 블록이 끌려오는 <strong>최대 속도</strong> (<code>Physics</code>일 때)</td><td>BP 기본값</td></tr>
+<tr><td><code>MLMaxPullSpeed</code> [I]</td><td>(2026-11-06, 예전 <code>MaxPullSpeed</code>의 새 이름) <strong>ML = Map Light(맵 광원·거울)</strong>. 맵 광원이나 거울 반사 빛으로 끌려오는 <strong>최대 속도</strong></td><td>3000</td></tr>
 <tr><td><code>PlayerMaxPullSpeed</code></td><td>플레이어가 끌려가는 최대 속도 (<code>Physics</code>가 아닐 때)</td><td>2000</td></tr>
 </tbody></table></div>
+<p class="note">(2026-11-06, 테스트 전) 끌려오는 세기 = 거리(높이 포함) × <code>PLPullGain</code>(손전등) 또는 <code>MLPullGain</code>(맵 광원·거울), 최소 500 ~ 최대 위의 <code>PL/MLMaxPullSpeed</code>. 방향은 빛 주체 앞(<code>Front</code>)의 목표점을 높이까지 포함해 향하므로 <strong>위쪽으로도</strong> 날아오며, <code>UpForce</code>가 위로 조금 더 기울입니다. <code>PL/MLPullGain</code>·<code>UpForce</code>·<code>Front</code>는 <strong>BP 고정값</strong>(맵 배치에서 안 바꿈) — 레벨에서는 최대 속도 두 개만 조절합니다. 빛 주체 판단은 <code>GetLightSource</code>: 플레이어 손전등이 비추고 있으면 PL, 아니면 ML(거울은 ML).</p>
 
 <h3 class="c-green">Green — 정지</h3>
 <ul>
