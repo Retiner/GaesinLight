@@ -147,7 +147,7 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 - 공유 enum을 사용하는 BP_BlockSignalTrigger에도 같은 RepeatOn 분기를 연결했다. 기존 네 모드와 모든 기본값은 유지. BP_ResetButton 자식은 기본 ReOn 유지, 파일 수정 없음.
 - 검증: 별도 임시 맵의 직접 BP 호출 27개 검사 통과. 100회 눌러도 신호 수 1, 다른 송신자 기여 보존, 0번 재출발/유지, 1번 반복 리셋, 2번 반복 방향 전환, 임의 채널·여러 대상, 기존 모드와 ResetButton 기본값 확인. 새 프로세스 오류·경고 0. F키 상호작용·Timed 만료 PIE는 미실시. 백업: Saved/CodexBackups/ButtonRepeatOn-20261102.
 
-### BP_ResetButton (리셋 버튼, BP_Button 자식 — 2026-11-01 그래프 확인, 2026-11-06 동작 확인)
+### BP_ResetButton (리셋 버튼, BP_Button 자식 — 2026-11-01 그래프 확인, 테스트 전)
 **구성요소**: 부모 것 + `ResetArea`(Box Collision, DefaultSceneRoot 자식, NoCollision, Hidden in Game — 범위 표시·계산용). Class Defaults `ButtonMode` = `ReOn`.
 
 ```
@@ -447,7 +447,7 @@ DefaultSceneRoot
 | `AvilityTick` / `AvilityStart` / `AvilityEnd` | 능력 진행(상태 흐름·발광 식은 CLAUDE.md 2-3, 2026-10-31 그래프 확인). Sequence then_0 = Switch(AvilityState) 충전/유지/쿨타임, then_1 = BlockColor·GlowAmount 갱신. Tick에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵 |
 | `GetLightSource` (Pure) | 출력 actor / IsPlayer / Found. 플레이어 기여 우선, 아니면 Keys[0] |
 | 빨강 `Push`, 폭발 | Select(Found ? actor : 플레이어) 기준 |
-| 파랑 `BlockPull`, `PlayerPull` | BlockPull(2026-11-06 작업 37, 테스트 전): 빛 주체 = Select(Found ? GetLightSource.actor : PlayerCharacter), 목표 = 주체 위치 + Forward × `Front` → 방향 Normal(GetDirectionUnitVector(메시→목표) + `UpForce`) (높이 포함) → 세기 Clamp(Distance(3D) × Select(IsPlayer ? `PLPullGain` : `MLPullGain`), 500, Select(IsPlayer ? `PLMaxPullSpeed`[I] : `MLMaxPullSpeed`[I])) → AddImpulse(Vel Change) 한 번. PL = 플레이어 손전등, ML = 맵 광원·거울. PlayerPull은 플레이어가 비출 때만(`ActiveContributions.Contains(GetPlayerCharacter)`) |
+| 파랑 `BlockPull`, `PlayerPull` | PlayerPull은 플레이어가 비출 때만(`ActiveContributions.Contains(GetPlayerCharacter)`) |
 | 초록 `Freeze` | `CanGrab2 = false` |
 | 노랑 `Y_Grow` / `Y_Reset`, 하늘 `SB_Down` / `SB_Reset`, `Grow` | Timeline Play/Reverse로 크기, SB_Down에서 `CanGrab2 = CanGrabSkyBlue` |
 | 보라 `P_Silent`, `P_Collision`, `P_CollisionReset`, `P_Reset`, `SafeReset`(Custom Event) | 반투명·통과·안전 복구 |
@@ -754,7 +754,6 @@ CapsuleComponent (루트, Character 기본)
 | `RefreshFlashlight` | `SM_Flashlight.SetVisibility(CanUseFlashlight, Propagate 끔)` — 메시만. 빛은 LightControll/TurnOff 담당. BeginPlay와 손전등 줍기 직후 호출 |
 | 숫자 키 검사 (작업 6) | `IA_Red/Green/Blue` Started → Branch(`CanUseColor(Red/Green/Blue)`) → `LightControll(색)`. `IA_White` Started → Branch(`CanUseFlashlight`) → `LightControll((0,0,0))`. `IA_TurnOff`는 검사 없음. 검사를 LightControll 안이 아니라 키 쪽에 둔 이유: LightControll은 LinearColor를 받고 검사는 EN_LightColor로 묻기 때문 |
 | `IA_TurnOff` (E) | 끄기 |
-| `IA_Jump` (Space, 2026-11-06 점프 쿨타임·예약, 테스트 전) | Started → Branch(`CanJumpAgain`) T → Jump → CanJumpAgain=false / F → `IsJump`=true(예약) → Set Timer(`clear_Jump`, 0.3초) → IsJump=false. Completed → StopJumping. **Event On Landed** → Delay(`JumpCooldown`) → CanJumpAgain=true → Branch(IsJump) → Jump → IsJump=false → CanJumpAgain=false. 쿨타임은 착지부터, 예약은 쿨타임 끝나기 0.3초 안에 누른 입력만 |
 | `IA_Relation` (F) | Started → IsValid(`HeldBlock`) → 있으면 `DropBlock` / 없으면 `TryInteract` |
 | `TryInteract` (함수) | IsValid(`FocusTarget`) → Cast To BP_AvilityBlock → 성공 `GrabBlock(Block)` / 실패 `Interact`(BPI_Interact 메시지, Target FocusTarget) |
 | `FindTarget` (함수, `FocusTarget` 갱신, 2026-11-02 개편·동작 확인) | `Sphere Trace Multi For Objects`(Start = Camera 위치, End = + Camera Forward × `InteractDistance`, Radius 20, Object Types WorldStatic/WorldDynamic/PhysicsBody, Ignore Self) → For Each(Out Hits, 가까운 순) → Break Hit Result → `CanInteract`(HitActor) → Branch T → **벽 확인** `Line Trace For Objects`(Camera 위치 → 후보 Impact Point, Object Types **WorldStatic만**, Ignore Self) → Branch(NOT Return Value OR 선 HitActor == 후보) T → `FocusTarget = 후보` → Return / Completed → `FocusTarget = None`. 예전 SphereTraceSingle(R 40)은 큰 공이 받침·책상에 먼저 닿아 작은 대상을 못 고름. 벽 확인을 Visibility 채널로 했을 때는 맵 벽이 Visibility Ignore라 벽 너머 버튼이 눌림 → 물체 종류 방식으로 변경(WorldDynamic은 체크포인트·트리거 상자가 막아서 제외) |
@@ -880,11 +879,3 @@ BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼�
 ### 2026-11-04 팀원 환경 조명 업데이트 로컬 적용
 - PR #13(18aec1b) 이후 a4c7332의 신규 환경 조명 BP 4종과 Green/Tutorial+Red의 저장 맵·검증 도구를 선택 반영. 두 맵의 적용 전 로컬 파일이 PR 기준과 같음을 확인했다. Blue는 로컬 저장본을 유지하고 기존 BluePrint 파일 41개 및 Config·다른 맵의 해시 일치를 확인했다. 오늘 추가한 개폐·복귀·출발 지연과 광원 이동 동작 보존.
 - Tools/Verify-EnvironmentLights.py의 저장 조명 264개·원본 배치 서명 검사와 두 맵 PPV 최종값 확인 통과. 새 BP 4종과 기존 BP_Hatch/BP_ReturnPlatform/BP_BlinkLight 컴파일 오류·경고 0. Blue 802개 액터 로딩 확인, 파일 저장 없이 검사. 문서 3개는 로컬 변경과 병합. 백업/결과 Saved/CodexBackups/EnvironmentUpdate-20261104. 이번 작업에서 실제 플레이/FPS 측정·커밋·푸시는 하지 않았다.
-| 2026-11-06 | 사용자: 리셋 버튼(작업 29)·플레이 화면 HUD(작업 32) 동작 확인 |
-| 2026-11-06 | 작업 18 필터 색별 유리 머티리얼: 사용자 구현 완료(어느 BP에 어떤 방식으로 넣었는지는 미기록 — 그래프 받으면 구조 절에 추가) |
-| 2026-11-06 | 작업 33 점프 쿨타임·예약 그래프 확인(테스트 전): 변수 CanJumpAgain·JumpCooldown 추가, 기존 IsJump/clear_Jump를 예약 표시로 재사용 |
-| 2026-11-06 | 작업 33 플레이어 속도·점프력 조정 동작 확인(값 미기록). 작업 17 발광 방식 = 색별 머티리얼 교체, 36 = 맵 배치 스크린, 37에 38 합침(설계만) |
-| 2026-11-06 | BlockPull 실물 확인: 방향 Z 버림(Break/Make Vector) + UpForce 더함, 세기 Clamp(Distance2D × PullGain, 500, MaxPullSpeed), AddImpulse Vel Change. 작업 37 수정 안내 시작(미구현) |
-| 2026-11-06 | 작업 37 BlockPull 수정 그래프 확인(테스트 전): 빛 주체 = Select(Found ? GetLightSource.actor : PlayerCharacter), 목표 = 주체 위치 + Forward × Front. 방향 = Normal(GetDirectionUnitVector(메시→목표) + UpForce) (높이 포함). 세기 = Clamp(Distance(3D)(메시, 목표) × Select(IsPlayer ? PLPullGain : MLPullGain), 500, Select(IsPlayer ? PLMaxPullSpeed : MLMaxPullSpeed)). AddImpulse(Vel Change) 한 번. 변수 PullGain/MaxPullSpeed → MLPullGain/MLMaxPullSpeed 이름 변경, PLPullGain/PLMaxPullSpeed 추가 |
-| 2026-11-06 | BP_AvilityBlock Blue 변수 정리(사용자 결정): **PL = Player(플레이어 손전등)**, **ML = Map Light(맵 광원·거울 — GetLightSource.IsPlayer가 false인 모든 빛)**. 인스턴스 [I]는 `PLMaxPullSpeed`·`MLMaxPullSpeed`만. `PLPullGain`·`MLPullGain`(예전 PullGain, Float, 거리에 곱하는 세기)·`UpForce`(Vector, 위로 기울임)·`Front`(Float, 빛 주체 앞 목표 거리)는 BP 고정값. `MLPullGain`/`MLMaxPullSpeed`는 기존 변수 이름 변경이라 GUID·레벨 개별 값 유지 |
-| 2026-11-06 | 작업 10/11 메뉴 설계 결정(미구현): 시작 화면 전용 맵 MainMenu(새 게임/이어하기/설정/게임 종료), ESC 메뉴 WBP_PauseMenu(계속/설정/사전/스테이지 초기화/종료→시작 화면). 스테이지 초기화는 현재 맵 다시 열기, 필터·반납 기록 유지 |
