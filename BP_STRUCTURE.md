@@ -446,7 +446,8 @@ DefaultSceneRoot
 | `AvilityConfig` | Switch(Color) → 색별 ChargeTime·HoldTime·TargetColor 반환. 2026-11-02 사용자: 충전·유지 시간을 인스턴스 변수로 — Red `RChargeTime` / Blue `BChargeTime` / Green `GChargeTime`·`GreenHoldTime` / Purple `PChargeTime`·`PHoldTime` / Yello `YChargeTime`·`YHoldTime` / SkyBlue `SKChargeTime`·`SKHoldTime` (Red·Blue 유지 0 고정, All·None 1.5/0 상수). 쿨타임은 고정 |
 | `AvilityTick` / `AvilityStart` / `AvilityEnd` | 능력 진행(상태 흐름·발광 식은 CLAUDE.md 2-3, 2026-10-31 그래프 확인). Sequence then_0 = Switch(AvilityState) 충전/유지/쿨타임, then_1 = BlockColor·GlowAmount 갱신. Tick에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵 |
 | `GetLightSource` (Pure) | 출력 actor / IsPlayer / Found. 플레이어 기여 우선, 아니면 Keys[0] |
-| 빨강 `Push`, 폭발 | Select(Found ? actor : 플레이어) 기준 |
+| 빨강 `Push`, 폭발 | Push: Select(Found ? actor : 플레이어) 기준. 폭발 `Explosion`(2026-11-07 작업 39 면 방향, 테스트 전): Sphere Overlap Components(메시 위치, 반지름 VSize(ActorBounds Extent)+`OuterRadius`, PhysicsBody·WorldDynamic, Self 제외) → ForEach → IsSimulatingPhysics → `SurfaceDistance`(표면 거리) → 세기 MapRangeClamped(거리, `InnerRadius`→1, `OuterRadius`→0) × `ExplosionForce`, 방향 **`FaceDirection`(대상 위치)** → Z = Max(\|Z\|, `MinLift`) → Normal → AddImpulse(VelChange) / Completed: 플레이어 SurfaceDistance ≤ OuterRadius → 같은 방향식 × `Exp_PlayerForce` → LaunchCharacter(XY·Z Override) |
+| `FaceDirection` (Pure, 2026-11-07) | 입력 TargetLocation → 출력 Direction. R = (InverseTransformLocation(StaticMesh Component To World, 대상) − 로컬 bounds 중심) ÷ 로컬 반 크기 → (2026-11-07 수정 안내, 미확인) InFootprint = AX≤1 AND AY≤1이면 Up×Sign(R.Z), 아니면 AX≥AY ? Forward×Sign(R.X) : Right×Sign(R.Y) (처음 버전은 절댓값 최대 축이라 낮은 블록 옆에서 위로 감). 대상이 마주한 블록 면의 바깥 직각 방향(회전·크기 반영) |
 | 파랑 `BlockPull`, `PlayerPull` | BlockPull(2026-11-06 작업 37, 테스트 전): 빛 주체 = Select(Found ? GetLightSource.actor : PlayerCharacter), 목표 = 주체 위치 + Forward × `Front` → 방향 Normal(GetDirectionUnitVector(메시→목표) + `UpForce`) (높이 포함) → 세기 Clamp(Distance(3D) × Select(IsPlayer ? `PLPullGain` : `MLPullGain`), 500, Select(IsPlayer ? `PLMaxPullSpeed`[I] : `MLMaxPullSpeed`[I])) → AddImpulse(Vel Change) 한 번. PL = 플레이어 손전등, ML = 맵 광원·거울. PlayerPull은 플레이어가 비출 때만(`ActiveContributions.Contains(GetPlayerCharacter)`) |
 | 초록 `Freeze` | `CanGrab2 = false` |
 | 노랑 `Y_Grow` / `Y_Reset`, 하늘 `SB_Down` / `SB_Reset`, `Grow` | Timeline Play/Reverse로 크기, SB_Down에서 `CanGrab2 = CanGrabSkyBlue` |
@@ -754,7 +755,7 @@ CapsuleComponent (루트, Character 기본)
 | `RefreshFlashlight` | `SM_Flashlight.SetVisibility(CanUseFlashlight, Propagate 끔)` — 메시만. 빛은 LightControll/TurnOff 담당. BeginPlay와 손전등 줍기 직후 호출 |
 | 숫자 키 검사 (작업 6) | `IA_Red/Green/Blue` Started → Branch(`CanUseColor(Red/Green/Blue)`) → `LightControll(색)`. `IA_White` Started → Branch(`CanUseFlashlight`) → `LightControll((0,0,0))`. `IA_TurnOff`는 검사 없음. 검사를 LightControll 안이 아니라 키 쪽에 둔 이유: LightControll은 LinearColor를 받고 검사는 EN_LightColor로 묻기 때문 |
 | `IA_TurnOff` (E) | 끄기 |
-| `IA_Jump` (Space, 2026-11-06 점프 쿨타임·예약, 테스트 전) | Started → Branch(`CanJumpAgain`) T → Jump → CanJumpAgain=false / F → `IsJump`=true(예약) → Set Timer(`clear_Jump`, 0.3초) → IsJump=false. Completed → StopJumping. **Event On Landed** → Delay(`JumpCooldown`) → CanJumpAgain=true → Branch(IsJump) → Jump → IsJump=false → CanJumpAgain=false. 쿨타임은 착지부터, 예약은 쿨타임 끝나기 0.3초 안에 누른 입력만 |
+| `IA_Jump` (Space, 2026-11-06 점프 쿨타임·예약, 테스트 전) | Started → Branch(`CanJumpAgain`) T → Jump / F → `IsJump`=true(예약) → Set Timer(`clear_Jump`, 0.3초) → IsJump=false. Completed → StopJumping. **Event On Landed** → Delay(`JumpCooldown`) → CanJumpAgain=true → Branch(IsJump) → Jump → IsJump=false. **Event On Jumped**(실제로 뜬 순간) → CanJumpAgain=false (2026-11-06 수정: Jump가 실패해도 잠기지 않게). 쿨타임은 착지부터, 예약은 쿨타임 끝나기 0.3초 안에 누른 입력만 |
 | `IA_Relation` (F) | Started → IsValid(`HeldBlock`) → 있으면 `DropBlock` / 없으면 `TryInteract` |
 | `TryInteract` (함수) | IsValid(`FocusTarget`) → Cast To BP_AvilityBlock → 성공 `GrabBlock(Block)` / 실패 `Interact`(BPI_Interact 메시지, Target FocusTarget) |
 | `FindTarget` (함수, `FocusTarget` 갱신, 2026-11-02 개편·동작 확인) | `Sphere Trace Multi For Objects`(Start = Camera 위치, End = + Camera Forward × `InteractDistance`, Radius 20, Object Types WorldStatic/WorldDynamic/PhysicsBody, Ignore Self) → For Each(Out Hits, 가까운 순) → Break Hit Result → `CanInteract`(HitActor) → Branch T → **벽 확인** `Line Trace For Objects`(Camera 위치 → 후보 Impact Point, Object Types **WorldStatic만**, Ignore Self) → Branch(NOT Return Value OR 선 HitActor == 후보) T → `FocusTarget = 후보` → Return / Completed → `FocusTarget = None`. 예전 SphereTraceSingle(R 40)은 큰 공이 받침·책상에 먼저 닿아 작은 대상을 못 고름. 벽 확인을 Visibility 채널로 했을 때는 맵 벽이 Visibility Ignore라 벽 너머 버튼이 눌림 → 물체 종류 방식으로 변경(WorldDynamic은 체크포인트·트리거 상자가 막아서 제외) |
@@ -888,3 +889,36 @@ BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼�
 | 2026-11-06 | 작업 37 BlockPull 수정 그래프 확인(테스트 전): 빛 주체 = Select(Found ? GetLightSource.actor : PlayerCharacter), 목표 = 주체 위치 + Forward × Front. 방향 = Normal(GetDirectionUnitVector(메시→목표) + UpForce) (높이 포함). 세기 = Clamp(Distance(3D)(메시, 목표) × Select(IsPlayer ? PLPullGain : MLPullGain), 500, Select(IsPlayer ? PLMaxPullSpeed : MLMaxPullSpeed)). AddImpulse(Vel Change) 한 번. 변수 PullGain/MaxPullSpeed → MLPullGain/MLMaxPullSpeed 이름 변경, PLPullGain/PLMaxPullSpeed 추가 |
 | 2026-11-06 | BP_AvilityBlock Blue 변수 정리(사용자 결정): **PL = Player(플레이어 손전등)**, **ML = Map Light(맵 광원·거울 — GetLightSource.IsPlayer가 false인 모든 빛)**. 인스턴스 [I]는 `PLMaxPullSpeed`·`MLMaxPullSpeed`만. `PLPullGain`·`MLPullGain`(예전 PullGain, Float, 거리에 곱하는 세기)·`UpForce`(Vector, 위로 기울임)·`Front`(Float, 빛 주체 앞 목표 거리)는 BP 고정값. `MLPullGain`/`MLMaxPullSpeed`는 기존 변수 이름 변경이라 GUID·레벨 개별 값 유지 |
 | 2026-11-06 | 작업 10/11 메뉴 설계 결정(미구현): 시작 화면 전용 맵 MainMenu(새 게임/이어하기/설정/게임 종료), ESC 메뉴 WBP_PauseMenu(계속/설정/사전/스테이지 초기화/종료→시작 화면). 스테이지 초기화는 현재 맵 다시 열기, 필터·반납 기록 유지 |
+
+## 메뉴 (작업 10, 2026-11-06, 테스트 전)
+
+### ESC 메뉴 — `Content/UI/WBP_PauseMenu` + `BP_PlayerController`
+- 입력: `Content/GameMode/IA_Pause`(Digital, **Trigger when Paused**), `IMC_Default`에 Escape. PIE에서는 에디터 단축키 Play World → Stop의 Escape를 지워야 함.
+- 위젯: Canvas → Dim(Image 전체, 검정 60%) / 태블릿 배경 이미지 + MenuBox(Vertical Box 정중앙): `Btn_Resume`(계속) / `Btn_Settings`(설정, 미구현) / `Btn_Dictionary`(사전, 작업 36) / `Btn_RestartStage`(스테이지 초기화) / `Btn_ToTitle`(타이틀로 → GoToTitle, 테스트 전) / `Btn_QuitGame`(게임 종료 → Quit Game, 2026-11-06 추가, 테스트 전).
+- BP_PlayerController 변수 `PauseMenu`(WBP_PauseMenu), `IsMenuOpen`(bool).
+  - `OpenPauseMenu`: IsValid(PauseMenu) Not Valid → Create Widget(Self) → Set PauseMenu → (합류) Add to Viewport(ZOrder 10) → Set Game Paused(true) → Set Input Mode Game And UI(Focus PauseMenu, Hide Cursor During Capture 끔) → Show Mouse Cursor true → IsMenuOpen true.
+  - `ClosePauseMenu`: Remove from Parent → Set Game Paused(false) → Set Input Mode Game Only → Show Mouse Cursor false → IsMenuOpen false.
+  - `IA_Pause` Started → Branch(IsMenuOpen) T → ClosePauseMenu / F → Get Controlled Pawn → Cast To BP_Charactor → Branch(Respawning) **False** → OpenPauseMenu (리스폰 암전 중 열지 않음).
+  - IA_Pause True 쪽(2026-11-06 M-7-1): Get All Widgets Of Class(WBP_Settings) → Length > 0 → 있으면 For Each Remove from Parent(설정 창만 닫기) / 없으면 ClosePauseMenu.
+  - `RestartStage`: ClosePauseMenu → Open Level (by Name)(Get Current Level Name, Remove Prefix). 필터·반납 기록은 GameInstance라 유지, 본 게임 모드 맵은 체크포인트에서 시작.
+- 위젯 버튼: Btn_Resume → Get Owning Player → Cast To BP_PlayerController → ClosePauseMenu / Btn_RestartStage → … → RestartStage.
+- 예정: M-9 본 게임 모드(BP_RealGameMode)에서만 열기.
+- 버튼 마우스 올림 강조(M-8, 2026-11-07 사용자 동작 확인): 시작 화면과 같은 `SetMenuHover` 함수·`MenuFont` 변수를 복사. 버튼 글자 `Text_Resume`/`Text_Settings`/`Text_Dictionary`/`Text_RestartStage`/`Text_ToTitle`/`Text_QuitGame`(Is Variable), 버튼마다 On Hovered/On Unhovered → SetMenuHover.
+
+### 시작 화면 — 맵 `Content/Code/Levels/MainManu` + `Content/UI/WBP_MainMenu`
+- 맵 World Settings GameMode Override = `Content/GameMode/BP_MenuGameMode`(Game Mode Base, Default Pawn None, HUD None, Player Controller = 엔진 기본 PlayerController — BP_PlayerController는 HUD를 만들어서 안 씀).
+- Level Blueprint: BeginPlay → Create Widget(WBP_MainMenu, Get Player Controller 0) → Add to Viewport → Set Input Mode UI Only(Focus 메뉴) → Show Mouse Cursor true.
+- WBP_MainMenu: 배경 Image(지금은 이미지, 나중에 게임 화면) / TitleText(텍스트, 위쪽 가운데) / MenuBox: `Btn_NewGame` / `Btn_Continue` / `Btn_Settings`(미구현) / `Btn_Quit`.
+  - 변수 `FirstStage`(World Soft Object Reference — Open Level (by Object Reference)의 Level 핀 Promote to Variable, 기본 Tutorial+Red 예정).
+  - 함수 `PrepareForGame`: Set Input Mode Game Only(Owning Player) → Show Mouse Cursor false (맵 열기 전에 호출, UI Only 상태가 다음 맵에 남지 않게).
+  - Event Construct → Cast BP_GameInstance → Progress → Break S_PlayerProgress → CheckpointLevel != None → Btn_Continue.Set Is Enabled.
+  - Btn_NewGame → Cast BP_GameInstance → DeleteProgress → PrepareForGame → Open Level (by Object Reference)(FirstStage).
+  - Btn_Continue → Cast BP_GameInstance → PrepareForGame → Open Level (by Name)(Progress.CheckpointLevel) → 맵에서 MoveToCheckpoint.
+  - Btn_Quit → Quit Game(Owning Player, Quit).
+  - 버튼 마우스 올림 강조(M-8, 2026-11-07 사용자 동작 확인): 버튼 안 글자 `Text_NewGame`/`Text_Continue`/`Text_Settings`/`Text_Quit`(일반 Text Block, Is Variable). 변수 `MenuFont`(Slate Font Info — Text Block은 Get Font 노드가 없어 Designer의 Appearance Font를 복사·붙여넣기, 글꼴을 바꾸면 다시 복사).
+  - 함수 `SetMenuHover(Target: Text Block, Hovered: Bool, HoverColor: Linear Color)`: Set Color and Opacity(Make SlateColor(Select(Hovered ? HoverColor : 흰색))) → Set Render Scale(Select(Hovered ? 1.1 : 1)) → Set Font(Make SlateFontInfo(MenuFont를 Break한 값 그대로 + Outline Settings = Make FontOutlineSettings(Size Select 2/0, Color = HoverColor RGB + A 0.6))).
+  - 버튼마다 On Hovered → SetMenuHover(글자, true, 색) / On Unhovered → SetMenuHover(글자, false). 색: 새 게임 빨(1, .45, .45) / 이어하기 초(.45, 1, .5) / 설정 파(.5, .65, 1) / 게임 종료 흰.
+| 2026-11-06 | 메뉴 섹션 추가(작업 10, 테스트 전): ESC 메뉴 WBP_PauseMenu·BP_PlayerController Open/Close/RestartStage, 시작 화면 MainManu·BP_MenuGameMode·WBP_MainMenu(FirstStage, PrepareForGame, 이어하기 활성화) |
+| 2026-11-07 | 빨강 폭발 방향을 블록 면 직각으로: 새 함수 FaceDirection, Explosion의 GetDirectionUnitVector 2개 교체 (테스트 전) |
+| 2026-11-07 | 메뉴 버튼 마우스 올림 강조(SetMenuHover·MenuFont) 시작 화면·ESC 메뉴 동작 확인. 설정 창 감도 슬라이더(WBP_Settings) 그래프 확인 |
+| 2026-11-06 | 점프 잠금을 Event On Jumped로 이동(앉은 상태에서 Jump 실패 시 영구 잠김 수정). WBP_PauseMenu Btn_Settings → Create Widget(WBP_Settings) → Add to Viewport(ZOrder 20) 확인 |

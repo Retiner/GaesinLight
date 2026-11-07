@@ -89,6 +89,8 @@
 
 <!-- ===================== 최근 변경 ===================== -->
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
+<p><strong>2026-11-07 — 빨강 폭발이 블록 면 방향으로 밂</strong></p><ul><li>빨강 능력 블록의 폭발이 주변 물체와 플레이어를 블록 중심에서 비스듬히 밀지 않고, <strong>대상이 마주한 블록 면에 직각인 방향</strong>(앞·뒤·좌·우·위·아래)으로 밉니다. 블록을 돌려 놓으면 돌아간 면 기준입니다. 범위(<code>Inner/OuterRadius</code>)와 세기, 살짝 띄우기(<code>MinLift</code>)는 그대로입니다. 테스트 전.</li></ul>
+<p><strong>2026-11-07 — 메뉴 버튼 마우스 올림 강조</strong></p><ul><li>시작 화면과 ESC 메뉴의 버튼에 마우스를 올리면 글자가 버튼별 색(새 게임 빨강 / 이어하기 초록 / 설정 파랑 / 게임 종료 흰색)으로 바뀌고, 같은 색 테두리로 빛나며 1.1배 커집니다. 버튼 글꼴을 바꾸면 위젯의 <code>MenuFont</code> 변수에도 같은 글꼴을 다시 붙여 넣어야 합니다.</li></ul>
 <p><strong>2026-11-05 — 빛 경로용 옅은 볼류메트릭 안개</strong></p><ul><li>Tutorial+Red·Green·Blue에 <a href="#spectrum-fog"><code>Fog_Spectrum_LightPaths</code></a>를 추가했습니다. 낮은 안개 밀도와 퍼즐 광원의 산란값을 함께 조절하여 기존 밝기와 원거리 시야를 유지하며 경로 표시를 보강합니다. 퍼즐 로직과 BP 기본값은 유지합니다.</li></ul>
 <p><strong>2026-11-05 — 플랫폼 조건부 출발·건너편 독립 왕복</strong></p><ul><li><a href="#platform-controller"><code>BP_PlatformController</code></a> 추가 후 사용자 테스트에 따라 재조정했습니다. 시작점 발판과 스위치가 모두 켜져야 출발하며, 하나라도 꺼지면 시작점으로 돌아옵니다. 건너편 ReOn 버튼은 이동·출발 지연 중에도 현재 목적지를 반대로 바꾸며 시작점 조건과 독립적으로 조작합니다. 기존 플랫폼 BP와 맵 배치는 유지합니다.</li></ul>
 <p><strong>2026-11-05 — 신호로 다음 리스폰 지점 지정</strong></p><ul><li><a href="#respawn-point-setter"><code>BP_RespawnPointSetter</code></a> 추가. 트리거·버튼·압력판의 0번 신호로 연결된 물리 블록의 복귀 위치만 바꾸며, 실제 이동은 기존 리스폰 구역에 닿아 리스폰할 때 수행합니다. 별도 지점 액터도 지정할 수 있고, 신호를 꺼도 변경 위치를 유지합니다.</li></ul>
@@ -120,7 +122,8 @@
 <ul><li><a href="#environment-lights"><code>BP_Floor_Plain_Light</code> / <code>BP_Wall_Light</code></a> 추가. Tutorial+Red의 바닥 140개·벽 16개와 Green의 바닥 108개를 교체했습니다. 기존 메시·재질·위치·회전·크기·충돌을 유지하고 하늘색 면광원을 붙였습니다. 퍼즐 반응과 신호 채널 없이 주변만 밝힙니다.</li></ul>
 <p><strong>2026-11-06</strong></p>
 <ul>
-<li>(설계, 미구현) 메뉴: 시작 화면(새 게임·이어하기·설정·게임 종료)과 ESC 메뉴(계속·설정·사전·스테이지 초기화·종료→시작 화면). 스테이지 초기화는 퍼즐만 처음으로, 주운 필터는 유지.</li>
+<li>(테스트 전) ESC 메뉴: 계속·스테이지 초기화 연결. 시작 화면 맵 <code>MainManu</code>: 새 게임·이어하기(체크포인트 없으면 흐림)·게임 종료 연결. 설정·사전은 아직.</li>
+<li>(설계) 메뉴: 시작 화면(새 게임·이어하기·설정·게임 종료)과 ESC 메뉴(계속·설정·사전·스테이지 초기화·타이틀로·게임 종료). 스테이지 초기화는 퍼즐만 처음으로, 주운 필터는 유지.</li>
 <li>(테스트 전) 파랑 끌어오기: 블록이 <strong>위쪽 광원 쪽으로도</strong> 끌려오고, 손전등(<code>PL…</code>)과 맵 광원·거울(<code>ML…</code>)의 세기를 따로 정할 수 있음.</li>
 <li>플레이어 <strong>걷기 속도·점프 높이</strong>를 낮춤(동작 확인).</li>
 <li>(테스트 전) 점프에 <strong>쿨타임</strong>: 착지 후 잠깐 기다려야 다시 뜀. 쿨타임이 끝나기 직전에 누른 점프는 기억했다가 끝나는 순간 뜀.</li>
