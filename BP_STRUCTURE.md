@@ -447,7 +447,7 @@ DefaultSceneRoot
 | `AvilityTick` / `AvilityStart` / `AvilityEnd` | 능력 진행(상태 흐름·발광 식은 CLAUDE.md 2-3, 2026-10-31 그래프 확인). Sequence then_0 = Switch(AvilityState) 충전/유지/쿨타임, then_1 = BlockColor·GlowAmount 갱신. Tick에서 `WaitTrigger && TriggerPaused`면 Patrol 스킵 |
 | `GetLightSource` (Pure) | 출력 actor / IsPlayer / Found. 플레이어 기여 우선, 아니면 Keys[0] |
 | 빨강 `Push`, 폭발 | Push: Select(Found ? actor : 플레이어) 기준. 폭발 `Explosion`(2026-11-07 작업 39 면 방향, 테스트 전): Sphere Overlap Components(메시 위치, 반지름 VSize(ActorBounds Extent)+`OuterRadius`, PhysicsBody·WorldDynamic, Self 제외) → ForEach → IsSimulatingPhysics → `SurfaceDistance`(표면 거리) → 세기 MapRangeClamped(거리, `InnerRadius`→1, `OuterRadius`→0) × `ExplosionForce`, 방향 **`FaceDirection`(대상 위치)** → Z = Max(\|Z\|, `MinLift`) → Normal → AddImpulse(VelChange) / Completed: 플레이어 SurfaceDistance ≤ OuterRadius → 같은 방향식 × `Exp_PlayerForce` → LaunchCharacter(XY·Z Override) |
-| `FaceDirection` (Pure, 2026-11-07) | 입력 TargetLocation → 출력 Direction. R = (InverseTransformLocation(StaticMesh Component To World, 대상) − 로컬 bounds 중심) ÷ 로컬 반 크기 → (2026-11-07 수정 안내, 미확인) InFootprint = AX≤1 AND AY≤1이면 Up×Sign(R.Z), 아니면 AX≥AY ? Forward×Sign(R.X) : Right×Sign(R.Y) (처음 버전은 절댓값 최대 축이라 낮은 블록 옆에서 위로 감). 대상이 마주한 블록 면의 바깥 직각 방향(회전·크기 반영) |
+| `FaceDirection` (Pure, 2026-11-07) | 입력 TargetLocation → 출력 Direction. R = (InverseTransformLocation(StaticMesh Get World Transform, 대상) − 로컬 bounds 중심) ÷ 로컬 반 크기((Max−Min)/2). ① 면: InFootprint = |Rx|≤1 AND |Ry|≤1이면 Up×Sign(Rz), 아니면 |Rx|≥|Ry| ? Forward×Sign(Rx) : Right×Sign(Ry) (면에 직각). ② 모서리: IsCorner = 세 축 중 둘 이상 |R|>1 ((X·Y) OR (X·Z) OR (Y·Z)) → Make Vector(Rx−Clamp(Rx,−1,1), Ry−Clamp, Rz−Clamp) × 반 크기 → Transform Direction(같은 Get World Transform) → Normalize = 블록 위 가장 가까운 모서리 점 → 대상 방향. 최종 Select(IsCorner ? ② : ①). 회전·크기 반영. 동작 확인(2026-11-07). Explosion의 플레이어용 FaceDirection 입력은 발 위치 = GetActorLocation − Make Vector(0,0,Get Capsule Component.Get Scaled Capsule Half Height) (SurfaceDistance는 몸 중심 그대로) |
 | 파랑 `BlockPull`, `PlayerPull` | BlockPull(2026-11-06 작업 37, 테스트 전): 빛 주체 = Select(Found ? GetLightSource.actor : PlayerCharacter), 목표 = 주체 위치 + Forward × `Front` → 방향 Normal(GetDirectionUnitVector(메시→목표) + `UpForce`) (높이 포함) → 세기 Clamp(Distance(3D) × Select(IsPlayer ? `PLPullGain` : `MLPullGain`), 500, Select(IsPlayer ? `PLMaxPullSpeed`[I] : `MLMaxPullSpeed`[I])) → AddImpulse(Vel Change) 한 번. PL = 플레이어 손전등, ML = 맵 광원·거울. PlayerPull은 플레이어가 비출 때만(`ActiveContributions.Contains(GetPlayerCharacter)`) |
 | 초록 `Freeze` | `CanGrab2 = false` |
 | 노랑 `Y_Grow` / `Y_Reset`, 하늘 `SB_Down` / `SB_Reset`, `Grow` | Timeline Play/Reverse로 크기, SB_Down에서 `CanGrab2 = CanGrabSkyBlue` |
@@ -671,7 +671,7 @@ MirrorScan:
 ## 5. 구역
 
 ### BP_Respawn (블록·플레이어 되돌리기 구역)
-**구성요소**: `DefaultSceneRoot`, `Box`(Box Collision, Hidden in Game, Custom: Query Only, Object Type `LightCencer`, WorldDynamic / PhysicsBody / **Pawn** Overlap). 플레이어 캡슐은 LightCencer에 Overlap(기존 설정 그대로).
+**구성요소**: `DefaultSceneRoot`, `Box`(Box Collision, Hidden in Game, Custom: Query Only, Object Type `LightCencer`, WorldDynamic / PhysicsBody / **Pawn** Overlap). 플레이어 캡슐은 LightCencer에 Overlap(기존 설정 그대로). `Area`(Static Mesh, M_RespawnFlow 흐르는 이미지, NoCollision, 회전 0 — 크기는 액터 Scale로만, 2026-11-08). 변수 `VisibleArea`[I] Bool → Construction Script `Area.Set Visibility(VisibleArea)` → `Area.Create Dynamic Material Instance(0)` → `Set Vector Parameter Value(Tiling = (Box.GetScaledBoxExtent X×2 ÷ TileSize, Z×2 ÷ TileSize))` — 변수 `TileSize`[I](200, 이미지 한 장 cm)로 줄 굵기 고정(2026-11-08, 동작 확인).
 
 | 변수 | 타입 | 설명 |
 |---|---|---|
@@ -754,7 +754,7 @@ CapsuleComponent (루트, Character 기본)
 | `CanUseColor(Color)` (Pure) | `AND(OR(GI.HasColor(Color), UnlockAll), CanUseFlashlight)` |
 | `RefreshFlashlight` | `SM_Flashlight.SetVisibility(CanUseFlashlight, Propagate 끔)` — 메시만. 빛은 LightControll/TurnOff 담당. BeginPlay와 손전등 줍기 직후 호출 |
 | 숫자 키 검사 (작업 6) | `IA_Red/Green/Blue` Started → Branch(`CanUseColor(Red/Green/Blue)`) → `LightControll(색)`. `IA_White` Started → Branch(`CanUseFlashlight`) → `LightControll((0,0,0))`. `IA_TurnOff`는 검사 없음. 검사를 LightControll 안이 아니라 키 쪽에 둔 이유: LightControll은 LinearColor를 받고 검사는 EN_LightColor로 묻기 때문 |
-| `IA_TurnOff` (E) | 끄기 |
+| ~~`IA_TurnOff` (E)~~ | 2026-11-08 삭제 완료(끄기는 같은 숫자 키로) |
 | `IA_Jump` (Space, 2026-11-06 점프 쿨타임·예약, 테스트 전) | Started → Branch(`CanJumpAgain`) T → Jump / F → `IsJump`=true(예약) → Set Timer(`clear_Jump`, 0.3초) → IsJump=false. Completed → StopJumping. **Event On Landed** → Delay(`JumpCooldown`) → CanJumpAgain=true → Branch(IsJump) → Jump → IsJump=false. **Event On Jumped**(실제로 뜬 순간) → CanJumpAgain=false (2026-11-06 수정: Jump가 실패해도 잠기지 않게). 쿨타임은 착지부터, 예약은 쿨타임 끝나기 0.3초 안에 누른 입력만 |
 | `IA_Relation` (F) | Started → IsValid(`HeldBlock`) → 있으면 `DropBlock` / 없으면 `TryInteract` |
 | `TryInteract` (함수) | IsValid(`FocusTarget`) → Cast To BP_AvilityBlock → 성공 `GrabBlock(Block)` / 실패 `Interact`(BPI_Interact 메시지, Target FocusTarget) |
@@ -768,6 +768,40 @@ CapsuleComponent (루트, Character 기본)
 ## 7. 갱신 기록
 | 날짜 | 변경 |
 |---|---|
+| 2026-11-07 | BP_Mirror 정면 빔(사용자 구현, 그래프 확인, 테스트 전): 반사 빔(광원별 최대 3개) → 앞면 빛을 합쳐 MirrorPivot 정면(RightVector)으로 빔 1개. MirrorScan = 광원 루프에서 FrontHit만 GlowColorSum(표시색, 흰 손전등→흰색)·BeamColorSum(원래 색 합) 누적 + BeamInt+1 → Branch(BeamInt>0) True: RectLight 하나 배치·색·BoxTrace(정면)·NewLit[대상]=BeamColorSum / False: RectLight 숨김 → UnLight/Light → SetMirrorGlow. RectLight1·2 삭제, BeamLights 배열은 RectLight 하나만. 입사각 60° 제한 유지 |
+| 2026-11-07 | 거울 주변 벽 얼룩 = M_LensGlow 발광의 Lumen 간접광 → 사용자 해결(방법 미기록: SM_Mirror Affect Dynamic Indirect Lighting 끄기 또는 발광 세기 낮추기 안내) |
+| 2026-11-07 | 도감(작업 36) 시작, 미구현: 구조체 S_DexEntry(Title Text, Body Text, Image Texture2D) + 데이터 테이블 DT_Dex(행 이름 = NoteID). 예정: BP_InfoScreen(BPI_Interact, NoteID) → WBP_NotePopup(일시정지) → S_PlayerProgress.CollectedNotes(Set<Name>) → WBP_Dex + ESC 메뉴 도감 버튼 |
+| 2026-11-08 | 도감 36-2 안내(미확인): BP_InfoScreen(Actor + BPI_Interact) — ScreenMesh, NoteID [I] Name, CanInteract true, GetInteractText "설명 보기", Interact → Get Data Table Row(DT_Dex, NoteID) → 임시 Print Title |
+| 2026-11-08 | 설계 변경(사용자): 도감 → **연구 일지**. 공용 위젯 WBP_Journal(제목·그림·본문 + 이전/다음/페이지 + 닫기) — 맵 스크린은 그 스크린 항목 1개(페이지 버튼 숨김), 연구 일지(ESC 메뉴)는 CollectedNotes 전체를 페이지로 넘김. CollectedNotes = Set<Name>(본 기록만, 순서 무관). 연구 일지 페이지 순서 = DT_Dex 행 순서(2026-11-08 사용자): Entries = Get Data Table Row Names(DT_Dex) 중 CollectedNotes에 있는 것. 36-3 위젯 배치 안내(미확인): Panel 안 Overlay — 내용 Vertical Box(제목·그림·본문·아래 줄 [페이지 표시]·닫기) 위에 Btn_Prev(왼쪽 끝, 세로 가운데)·Btn_Next(오른쪽 끝, 세로 가운데). 그림·본문은 제목 아래 한 줄(Horizontal Box Size Fill: Text_Body 왼쪽 Fill + Box_Picture 오른쪽, 위쪽 맞춤, 그림 없으면 Box_Picture Collapsed), 닫기 아래 가운데. 글은 그림 아래로 감싸 흐르지 않음 → Text_Body를 Scroll Box(Scroll_Body)로 감쌈. 36-4 ShowPage 그래프 확인(그림 없음 갈래 실행선 연결 안내). 36-5 안내(미확인): BP_InfoScreen Interact → Create Widget(WBP_Journal, Entries=[NoteID], ShowPaging=false) → Add to Viewport → UI Only·마우스·일시정지 / WBP_Journal CloseJournal: ShowPaging false면 일시정지 해제·Game Only·마우스 끔 → Remove from Parent |
+| 2026-11-08 | 연구 일지: BP_InfoScreen Interact → Get Data Table Row(DT_Dex, NoteID) → Create Widget(WBP_Journal, Entries=[NoteID], ShowPaging false) → Add to Viewport(10) → UI Only → 마우스 → 일시정지. 사용자 "잘나오는거 같아"(창 표시 확인). 다음: WBP_Journal On Key Down(ESC/F → CloseJournal), 미확인 |
+| 2026-11-08 | 연구 일지 36-7 안내(미확인): S_PlayerProgress.CollectedNotes(Set<Name>), BP_GameInstance AddNote(NoteID)·HasNote(Pure), BP_InfoScreen Row Found → Cast GI → AddNote → Create Widget. 저장은 체크포인트 SaveProgress에 포함 |
+| 2026-11-08 | BP_InfoScreen 그래프 확인: Interact → Get Data Table Row(/Game/Data/DT_Dex) → Row Found → Cast GI → AddNote(NoteID) → Create Widget(WBP_Journal, Entries=[NoteID], ShowPaging false) → Add to Viewport(10) → UI Only → 마우스 → 일시정지. AddNote 내부 미확인 |
+| 2026-11-08 | BP_GameInstance AddNote(NoteID) 그래프 확인: 로컬 NewNotes(Set<Name>) = Break(Progress).CollectedNotes → Set Add(NewNotes, NoteID) → Set Members in S_PlayerProgress(Progress, CollectedNotes). CollectedNotes 핀이 Break 출력에 연결돼 있어 NewNotes로 교체 안내, 미확인 |
+| 2026-11-08 | AddNote 수정 확인(사용자 "잘 늘어나", CollectedNotes = NewNotes). 36-8 안내(미확인): GI GetJournalEntries(DT_Dex 행 순서 중 HasNote만), WBP_PauseMenu Btn_Journal → Create WBP_Journal(Entries, ShowPaging true) → Add to Viewport(20) |
+| 2026-11-08 | BP_GameInstance GetJournalEntries → Entries(Name 배열) 그래프 확인: Get Data Table Row Names(DT_Dex) → For Each → Branch(HasNote) → 로컬 Result.Add → Completed → Return Result. 정상 |
+| 2026-11-08 | 연구 일지 수정 안내(미확인): BP_PlayerController IA_Pause(메뉴 열림) 맨 앞 Get All Widgets Of Class(WBP_Journal) Length>0 → For Each CloseJournal (ESC가 ESC 메뉴 대신 연구 일지를 닫게) / WBP_Journal ShowPage ◀▶ Visibility = ShowPaging AND Length(Entries) > 1 |
+| 2026-11-08 | WBP_Journal ShowPage 확인: Length>0 False 분기 = Text_Title "아직 기록된 내용이 없습니다" → Text_Body 빈칸 → Btn_Prev/Next Collapsed → (Btn_Close Collapsed — Box_Picture로 교체 안내). 그림 없음 실행선 정상. ◀▶ Select Index = ShowPaging만(AND Length>1 미적용) |
+| 2026-11-08 | 연구 일지 완료(사용자 "잘되"): ShowPage ◀▶ Visibility = ShowPaging AND Length(Entries)>1, 0개 분기 Box_Picture Collapsed, IA_Pause가 WBP_Journal부터 CloseJournal. 구성: BP_InfoScreen(NoteID) · DT_Dex/S_DexEntry · WBP_Journal(Entries, PageIndex, ShowPaging, ShowPage, CloseJournal, On Key Down) · GI AddNote/HasNote/GetJournalEntries · S_PlayerProgress.CollectedNotes · WBP_PauseMenu Btn_Journal |
+| 2026-11-08 | BP_Mirror 정면 집광: 거울 빔으로 블록 능력 발동 사용자 확인 |
+| 2026-11-08 | 사용자 동작 확인: 작업 17 렌즈·거울 유리 발광, 시작 화면(WBP_MainMenu 새 게임·이어하기·종료, ESC 타이틀로·게임 종료). 설정 창은 나중에 확인 |
+| 2026-11-08 | 작업 7 필터 교체 모션 설계(사용자): 색 바꾸면 끄기 → 필터 옆으로 빼기 → 메시 교체 → 끼우기 → 켜기, 흰색은 빼고 숨김, 흰색→색은 뺀 위치에서 나타나 끼우기. 7-1 안내(BP_Charactor FilterMesh 컴포넌트·변수·Timeline FilterMove), 미확인. 작업 36 추가 기능은 안 함 |
+| 2026-11-08 | 작업 7 BP_Charactor 그래프 확인(테스트 전): 변수 FilterTime·FilterOutOffset·FilterInLoc·InstalledColor·PendingColor·PendingMesh·FilterSwapping·Red/Green/BlueFilterMesh, 컴포넌트 FilterMesh(SM_Flashlight 자식), Timeline FilterMove(Alpha). ChangeFilter(Color, Mesh): Branch(FilterSwapping) F → Branch(Color==InstalledColor) T LightControll(Color) / F Swapping·Pending → TurnOff → Branch(InstalledColor==(0,0,0,1)) T 메시 교체·빠진 자리·보이기·SetNewTime 1·Reverse / F Play. Update: SetRelativeLocation(VLerp(FilterInLoc, +FilterOutOffset, Alpha)). Finished Switch(Direction) Forward: IsValid(PendingMesh) T 교체 → Reverse / F 숨김 → 마무리, Backward → 마무리 = InstalledColor=PendingColor → Swapping false → LightControll(PendingColor) |
+| 2026-11-08 | 작업 7 BeginPlay·숫자 키 확인: Sequence then_2 → Set FilterInLoc = FilterMesh.RelativeLocation(정상), FilterMove Set Play Rate(2 ÷ FilterTime) 없음 → 추가 안내. IA_Red/Green/Blue/White Started → Branch(CanUseColor/CanUseFlashlight) True → 아직 LightControll → ChangeFilter(색, 색별 필터 메시 / 흰색 None)로 교체 안내. 미확인 |
+| 2026-11-08 | 작업 7: 흰색을 거친 뒤에만 필터가 보이는 문제 → InstalledColor 기본값을 (0,0,0,1)로(LinearColor ==는 알파까지 비교). 선택: Finished Forward True의 Set Static Mesh 뒤 Set Visibility(true). 미확인 |
+| 2026-11-08 | 작업 7 그래프 재확인: SetPlayRate(2 ÷ FilterTime)·숫자 키 4개 ChangeFilter 교체 정상. 남은 것: InstalledColor 기본값 A=1, Forward True Set Visibility(true) |
+| 2026-11-08 | 작업 7 필터 교체 모션 동작 확인(사용자 "잘되") — 완료 |
+| 2026-11-08 | E 키(IA_TurnOff) 삭제 안내: BP_Charactor 이벤트·TurnOff 호출 삭제, IMC_Default 매핑 삭제, IA_TurnOff 애셋 삭제(Reference Viewer 확인). TurnOff 함수는 유지. 2026-11-08 사용자 삭제 완료 |
+| 2026-11-08 | 거울 입사각 조정 사용자 완료(값 미기록). 작업 40 BP_Respawn 흐르는 이미지 R-1(텍스처·M_RespawnFlow) 안내, 미확인 |
+| 2026-11-08 | 작업 40 M_RespawnFlow 2겹으로 변경 안내: 같은 텍스처 2번 샘플, 1겹 +SpeedU / 2겹 −SpeedU(UV×Layer2Scale+0.37), Add 합성. 미확인 |
+| 2026-11-08 | 작업 40 M_RespawnFlow(`/Game/Effect/Respawn`) 그래프 확인: 기본 좌표·1겹/2겹 Panner·Add·GlowColor·Intensity → Emissive 연결 정상. 2026-11-08 사용자 동작 확인 |
+| 2026-11-08 | 작업 40 R-2 안내: BP_Respawn FlowPlane + Construction Script 가장 넓은 면 자동 배치(얇은 축 = 법선, FaceAxis 0 Z/1 Y/2 X), TileSize·FlowSpeed. 미확인 |
+| 2026-11-08 | 작업 40 자동 맞춤 취소(사용자): BP_Respawn에 FlowPlane(Plane, M_RespawnFlow, NoCollision)만 추가, 배치는 수동. 미확인 |
+| 2026-11-08 | BP_Respawn 판 컴포넌트 이름 `Area`, 변수 `VisibleArea`(bool) + Construction Script Branch(미완성) 확인 → Set Visibility(VisibleArea) 하나로 안내. 세운 Plane 대신 얇은 Cube 안내. 미확인 |
+| 2026-11-08 | 설정 창 마무리 동작 확인: WBP_Settings Event Destruct → SaveSettings, Apply Settings 명령줄 덮어쓰기 끔, 창 모드 변경 시 Set Screen Resolution(전체·테두리 없음 = 데스크톱 해상도, 창 = 1280×720), "전체 화면"도 WindowedFullscreen(독점 전체 화면 잘림 회피). M-7-4-3 해상도 안내 |
+| 2026-11-08 | 설정 창 해상도(Combo_Resolution, Resolutions IntPoint 배열, 창 모드일 때만 사용)·소리 크기(Slider_Volume 0~1, GI/BP_SettingsSave MasterVolume, GI ApplyVolume = Set Sound Mix Class Override(SM_Volume, SC_Master) → Push Sound Mix Modifier) 추가. 사용자 동작 확인(소리 실청취는 BGM 때) |
+| 2026-11-08 | 작업 40 완료(사용자 "잘되"): BP_Respawn `Area`(흐르는 이미지 판, M_RespawnFlow) + `VisibleArea`[I] → Construction Script Area.Set Visibility |
+| 2026-11-08 | BP_Respawn 줄 굵기 자동: TileSize[I] + Create Dynamic Material Instance → Set Vector Parameter Value(Tiling). 그래프 확인 — Parameter Name 비어 있음(Tiling 입력 안내) → 사용자 "잘되" 동작 확인 |
+| 2026-11-08 | M_RespawnFlow 2겹 위아래 반전 안내: 2겹 UV × Append(1, Layer2FlipV[−1]) 를 ×Layer2Scale 앞에 → 사용자 "더 이상하다", 반전 안 함(원래대로) |
 | 2026-11-01 | 로컬 BP_GreenGroupStop: StopTargets 배열 수정, 정지/재개 인터페이스 호출 및 Freeze/Unfreeze 연결. Green 레벨 대상 4개 지정, 컴파일·SIE 신호 검증 |
 | 2026-11-01 | BP_GreenGroupStop 받침 NoCollision으로 손전등이 통과하던 문제 수정. QueryOnly + Visibility Block, 물체 채널 Ignore. 실제 플레이어 초록 손전등 수신 → 대상 4개 정지 → TurnOff 후 재개 확인 |
 | 2026-10-23 | 문서 작성. BP_Respawn 13번 작업 중 상태 반영 |
@@ -920,5 +954,6 @@ BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼�
   - 버튼마다 On Hovered → SetMenuHover(글자, true, 색) / On Unhovered → SetMenuHover(글자, false). 색: 새 게임 빨(1, .45, .45) / 이어하기 초(.45, 1, .5) / 설정 파(.5, .65, 1) / 게임 종료 흰.
 | 2026-11-06 | 메뉴 섹션 추가(작업 10, 테스트 전): ESC 메뉴 WBP_PauseMenu·BP_PlayerController Open/Close/RestartStage, 시작 화면 MainManu·BP_MenuGameMode·WBP_MainMenu(FirstStage, PrepareForGame, 이어하기 활성화) |
 | 2026-11-07 | 빨강 폭발 방향을 블록 면 직각으로: 새 함수 FaceDirection, Explosion의 GetDirectionUnitVector 2개 교체 (테스트 전) |
+| 2026-11-07 | FaceDirection: 낮은 블록 위·아래 판정(InFootprint) + 모든 모서리·꼭짓점은 모서리 점→대상 벡터(IsCorner, Clamp 방식) 추가 + Explosion 플레이어 입력 발 위치. 동작 확인 |
 | 2026-11-07 | 메뉴 버튼 마우스 올림 강조(SetMenuHover·MenuFont) 시작 화면·ESC 메뉴 동작 확인. 설정 창 감도 슬라이더(WBP_Settings) 그래프 확인 |
 | 2026-11-06 | 점프 잠금을 Event On Jumped로 이동(앉은 상태에서 Jump 실패 시 영구 잠김 수정). WBP_PauseMenu Btn_Settings → Create Widget(WBP_Settings) → Add to Viewport(ZOrder 20) 확인 |
