@@ -802,6 +802,24 @@ CapsuleComponent (루트, Character 기본)
 | 2026-11-08 | 작업 40 완료(사용자 "잘되"): BP_Respawn `Area`(흐르는 이미지 판, M_RespawnFlow) + `VisibleArea`[I] → Construction Script Area.Set Visibility |
 | 2026-11-08 | BP_Respawn 줄 굵기 자동: TileSize[I] + Create Dynamic Material Instance → Set Vector Parameter Value(Tiling). 그래프 확인 — Parameter Name 비어 있음(Tiling 입력 안내) → 사용자 "잘되" 동작 확인 |
 | 2026-11-08 | M_RespawnFlow 2겹 위아래 반전 안내: 2겹 UV × Append(1, Layer2FlipV[−1]) 를 ×Layer2Scale 앞에 → 사용자 "더 이상하다", 반전 안 함(원래대로) |
+| 2026-11-09 | BP_Charactor: 블록 들기 시 필터 메시가 사라지지 않던 문제 사용자 수정(방법 미기록) |
+| 2026-11-09 | M_Laser(GlowColor·GlowStrength) 발광 강화 안내: GlowStrength 30 안팎, Unlit. 미확인 |
+| 2026-11-09 | BP_Charactor 필터 교체 자가 복구 완료(사용자 "잘되"): FinishFilterSwap/ForceFinishFilter 이벤트, Finished Forward 숨김·Backward·강제 마무리 양 끝에서 FinishFilterSwap, ChangeFilter 교체 중 + NOT FilterMove.IsPlaying이면 ForceFinishFilter, IA_Relation Is Not Valid → Branch(FilterSwapping) T ForceFinishFilter → TryInteract |
+| 2026-11-09 | 작업 42-3 안내: BP_PlayerController VoiceQueue·VoicePlaying·CurrentLine·LineTime + QueueVoice(Lines)/PlayNextVoice 대기열. 미확인 |
+| 2026-11-09 | 작업 42-3 그래프 확인: QueueVoice·PlayNextVoice 연결 정상(음성 있음/자막만 분기, Delay 뒤 재호출, 없는 행 건너뛰기). 테스트 호출만 남음, 동작 미확인 |
+| 2026-11-09 | 작업 42-4 안내: BP_VoiceTrigger(Box, Lines[I], Played) 플레이어 진입 한 번 → BP_PlayerController.QueueVoice(Lines). 미확인 |
+| 2026-11-09 | 작업 42-4 그래프 확인: 연결 정상, 에셋 이름 NewBlueprint → BP_VoiceTrigger 변경 필요. 동작 미확인 |
+| 2026-11-09 | 리스폰 암전 늘리기 안내(사용자: 변수 추가 없이 시간만): BP_Charactor FadeTime 0.5 → 1.0, Delay의 + 0.2 → + 1.0(완전 암전 유지). 선택: Fade 1→0과 Set Game Paused(false) 사이 Delay(FadeTime)(새 변수 없음). 미확인 |
+| 2026-11-10 | 사용자 결정: 리스폰 중 세상 멈춤 없앰 → RespawnAt의 Set Game Paused(true/false) 두 개를 Disable Input / Enable Input(Target Self, Player Controller = Get Player Controller 0)으로 교체 안내. 암전 중 블록·플랫폼은 계속 움직이고 플레이어 입력만 막힘. 미확인 |
+| 2026-11-10 | 사용자 수정: 잠깐만 멈추고 암전 중엔 입력만 막기 → RespawnAt = Set Game Paused(true) → Disable Input(Self, PC0) → (DropBlock) → Fade 0→1 → Delay 0.3 → Set Game Paused(false) → Delay(FadeTime+1.0) → Teleport → Stop → Fade 1→0 → Enable Input → Respawning false. 새 변수 없음. 미확인 |
+| 2026-11-10 | 작업 43-1-1 안내: BP_LaserBolt 컴포넌트 Hit(Box Collision 루트, Custom Query Only·WorldDynamic, Pawn Overlap, WorldStatic/WorldDynamic/PhysicsBody Block, Visibility·Camera·LightCencer Ignore) → Mesh(SM_Laser, NoCollision) + ProjectileMovement(1500, Gravity 0, Rotation Follows Velocity), Initial Life Span 5. 사용자 요청으로 Sphere → Box. 미확인 |
+| 2026-11-10 | BP_Turret 생성(파이썬 커맨드릿, 사용자 요청): 부모 BP_Activate. 컴포넌트 DefaultSceneRoot → Base(Cylinder) / Head(Scene, Z80) → HeadMesh(Cube) + Muzzle(Arrow, X45) / AimLine(Cylinder 0.02×0.02, NoCollision, M_Laser, 숨김). 변수 AttackRange 2000 / AimTime 1 / FireInterval 3 / PlayerRespawnLocation (0,0,100) [I] / Aiming / RespawnWorldLocation. 그래프 없음. 컴파일 오류·경고 0 |
+| 2026-11-10 | BP_Turret 그래프 자동 생성(BlueprintGraphEditor): BeginPlay(RespawnWorldLocation 고정 → TurretOn=StartOn → K2_SetTimer TryAim 반복) / TryAim(범위·켜짐·조준 중 아님 → 예고 선 → Delay AimTime → BP_LaserBolt 생성 → 선 숨김) / Tick(조준 중 머리·예고 선 갱신) / OnChannelActive·Deactive(0번 → TurretOn) / IsStartOn(0 AND StartOn). 변수 TurretOn·StartOn[I] 추가. 컴파일 오류·경고 0, 플레이 테스트 전 |
+| 2026-11-10 | BP_Turret 수정(스크립트): 예고 선 중점 곱셈 B=(0.5,0.5,0.5) 버그 수정. Tick → Branch(TurretOn AND GetDistanceTo(Player) ≤ AttackRange) T: AimLine Visible → 머리 회전 → 선 위치·회전 → 굵기 Select(Aiming ? 0.1 : 0.05) / F: AimLine 숨김. TryAim은 Aiming true → Delay(AimTime) → 발사 → Aiming false만(Visibility 제거). 컴파일 오류·경고 0 |
+| 2026-11-10 | BP_Turret 부채꼴 판정(스크립트): 변수 DetectAngle[I] 추가(기본 90 → 사용자 요청 150), 순수 함수 CanTargetPlayer(→Result) = IsValid(PlayerCharacter) 아니면 false, 맞으면 TurretOn AND GetDistanceTo ≤ AttackRange AND Dot(Normal2D(플레이어−터렛), Normal2D(GetActorForwardVector)) ≥ DegCos(DetectAngle/2). Tick Branch 조건 = CanTargetPlayer, TryAim = TurretOn AND NOT Aiming AND CanTargetPlayer. 사용자가 넣은 Tick 앞 Is Valid 매크로 유지. 컴파일 오류·경고 0 |
+| 2026-11-10 | 총알 속도 터렛별(스크립트): BP_LaserBolt Speed(Expose on Spawn, 3000) → BeginPlay IgnoreActorWhenMoving 뒤 ProjectileMovement.SetVelocityInLocalSpace((Speed,0,0)), Max Speed 0. BP_Turret BulletSpeed[I] 3000 → SpawnActor BP_LaserBolt.Speed. 컴파일 오류·경고 0 |
+| 2026-11-09 | 작업 43 결정(투사체·예고 선·0번 신호 on/off) + 43-1 안내: 새 BP_LaserBolt(Sphere Hit, SM_Laser, ProjectileMovement, RespawnLocation Expose on Spawn, 플레이어 겹침 → RespawnAt → Destroy, 멈춤 → Destroy). 미확인 |
+| 2026-11-09 | 작업 42 음성·자막: S_VoiceLine(Sound·Subtitle·Duration)+DT_Voice(Content/Data), WBP_HUD Text_Subtitle + ShowSubtitle/HideSubtitle 안내(42-2). 이후 BP_PlayerController 대기열·BP_VoiceTrigger 예정. 미확인 |
 | 2026-11-01 | 로컬 BP_GreenGroupStop: StopTargets 배열 수정, 정지/재개 인터페이스 호출 및 Freeze/Unfreeze 연결. Green 레벨 대상 4개 지정, 컴파일·SIE 신호 검증 |
 | 2026-11-01 | BP_GreenGroupStop 받침 NoCollision으로 손전등이 통과하던 문제 수정. QueryOnly + Visibility Block, 물체 채널 Ignore. 실제 플레이어 초록 손전등 수신 → 대상 4개 정지 → TurnOff 후 재개 확인 |
 | 2026-10-23 | 문서 작성. BP_Respawn 13번 작업 중 상태 반영 |
