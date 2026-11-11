@@ -671,7 +671,7 @@
 </div></details>
 
 <details class="chapter" id="turret"><summary><span class="chapter-number">3-9</span>BP_Turret — 레이저 터렛 <span class="tag recv">수신</span></summary><div class="chapter-body">
-<p>플레이어가 감지 부채꼴 안에 보이면 바로 충전을 시작합니다. <strong>예고 선</strong>이 총구에서 플레이어까지 처음부터 전체 길이로 얇게(1cm) 나타나 AimTime 동안 점점 두꺼워지고(6cm), 가장 두꺼워지는 순간 그 방향으로 (예고 선은 벽·블록 등 물체에 막히면 그 자리에서 끊겨 보입니다) 레이저(<code>BP_LaserBolt</code>)를 쏩니다. 도중에 시야에서 벗어나면 충전이 처음부터 다시 시작되고, 쏜 뒤에는 FireInterval만큼 쉽니다. 날아가는 동안에는 플레이어를 따라가지 않습니다. 레이저는 벽·블록에 막히면 사라지고, 플레이어에게 맞으면 리스폰시킵니다.</p>
+<p>플레이어가 감지 부채꼴 안에 보이면 바로 충전을 시작합니다. <strong>예고 선</strong>이 총구에서 플레이어까지 처음부터 전체 길이로 얇게(1cm) 나타나 AimTime 동안 점점 두꺼워지고(4cm), 가장 두꺼워지는 순간 그 방향으로 (예고 선은 벽·블록 등 물체에 막히면 그 자리에서 끊겨 보입니다) 레이저(<code>BP_LaserBolt</code>)를 쏩니다. 도중에 시야에서 벗어나면 충전이 처음부터 다시 시작되고, 쏜 뒤에는 FireInterval만큼 쉽니다. 날아가는 동안에는 플레이어를 따라가지 않습니다. 레이저는 벽·블록에 막히면 사라지고, 플레이어에게 맞으면 리스폰시킵니다.</p>
 <details class="node" id="turret-settings" open><summary>설정 (Details → Turret)</summary><div class="node-body">
 <div class="scroll"><table><thead><tr><th>변수</th><th>설명</th><th>기본값</th></tr></thead><tbody>
 <tr><td><code>AttackRange</code></td><td>이 거리(cm) 안에 플레이어가 있어야 조준 시작</td><td>2500</td></tr>
