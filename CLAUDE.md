@@ -1,5 +1,8 @@
 # GaesinLight 프로젝트 — AI 작업 컨텍스트
 
+## 2026-11-14 DropBlock 필터 표시·InfoScreen 충돌·앉기 높이
+- BP_Charactor DropBlock 끝: Branch(CurrentColor == (0,0,0,1)) True → FilterMesh 숨김 / False → 보이기(사용자 구현, B 값 A1 입력·테스트 미확인). InfoScreen은 Query Only라 물리 블록 통과 → Query and Physics + PhysicsBody/Pawn Block 안내. 앉기: Camera는 SpringArm(Z 50, Arm Length 20) 끝, Crouched Half Height 30이라 눈이 캡슐 밖 → Crouched Half Height ≥ SpringArm Z + 10 필요(Arm Length 0이면 60, 틈 120cm). 앉을 때만 SpringArm Z를 낮추는 On Start/End Crouch 안도 제시, 미확정.
+
 ## 2026-11-05 빛 경로용 옅은 안개
 - Tutorial+Red·Green·Blue에 `Lighting/Atmosphere/Fog_Spectrum_LightPaths`(ExponentialHeightFog) 각 1개 추가. Volumetric Fog 켜짐, Density .006, Height Falloff .01, Extinction Scale .5, Scattering Distribution .05, Albedo RGB230, Emissive0, View Distance8000cm, Volumetric Start20cm/Near Fade100cm, Static Lighting Scattering0. 일반 Height Fog의 Start1000cm/MaxOpacity.04는 볼류메트릭 안개의 불투명도 제한이 아니다.
 - 배치된 BP_Light/BP_BlinkLight 9개의 Volumetric Scattering Intensity만 2→40으로 조절. Unitless 밝기20·색·광각·그림자·켜짐 상태와 퍼즐 판정 유지. 환경 전등은 산란0 유지, Blue DirectionalLight만 산란1→0으로 변경해 전역의 흰 안개를 억제. BP 기본값이나 그래프는 변경하지 않았으므로 새로 배치한 퍼즐 광원은 필요한 경우 컴포넌트의 산란값을 조절한다.
