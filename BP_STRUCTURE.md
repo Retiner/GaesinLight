@@ -978,3 +978,6 @@ BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼�
 | 2026-11-07 | FaceDirection: 낮은 블록 위·아래 판정(InFootprint) + 모든 모서리·꼭짓점은 모서리 점→대상 벡터(IsCorner, Clamp 방식) 추가 + Explosion 플레이어 입력 발 위치. 동작 확인 |
 | 2026-11-07 | 메뉴 버튼 마우스 올림 강조(SetMenuHover·MenuFont) 시작 화면·ESC 메뉴 동작 확인. 설정 창 감도 슬라이더(WBP_Settings) 그래프 확인 |
 | 2026-11-06 | 점프 잠금을 Event On Jumped로 이동(앉은 상태에서 Jump 실패 시 영구 잠김 수정). WBP_PauseMenu Btn_Settings → Create Widget(WBP_Settings) → Add to Viewport(ZOrder 20) 확인 |
+| 2026-11-14 | BP_Charactor DropBlock(사용자 구현, 그래프 확인): 손전등·SpotLight 보이기 뒤 Branch(CurrentColor == 흰색 (0,0,0,1)) True → FilterMesh SetVisibility(false) / False → SetVisibility(true). 흰색에서 블록을 놓으면 예전 필터가 다시 보이던 문제 수정. == 노드 B 값 (0,0,0,1) 입력 여부·테스트 미확인 |
+| 2026-11-14 | BP_InfoScreen 충돌: Query Only라 Physics 능력 블록이 통과 → ScreenMesh Collision Enabled = Query and Physics, PhysicsBody·Pawn Block 안내(사용자 적용 여부 미확인) |
+| 2026-11-14 | 앉기 카메라 분석: Camera는 SpringArm(Location Z 50, Target Arm Length 20) 끝, Crouched Half Height 30이라 앉으면 눈(80cm+)이 캡슐 머리끝(60cm)보다 위 → 틈 속이 보임. 조건 Crouched Half Height ≥ SpringArm Z + 10(Arm Length 0 기준). 값 미확정. 들기 위치는 HeldDistance(가까이)·HeldDownOffset(위로) 값으로 조절 안내 |
