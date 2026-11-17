@@ -9,6 +9,24 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 
 ## 0. 전체 관계
 
+### 2026-11-09 추가: BP_SignalRespawn / BP_SignalLaser
+
+- 상속: `BP_Respawn → BP_SignalRespawn → BP_SignalLaser`. 기존 BP_Respawn·송신 BP·레벨을 수정하지 않는다. BP_SignalRespawn은 BP_Activate의 BPI_Activatable 수신 그래프와 채널별 개수 계산을 복사하고 BP_Respawn을 부모로 지정한 새 BP다.
+- 실제 BP_Respawn의 현재 루트는 **Box**이며 Area는 그 자식이다. 아래 과거 기록의 DefaultSceneRoot 구성은 현재 에셋과 다르다. 새 BP도 Box 루트를 유지한다. 레이저의 중심은 BP 배치 위치이며 Box의 상대 위치를 변경하지 않는다.
+- 공통 채널: **0=영역 켜기, 1=영역 끄기, 2=플레이어 리스폰 차단, 3=플레이어 차단 해제, 4=블록 리스폰 차단, 5=블록 차단 해제**. ChannelRequired 기본 0~5 각각 1. Activate가 임계값에 도달할 때 명령을 기록하며 Deactivate는 개수만 해제한다. ReOn 펄스로 상태 유지. 그 외 채널은 무시한다.
+- `[I] StartEnabled`(일반 구역 true, 레이저 false), `[I] TurnOffOnEnableSignalRelease`(false). 후자를 켜면 0번 개수가 임계값 아래로 내려갈 때 전체를 끈다. 압력판·Timed에는 이 옵션 사용. 1~5번의 신호 해제는 명령을 되돌리지 않는다.
+- EnsureRespawnInitialized는 최초에 상속 ResetPlayer/ResetBlock을 ConfiguredResetPlayer/ConfiguredResetBlock으로 보관하고 AreaEnabled=StartEnabled를 기록한다. 조기 신호 후 BeginPlay가 명령을 덮어쓰지 않는다. BeginPlay의 RespawnWorldLocation은 기존 부모와 같은 TransformLocation(ActorTransform, PlayerRespawnLocation) 공식으로 캐시한다.
+- RefreshRespawnState: ResetPlayer=AreaEnabled AND ConfiguredResetPlayer AND NOT PlayerRespawnSuppressed. ResetBlock도 별도로 계산한다. 전체 off는 Box NoCollision, on은 QueryOnly. 전체 off/on 동안 개별 차단을 유지하고, 개별 차단 해제로 전체 off를 우회할 수 없다. 기본 체크가 꺼진 종류는 차단 해제로 활성화되지 않는다.
+- Box의 기존 부모 BeginOverlap 이벤트가 실제 RespawnAt/ResetToStart를 처리한다. 전체 재활성화는 충돌 재등록으로 이미 들어온 대상도 감지한다. 영역이 켜진 상태의 개별 차단 해제는 GetOverlappingActors → ProcessNewlyEnabledActor로 새로 허용된 종류만 즉시 처리한다. 플레이어 암전·블록 복귀 목적지는 기존 동작을 사용한다.
+- UpdateZoneVisual은 일반 구역에서 VisibleArea AND AreaEnabled로 Area 표시를 조절한다. 일반 구역은 BeginPlay 뒤 Tick을 끈다. 런타임 내부 상태를 SaveGame에 추가하지 않는다.
+- BP_SignalLaser: 상속 Box/Area + NiagaraComponent `LaserEffect` + 게임에서 숨기는 ArrowComponent `LaserEndPreview`. `[I] LaserLength`(1500), LaserHalfWidth/LaserHalfHeight(각 12), LaserSystem. 길이·판정 반두께는 최소 1cm로 보정한다. 기본 ResetPlayer=true, ResetBlock=false, VisibleArea=false.
+- BP_SignalLaser의 `[I] LaserOnDelay` / `LaserOffDelay`(Laser 카테고리, 기본 0초)는 0번 켜기와 1번 끄기에 각각 적용한다. 옵션이 켜진 0번 신호 해제도 끄기 지연을 사용한다. `RequestLaserPower`는 반대 예약을 취소하고 중복 요청은 같은 만료 시각을 유지한다. `FinishLaserPowerDelay`에서 AreaEnabled를 갱신하고 RefreshRespawnState를 호출해 빔과 Box 판정을 함께 바꾼다. StartEnabled 초기 적용과 2~5번 개별 리스폰 제어는 즉시 처리한다.
+- 원본 `/Game/Assets/Niagara/NS_RedLaser`를 수정하지 않고 `/Game/Effect/Laser/NS_SignalLaser`로 복사했다. 빔의 외형·재질·수명 설정은 복사본에 유지하고, Beam End를 Position 사용자 파라미터 **User.Beam End**에 연결, Absolute Beam End=true, Particle Update에 Update Beam을 추가했다.
+- ConfigureLaserGeometry는 BoxExtent=(길이/2, 반폭, 반높이), LaserEffect 상대 위치=(-길이/2,0,0), 끝 표시=(길이/2,0,0)로 설정한다. User.Beam End에는 끝 표시의 월드 위치를 SetVariablePosition으로 전달한다. Actor/Box 루트의 위치·회전·스케일은 덮어쓰지 않는다.
+- 레이저 UpdateZoneVisual: 전체 on이면 Visibility=true, 일시정지 해제 후 최초/재활성화 때 Activate(reset=true). 개별 차단 변경은 재생을 재시작하지 않는다. 전체 off는 Visibility=false → Deactivate → SetPaused(true), BP Tick도 끈다. on 중 Tick은 끝점 월드 좌표만 갱신해 이동·회전·스케일을 따른다. 판정 차단만으로는 빔을 숨기지 않는다.
+- 검증 자료·원본 파일 해시: `Saved/CodexBackups/LaserHazard-20261109`. 실제 동작 검증은 원본 에디터와 분리된 IsolatedProject에서 수행한다. Assets는 기존 별도 공유 규칙을 유지한다.
+- 최종 저장본 검증: BP_RealGameMode 실제 PIE 43개 통과(기존 BPI 수신, 임계값·조기 입력, 독립 차단, 실제 블록·플레이어 접촉/재활성화, ReOn 버튼·큐브 압력판·플레이어 트리거, 이동·회전 뒤 실제 렌더링 빔/박스 정렬, 12초 지속). 새 BP 컴파일 오류·경고 0, 최종 PIE 스크립트 런타임 오류·경고 0. 원본 Content/Config 220개 해시 일치, 열린 Blue 액터 3,096개 Transform·선택·미저장 맵 상태 보존 후 새 BP만 리로드했다.
+
 ```
 [송신]  BP_Button ─┐  (+ BP_Pickup, BP_FilterReturn)
         BP_PressurePlate ─┼─ BPI_Activatable.Activate(Channel) / Deactivate(Channel) ─→ [수신] BP_Activate 자식
@@ -123,6 +141,14 @@ BP를 고치기 전에 이 문서에서 대상 BP의 구성요소·변수·함�
 
 - 주의: 순수 노드는 쓰는 곳마다 다시 계산되므로 `+1`/`Max` 결과를 Branch에 바로 쓰지 말 것 (Add 후 한 번 더 더해짐).
 - 주의: 자식에서 Parent 대신 자기 함수를 호출하면 Infinite loop.
+
+### BP_TagSignalRelay — Actor Tag 신호 중계 (2026-11-11)
+
+- `BP_Activate` 자식. `TargetTag` [I](Name, 기본 None)는 수신 액터의 **Actor Tags**와 비교한다. 대상 목록을 개별 등록하지 않는다. 기본 필요 신호 수는 부모와 같이 채널별 1이며 `ChannelRequired`로 조정한다.
+- OnChannelActive → 부모 → RelayActivate: 빈 태그는 무시. `GetAllActorsWithTag` 결과 중 유효하고 `BPI_Activatable`을 구현한 액터에 같은 번호의 Activate를 전달한다. 자기 자신과 다른 `BP_TagSignalRelay` 계열은 순환을 방지하기 위해 제외한다.
+- OnChannelDeactive → 부모 → RelayDeactivate: `RecipientActors`·`RecipientChannels`에 보관한 해당 채널의 대상만 분리하고 기록을 지운 뒤 Deactivate를 전달한다. 신호가 켜진 뒤 추가된 액터는 다음 활성화부터 대상이 된다. 다른 채널이나 다른 송신자의 신호 수는 유지된다. 검색은 활성화 시에만 실행하며 Tick은 추가하지 않는다.
+- 다락문 예: 모든 대상의 Actor Tags에 `Hatch_BlueHall`, WaitTrigger=true, StartOpen=false. 중계의 TargetTag=`Hatch_BlueHall`. BP_Trigger.Targets에는 중계 인스턴스 1개만 등록하고 Channel=0, NextLevel은 비운다. 기존 트리거는 Activate만 보내므로 이후 닫으려면 Timed 버튼·압력판 등 해제를 보내는 장치를 사용한다.
+- 저장본 검증: 별도 프로젝트의 BP_RealGameMode PIE 16개 통과. 다락문 3개 실제 열림, 다른 태그·중계 제외, 채널과 신호 수 유지, ReOn으로 다른 부모의 인터페이스 수신, 뒤늦게 추가된 대상의 신호 보호를 확인했다. 기존 맵·에셋은 수정하지 않았다. 결과는 `Saved/CodexBackups/TagSignalRelay-20261110`.
 
 ---
 
@@ -310,6 +336,7 @@ OnComponentBeginOverlap(Box)
 |---|---|
 | `WaitTrigger` [I], `IsDown` [I], `StartOpen` [I], `UseUserStaticMesh` [I] + `UserStaticMesh` [I], `OpenTime` [I](1.5), `HatchWait` [I](2) | 레벨 제작 가이드 7장 |
 | `OpenDelay` / `CloseDelay` [I] | Hatch 카테고리, 각각 기본 0초. 열기/닫기 동작 시작 전 지연. 0 이하면 즉시 실행 |
+| `CloseSignalChannel` [I] | Hatch 카테고리, 기본 1. WaitTrigger 사용 시 이 채널의 활성화가 닫기 요청을 보낸다. 0 이하면 닫기 전용 채널 비활성화 |
 | `CloseAfterFullyOpen` [I] | Hatch 카테고리, 기본 false. 신호형에서 켜면 완전히 열린 경우에만 닫기 요청(기본 StartOpen=false에서는 신호 해제)부터 Max(CloseDelay,0)초 대기. 열림 미완료 상태의 해제는 즉시 닫기 |
 | `FullyOpenCloseQueued` / `HatchHasFullyOpened` / `HatchFullyOpenTime` / `FullyOpenCloseTimerHandle` (내부) | 닫기 요청 래치 / 열림 완료 여부·게임 시각 / 별도 단발 타이머 |
 | `HatchDelayPending` / `PendingHatchOpen` / `HatchDelayTimerHandle` (내부) | 대기 여부 / 예약 방향 / 인스턴스별 단발 타이머 |
@@ -320,7 +347,7 @@ OnComponentBeginOverlap(Box)
 - `HatchOpen` / `HatchClose`: 기존 Custom Event 이름 유지 → 새 `RequestHatchOpen` / `RequestHatchClose`. 같은 방향을 이미 예약 중이면 무시. 반대 요청이면 타이머 해제·새 방향 저장. 지연 >0이면 Timeline.Stop(현재 자세 유지) → Pending=true → FinishHatchDelay 단발 예약. 지연 ≤0이면 즉시 ExecuteHatchOpen/Close.
 - `FinishHatchDelay`: Pending 가드 → 타이머 해제·Pending=false → 예약 방향의 ExecuteHatchOpen/Close. 새 Execute Custom Event는 기존 SetPlayRate(1/OpenTime) → Timeline Play/Reverse에 연결되어 경첩·속도·현재 진행률을 유지한다. 함수/타임라인 삭제 없이 이벤트 실행 경로만 확장했다.
 - Finished → WaitTrigger 꺼짐이면 Delay(HatchWait) → 방향 반대로 (반복형 루프).
-- `OnChannelActive/Deactive`: 현재 실물 그래프는 Parent → WaitTrigger 켜짐이면 `HatchOpen` / `HatchClose`(Channel 분기 없음; 이번 변경에서 기존 수신 규칙 유지). IsStartOn의 0번은 StartOpen으로 신호 반전. StartOpen 초기 열린 자세는 지연 없이 설정한다.
+- `OnChannelActive/Deactive`: Parent → WaitTrigger → 채널 분기. `CloseSignalChannel`의 활성화는 열기 신호가 유지 중이어도 `HatchClose`를 호출하고, 해제는 개폐 동작을 일으키지 않는다. 다른 채널은 기존 `HatchOpen` / `HatchClose` 경로를 사용한다. IsStartOn의 0번은 StartOpen으로 신호 반전. StartOpen 초기 열린 자세는 지연 없이 설정한다.
 - 반복형: 기존 HatchWait 뒤 새 방향의 OpenDelay/CloseDelay가 추가된다. 최초 자동 열림에도 OpenDelay 적용. 신호형의 대기 중 반대 입력은 이전 예약을 취소하며, 이동 중 양수 지연 요청은 현재 자세에서 멈춘 뒤 해당 지연 후 이어 움직인다.
 - 지연 추가 검증(2026-11-03): 별도 PIE에서 개별 열림/닫힘 시간, 중복 입력, 양방향 예약 취소, 중간 각도 정지·재개, 0/음수, StartOpen 반전, 다중 신호·필요 개수 및 자동 반복 확인. 컴파일 오류·경고 0. 백업/결과 `Saved/CodexBackups/HatchDelay-20261103`.
 - 완전 열림 조건부 대기(2026-11-04, 신호 해제 기준으로 정정): `UseFullyOpenClose` = CloseAfterFullyOpen AND WaitTrigger. RequestFullyOpenClose에서 IsHatchFullyOpen=true일 때만 RecordHatchFullyOpen → QueueFullyOpenClose로 닫기 요청 시점부터 전체 CloseDelay를 예약한다. false면 HatchDelayTimerHandle 해제 → HatchDelayPending=false → ExecuteHatchClose로 현재 각도에서 즉시 역방향 이동. OpenDelay 중 해제도 열기 예약을 취소한다. 조기 해제에 강제로 끝까지 열던 동작은 사용하지 않는다.
