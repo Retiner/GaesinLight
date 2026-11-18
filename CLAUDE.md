@@ -3,6 +3,7 @@
 ## 2026-11-18 들기/놓기 손전등 상태·팀원 PR #24
 - 팀원 PR #24(c41f026) 받음: 새 BP_SignalLaser/SignalRespawn/TagSignalRelay/EnergyBarrier/Floodlight 계열, Level_Main_1~3, Content/Assets 아트 13개가 깃에 포함됨(glass·SM_Stairs_Light 로컬본 백업 Saved/CodexBackups/PullMain-20261118). BP_Charactor 노드 위치만 사용자 배치로 정리(연결 불변).
 - BP_Charactor: WasLightOn으로 들기 전 손전등 상태 저장·놓을 때 복원, 켜질 때만 FlashLight 소리. GrabBlock은 Set WasLightOn이 TurnOff 뒤에 있어 앞으로 옮기도록 안내(미확인). 블록 걸림 자동 놓기 변수 StuckTime/MaxHoldGap/StuckDelay 추가, Tick 구현 미확인. AvilityStart 효과음은 Red·Blue만 남음.
+- BP_Respawn(사용자): Area 메시·Construction Script(VisibleArea/TileSize Tiling) 삭제, 팀원이 넣은 Cast To BP_FallingHazardBlock → RestartFromStart 분기 삭제(앞의 BP_AvilityBlock 캐스트가 먼저 성공해 실행된 적 없는 분기). ResetToStart 노드 경고(ErrorType 1) → Refresh Node 안내. VisibleArea·TileSize 변수는 참조 없으면 삭제 안내.
 
 ## 2026-11-14 DropBlock 필터 표시·InfoScreen 충돌·앉기 높이
 - BP_Charactor DropBlock 끝: Branch(CurrentColor == (0,0,0,1)) True → FilterMesh 숨김 / False → 보이기(사용자 구현, B 값 A1 입력·테스트 미확인). InfoScreen은 Query Only라 물리 블록 통과 → Query and Physics + PhysicsBody/Pawn Block 안내. 앉기: Camera는 SpringArm(Z 50, Arm Length 20) 끝, Crouched Half Height 30이라 눈이 캡슐 밖 → Crouched Half Height ≥ SpringArm Z + 10 필요(Arm Length 0이면 60, 틈 120cm). 앉을 때만 SpringArm Z를 낮추는 On Start/End Crouch 안도 제시, 미확정.
