@@ -20,6 +20,7 @@
 <a href="#plate">3 발판</a>
 <a href="#trigger">3-1 트리거</a>
 <a href="#respawn">3-2 되돌리기 구역</a>
+<a href="#signal-respawn">신호 레이저·리스폰 구역</a>
 <a href="#respawn-point-setter">3-2 추가 리스폰 지점 변경</a>
 <a href="#pickup">3-3 줍기</a>
 <a href="#returntable">3-4 반납 테이블</a>
@@ -40,6 +41,7 @@
 <a href="#smooth-push-pressblock">부드럽게 미는 프레스 블록</a>
 <a href="#green-group-stop">6-1 초록빛 그룹 정지</a>
 <a href="#hatch">7 다락문</a>
+<a href="#tag-signal-relay">태그로 여러 BP 연결</a>
 <a href="#examples">8 조합 예시</a>
 <a href="#settings">9 설정·주의</a>
 <a href="#spectrum-look">9-1 스펙트럼 화면 분위기</a>
@@ -52,6 +54,8 @@
 
 <!-- ===================== 신호 채널 ===================== -->
 <details class="chapter" id="channels" open><summary><span class="chapter-number">★</span>신호 채널 한눈에 보기 (현재 버전)</summary><div class="chapter-body">
+<p><a href="#tag-signal-relay"><code>BP_TagSignalRelay</code></a>는 연결된 채널 번호를 같은 Actor Tag의 수신 BP에 그대로 전달합니다.</p>
+<p><a href="#signal-respawn"><strong>신호 레이저·리스폰 구역:</strong></a> BP_SignalLaser / BP_SignalRespawn은 0=전체 켜기, 1=전체 끄기, 2/3=플레이어 리스폰 차단/해제, 4/5=블록 리스폰 차단/해제를 받습니다.</p>
 <p class="note">환경 조명 패널 <a href="#environment-lights">BP_Floor_Plain_Light / BP_Wall_Light</a>, <a href="#high-ceiling-lights">BP_Ceiling_Light_High</a>, <a href="#shaft-ceiling-lights">BP_Ceiling_Wall_Light_High</a>는 신호를 받지 않으며 수광체의 능력을 발동시키지 않습니다. 이 장치에는 Channel을 연결하지 않습니다.</p>
 <p>송신 장치(버튼 <code>BP_Button</code>, 발판 <code>BP_PressurePlate</code>, 통과 트리거 <code>BP_Trigger</code>, <a href="#block-signal-trigger">블록 신호 구역 <code>BP_BlockSignalTrigger</code></a>, 줍기 <code>BP_Pickup</code>, 반납 테이블 <code>BP_FilterReturn</code>, 빛 감지 장치 <code>BP_LightSensor</code>)의 <code>SignalTargets</code>(기존 BP_Trigger만 <code>Targets</code>) 칸마다 <strong>받을 장치</strong>와 <strong><code>Channel</code> 번호</strong>를 적으면, 받는 장치에서 아래 기능이 동작합니다.</p>
 <div class="scroll"><table><thead><tr><th>받는 장치</th><th>Channel</th><th>기능</th><th>신호 켜짐</th><th>신호 꺼짐</th><th>추천 버튼 모드</th></tr></thead><tbody>
@@ -61,6 +65,7 @@
 <tr><td>플랫폼 중간 제어 <code>BP_PlatformController</code></td><td class="ch">3</td><td><a href="#platform-controller">건너편 독립 호출·보내기</a></td><td>이동 중에도 현재 목적지를 반대로 전환</td><td>이동 유지</td><td><code>ReOn</code></td></tr>
 <tr><td>문 <code>BP_Door</code> / <code>BP_Door2</code></td><td class="ch">1</td><td><a href="#door-lock">강제 닫기 (잠금)</a></td><td>닫히고 영구히 잠김. 이후 0번 신호가 와도 안 열림</td><td>아무 일 없음 (잠금 유지)</td><td><code>JustOn</code> (보통은 통과 트리거로 연결)</td></tr>
 <tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">0</td><td><a href="#hatch-settings">열기 (<code>WaitTrigger</code> 켬일 때만)</a></td><td><code>OpenDelay</code> 후 열림</td><td>신호 해제부터 <code>CloseDelay</code> 후 닫힘. <code>CloseAfterFullyOpen</code> 켜짐이면 완전히 열린 경우에만 대기, 열리는 중 해제는 즉시 닫힘</td><td><code>Togle</code> / <code>JustOn</code> / <code>Timed</code></td></tr>
+<tr><td>다락문 <code>BP_Hatch</code></td><td class="ch">1 (기본)</td><td><a href="#hatch-settings">닫기 (<code>WaitTrigger</code> 켬일 때만)</a></td><td>열기 신호 유지 중에도 <code>CloseDelay</code>를 적용해 닫기 요청</td><td>개폐 동작 없음</td><td><code>ReOn</code> / <code>BP_Trigger</code></td></tr>
 <tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">0</td><td>Patrol 이동 출발 (<code>WaitTrigger</code> 켬일 때만)</td><td>출발</td><td>그 자리에서 정지</td><td><code>Togle</code> (출발·정지) / <code>JustOn</code> (최초 출발) / <code>RepeatOn</code> (매번 켜기) / <code>Timed</code> (잠깐만 움직임)</td></tr>
 <tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">1</td><td><a href="#block-move">처음으로</a> (Patrol 계열만, <code>ReOn</code> 버튼 권장)</td><td>처음 위치로 순간이동 → <code>RestartDelay</code>초 뒤 다시 출발</td><td>아무 일 없음</td><td><strong><code>ReOn</code></strong></td></tr>
 <tr><td>능력 블록 <code>BP_AvilityBlock</code></td><td class="ch">2</td><td><a href="#block-reverse">방향 바꾸기</a> (Patrol, 경유지 2개 이상)</td><td>현재 방향에서 반대 방향으로 전환</td><td>아무 일 없음 (현재 에셋 확인)</td><td><code>ReOn</code> (매번 방향 전환)</td></tr>
@@ -93,10 +98,12 @@
 <!-- ===================== 최근 변경 ===================== -->
 <details class="chapter" id="changes" open><summary><span class="chapter-number">★</span>최근 변경</summary><div class="chapter-body">
 <p><strong>2026-11-14 — 블록 놓을 때 필터 표시·설명 스크린 충돌</strong></p><ul><li>흰색(필터 없음) 상태에서 블록을 들었다 놓으면 예전 필터가 다시 보이던 문제를 고쳤습니다(테스트 전). 레벨 제작에서 할 일은 없습니다.</li><li>설명 스크린(<code>BP_InfoScreen</code>)을 능력 블록이 통과하면, 스크린 메시의 Collision Enabled를 <strong>Query and Physics</strong>로, PhysicsBody·Pawn을 Block으로 두세요.</li><li>앉았을 때 낮은 틈 속이 보이는 현상: 앉은 캡슐(Crouched Half Height)이 카메라보다 낮아서 생깁니다. 값 조정 중이며, 앉아서 지나가는 틈 높이는 값이 정해지면 적어 두겠습니다.</li></ul>
+<p><strong>2026-11-11 — 태그로 여러 BP에 한 번에 신호 연결</strong></p><ul><li><a href="#tag-signal-relay"><code>BP_TagSignalRelay</code></a> 추가. 트리거에 중계 BP 하나만 연결해 같은 태그의 여러 다락문을 열 수 있습니다.</li></ul>
 <p><strong>2026-11-10 — 레이저 터렛·음성 자막 구역 (동작 확인)</strong></p><ul><li>터렛이 <strong>충전 방식</strong>으로 바뀌었습니다(테스트 전): 보이면 예고 선이 처음부터 플레이어까지 얇게 이어지고 점점 두꺼워지다 가장 두꺼워지는 순간 발사, 예고 선은 벽·물체에 막히면 끊김, 시야에서 벗어나면 충전 초기화. 기본값 사거리 25m·충전 2.5초·쉬는 시간 1.5초·레이저 거의 즉시 명중.</li><li>감지 범위가 원이 아니라 터렛 정면 기준 <strong>부채꼴</strong>입니다(<code>DetectAngle</code> 기본 150°, 360이면 원).</li><li>플레이어가 범위 안에 있는 동안 예고 선이 계속 따라오고, 주기마다 선이 굵어진 뒤 그 순간의 방향으로 레이저를 쏘는 <code>BP_Turret</code>이 생겼습니다. 맞으면 터렛마다 정한 위치로 리스폰됩니다. 0번 신호로 켜고 끕니다. <a href="#turret">3-9장</a></li><li>리스폰 연출: 맞는 순간 0.3초만 세상이 멈추고, 이후 암전 동안은 플레이어만 조작이 막힙니다(레벨 제작에서 할 일 없음).</li></ul>
 <p><strong>2026-11-09 — 음성·자막 구역</strong></p><ul><li>구역에 들어가면 음성과 자막이 나오는 <code>BP_VoiceTrigger</code>가 생겼습니다(2026-11-10 동작 확인). 대사는 <code>DT_Voice</code>에 적고 구역에는 행 이름만 넣습니다. 구역마다 한 번, 앞 대사가 끝난 뒤 다음 대사가 이어서 나오며, 긴 음성 하나에 자막을 여러 장 붙이는 방법도 정리했습니다. <a href="#voice">3-8장</a></li></ul>
 <p><strong>2026-11-09 — 필터가 빠진 채 멈추는 문제 해결 (동작 확인)</strong></p><ul><li>가끔 필터가 빠진 뒤 다시 들어가지 않던 문제를 고쳤습니다. 교체가 끝나는 모든 경로에서 마무리가 실행되고, 혹시 멈춰도 숫자 키를 한 번 더 누르거나 F로 상호작용하면 필터가 바로 제자리에 들어갑니다. 레벨 제작에서 할 일은 없습니다.</li></ul>
 <p><strong>2026-11-09 — 블록 들 때 필터 숨김</strong></p><ul><li>블록을 들어 손전등이 꺼질 때 필터 메시도 함께 사라집니다(전에는 남아 있었음). 레벨 제작에서 할 일은 없습니다.</li></ul>
+<p><strong>2026-11-09 — 신호로 켜고 끄는 레이저·리스폰 구역</strong></p><ul><li><a href="#signal-respawn">BP_SignalRespawn과 BP_SignalLaser</a> 추가. 레이저와 판정을 함께 켜고 끄며, 플레이어와 블록의 리스폰만 각각 차단할 수도 있습니다. 기존 리스폰 BP·맵·원본 Niagara는 유지합니다.</li></ul>
 <p><strong>2026-11-08 — 리스폰 이미지 줄 굵기 자동 (동작 확인)</strong></p><ul><li>BP_Respawn을 Scale로 늘려도 흐르는 줄무늬 굵기가 그대로이고 개수만 늘어납니다. 구역마다 <strong>TileSize</strong>(기본 200, 이미지 한 장이 덮는 cm)로 촘촘함을 바꿀 수 있습니다. Area 슬롯에 머티리얼 인스턴스를 쓰려면 BP의 Create Dynamic Material Instance Source Material을 비워야 합니다. <a href="#respawn">3-2장</a></li></ul>
 <p><strong>2026-11-08 — 설정 창: 해상도·소리 크기</strong></p><ul><li>설정 창에 해상도 목록(창 모드일 때만 선택 가능)과 소리 크기 슬라이더(0~100%)가 생겼습니다. 모든 소리는 Sound Class <code>SC_Master</code>를 거치므로, 새 소리를 넣을 때 Sound Class를 따로 바꾸지 마세요(Project Settings → Audio → Default Sound Class = SC_Master).</li></ul>
 <p><strong>2026-11-08 — 설정 창 마무리 (동작 확인)</strong></p><ul><li>설정 창을 ESC로 닫아도 감도가 저장됩니다. 창 모드의 "전체 화면"은 테두리 없는 창 방식으로 화면을 꽉 채웁니다(독점 전체 화면은 전환 시 화면이 잘려서 쓰지 않음). 창 모드·그래픽 품질은 PIE가 아니라 <strong>Standalone Game</strong>에서 확인하세요.</li></ul>
@@ -471,6 +478,39 @@
 </div></details>
 
 <!-- ===================== 3-2 추가 리스폰 지점 ===================== -->
+<details class="chapter" id="signal-respawn"><summary><span class="chapter-number">3-2 추가</span>신호 레이저·리스폰 구역 <span class="tag recv">수신</span></summary><div class="chapter-body">
+<p><strong>BP_SignalRespawn</strong>은 기존 BP_Respawn의 자식으로, 신호로 구역 전체나 플레이어·블록 리스폰을 각각 제어합니다. <strong>BP_SignalLaser</strong>는 그 자식이며 같은 신호에 따라 보이는 레이저도 함께 켜고 끕니다. 기존 BP_Respawn을 자동 교체하지 않습니다.</p>
+<h3>공통 신호</h3>
+<table><thead><tr><th>채널</th><th>켜짐 신호를 받으면</th><th>신호가 해제되면</th></tr></thead><tbody>
+<tr><td>0</td><td>레이저·구역 전체 켜기</td><td>기본은 유지. TurnOffOnEnableSignalRelease를 켜면 전체 끄기</td></tr>
+<tr><td>1</td><td>레이저·구역 전체 끄기</td><td>꺼짐 유지</td></tr>
+<tr><td>2</td><td>플레이어 리스폰만 차단</td><td>차단 유지. 3번으로 해제</td></tr>
+<tr><td>3</td><td>플레이어 리스폰 차단 해제</td><td>해제 유지</td></tr>
+<tr><td>4</td><td>블록 리스폰만 차단</td><td>차단 유지. 5번으로 해제</td></tr>
+<tr><td>5</td><td>블록 리스폰 차단 해제</td><td>해제 유지</td></tr>
+</tbody></table>
+<p>2~5번은 레이저 외형을 바꾸지 않습니다. 전체를 껐다 켜도 개별 차단 상태는 유지합니다. 전체가 꺼져 있는 동안 3/5번을 보내도 영역 자체는 켜지지 않습니다. ChannelRequired는 채널별 필요 신호 수이며 기본은 각각 1입니다.</p>
+<h3>Details 설정</h3>
+<table><thead><tr><th>변수</th><th>설명</th></tr></thead><tbody>
+<tr><td>StartEnabled</td><td>게임 시작 시 전체 활성 상태. 일반 구역은 기본 켜짐, 레이저는 기본 꺼짐. 에디터에서는 배치를 위해 레이저 미리보기가 보입니다.</td></tr>
+<tr><td>ResetPlayer / ResetBlock</td><td>이 구역이 원래 되돌릴 대상. 기본 체크가 꺼진 종류는 3/5번을 받아도 활성화되지 않습니다. 레이저 기본은 플레이어만 켜짐입니다.</td></tr>
+<tr><td>PlayerRespawnLocation</td><td>플레이어 복귀 위치, BP 기준 로컬 좌표. 캐릭터 캡슐 중심이 바닥·벽 안에 들어가지 않는 곳으로 지정합니다. 게임 시작 시 월드 위치로 고정합니다.</td></tr>
+<tr><td>TurnOffOnEnableSignalRelease</td><td>기본 꺼짐. 압력판에서 내려오거나 Timed 버튼 시간이 끝날 때 끄려면 켭니다.</td></tr>
+<tr><td>Laser On Delay / Laser Off Delay</td><td>디테일의 Laser 카테고리. 0번 켜기와 1번 끄기 신호를 받은 뒤 대기할 시간(초)이며 각각 기본 0입니다. 대기가 끝나면 빔과 리스폰 판정이 함께 바뀝니다. 대기 중 반대 신호는 이전 예약을 취소하고, 설정에 따라 0번이 해제될 때도 끄기 지연을 적용합니다.</td></tr>
+<tr><td>LaserLength</td><td>레이저 BP 전용. 전체 길이(cm), 기본 1500. BP 위치가 레이저 중심이고 로컬 X축 양쪽으로 절반씩 뻗습니다. BP를 회전하면 방향도 바뀝니다.</td></tr>
+<tr><td>LaserHalfWidth / LaserHalfHeight</td><td>판정 박스의 반폭·반높이(cm), 각 기본 12. 보이는 선보다 조금 두껍게 잡을 수 있습니다. 길이는 LaserLength를 따라 자동 조절합니다.</td></tr>
+<tr><td>LaserSystem</td><td>기본 Effect/Laser/NS_SignalLaser. Assets/Niagara/NS_RedLaser의 외형을 복사하고 BP 끝점 입력과 Update Beam을 추가한 전용 시스템입니다. 다른 시스템으로 바꾸려면 Position 파라미터 User.Beam End와 절대 끝점·위치 갱신 구성이 필요합니다.</td></tr>
+</tbody></table>
+<h3>연결 예시</h3>
+<ol><li><strong>버튼 두 개로 켜기/끄기:</strong> BP_SignalLaser를 배치하고 StartEnabled 끔. 켜기 버튼은 ReOn, SignalTargets의 Target=레이저 BP / Channel=0. 끄기 버튼도 ReOn, 같은 Target / Channel=1.</li>
+<li><strong>밟고 있는 동안만 켜기:</strong> 압력판 SignalTargets의 Target=레이저 BP / Channel=0. 레이저의 StartEnabled 끔, TurnOffOnEnableSignalRelease 켬.</li>
+<li><strong>일정 시간만 켜기:</strong> 버튼 Timed + 원하는 시간, Target=레이저 BP / Channel=0. 레이저의 TurnOffOnEnableSignalRelease 켬.</li>
+<li><strong>레이저는 보이되 플레이어만 통과 허용:</strong> ReOn 버튼 또는 1회 트리거에서 Channel=2. 다시 위험하게 만들려면 다른 입력에서 Channel=3. 블록은 4/5번을 사용합니다.</li>
+<li><strong>보이지 않는 일반 리스폰 구역:</strong> BP_SignalRespawn을 배치하고 기존처럼 박스 크기와 ResetPlayer/ResetBlock, 복귀 위치를 설정합니다. 같은 0~5번 신호를 연결합니다. BP_Trigger는 배열 이름이 Targets이며 NextLevel은 비웁니다.</li></ol>
+<p>구역 전체를 다시 켜면 이미 안에 있는 대상도 감지합니다. 개별 차단을 해제할 때도 해당 종류가 안에 있으면 즉시 복귀합니다. 0번과 1번을 같은 버튼의 한 번 누르기에 함께 보내지 마세요. 명령은 처리된 순서대로 적용됩니다. 벽·큐브를 만나 레이저 길이를 자동으로 줄이거나 반사하는 기능은 포함하지 않습니다.</p>
+<p class="muted">검증: BP_RealGameMode에서 신호·실제 접촉·버튼·압력판·트리거·빔 위치 정렬 등 43개 검사 통과. 기존 레벨과 원본 Niagara는 유지했습니다.</p>
+</div></details>
+
 <details class="chapter" id="respawn-point-setter"><summary><span class="chapter-number">3-2 추가</span>BP_RespawnPointSetter — 다음 리스폰 지점 변경 <span class="tag recv">수신</span></summary><div class="chapter-body">
 <p><strong>신호를 받는 순간에는 대상이 이동하지 않습니다.</strong> 다음에 기존 리스폰 구역에 닿거나 ResetToStart가 호출되면 새로 저장한 지점으로 복귀합니다. <code>Content / BluePrint / BP_RespawnPointSetter</code>를 사용합니다.</p>
 <ol><li>중간 BP를 원하는 새 리스폰 위치에 배치합니다. 화살표 위치는 블록 메시의 피벗이 돌아갈 위치입니다. 바닥 위에 둘 때 블록의 절반 높이만큼 여유를 두세요.</li><li>디테일 <code>Respawn Point → Respawn Targets</code>에 +로 칸을 만들고 위치를 바꿀 블록 인스턴스를 선택합니다.</li><li>다른 지점 액터를 쓰려면 <code>Destination Actor</code>에 <code>TargetPoint</code> 등을 지정합니다. 비우면 이 중간 BP의 위치를 사용합니다.</li><li>버튼/압력판의 <code>SignalTargets</code>에 Target=이 중간 BP, Channel=0을 설정합니다. <code>BP_Trigger</code>는 배열 이름이 <code>Targets</code>이며 NextLevel은 비워 둡니다.</li><li>기존 <code>BP_Respawn</code>의 <code>ResetBlock=true</code>는 유지합니다. 신호로 위치를 저장한 뒤 블록이 리스폰 구역에 닿으면 새 지점으로 돌아갑니다.</li></ol>
@@ -1263,6 +1303,14 @@
 </div></details>
 
 <!-- ===================== 7 다락문 ===================== -->
+<details class="chapter" id="tag-signal-relay"><summary><span class="chapter-number">7 추가</span>BP_TagSignalRelay — 태그로 여러 BP 연결</summary><div class="chapter-body">
+<ol><li>한꺼번에 제어할 액터들의 <strong>Actor → Tags</strong>에 같은 이름을 입력합니다. 예: <code>Hatch_BlueHall</code>.</li>
+<li><code>BP_TagSignalRelay</code>를 레벨에 배치하고 <strong>Tag Relay → Target Tag</strong>에 같은 이름을 입력합니다.</li>
+<li><code>BP_Trigger</code>의 <code>Targets</code>에서 Target은 중계 BP 인스턴스 하나, Channel은 대상이 사용하는 번호로 설정합니다. 다락문은 <strong>0번</strong>, WaitTrigger 켬, 닫힌 채 시작하려면 StartOpen 끔입니다. 레벨 이동을 원하지 않으면 NextLevel은 비웁니다.</li></ol>
+<p>버튼·압력판은 <code>SignalTargets</code>를 사용합니다. 중계 BP는 받은 채널 번호를 바꾸지 않으며, 켜짐과 해제 모두 전달합니다. 일반 <code>BP_Trigger</code>는 한 번 켜기만 보내므로 닫기도 필요하면 Timed 버튼이나 압력판을 연결합니다.</p>
+<p>대상 BP는 신호 수신 인터페이스를 지원해야 합니다. 중계 BP에는 재전달하지 않습니다. 대상을 추가하려면 같은 Actor Tag를 붙이면 다음 켜짐 신호부터 함께 동작합니다. 각 다락문의 지연·속도는 개별 설정을 따릅니다.</p>
+</div></details>
+
 <details class="chapter" id="hatch"><summary><span class="chapter-number">7</span>BP_Hatch — 다락문 <span class="tag recv">수신</span></summary><div class="chapter-body">
 <p>한쪽 모서리를 경첩으로 삼아 90도 회전하며 열리고 닫히는 판입니다. 바닥 뚜껑, 다락문, 들리는 다리 등에 씁니다. 빛이나 색 능력에는 반응하지 않습니다. 능력 블록과는 별개의 장치입니다.</p>
 <details class="node" id="hatch-settings" open><summary>설정</summary><div class="node-body">
@@ -1274,15 +1322,17 @@
 <tr><td><code>UseUserStaticMesh</code> + <code>UserStaticMesh</code></td><td>켜면 <code>UserStaticMesh</code>로 외형 교체</td><td>꺼짐 / 없음</td></tr>
 <tr><td><code>OpenTime</code></td><td>움직이기 시작한 뒤 열리는 데 걸리는 시간(초). 닫히는 시간도 같음</td><td>1.5</td></tr>
 <tr><td><code>OpenDelay</code></td><td>열기 요청 후 움직이기 전까지 기다리는 시간(초). 디테일 <code>Hatch → Open Delay</code>. 0 이하면 즉시 열기</td><td>0</td></tr>
-<tr><td><code>CloseDelay</code></td><td>닫기 대기 시간(초). 디테일 <code>Hatch → Close Delay</code>. 닫기 요청 시점(기본 신호형에서는 압력판 신호 해제)부터 전체 시간을 계산. 0 이하면 추가 대기 없음</td><td>0</td></tr>
-<tr><td><code>CloseAfterFullyOpen</code></td><td>신호형에서 완전히 열린 경우에만 <code>CloseDelay</code>를 적용. 계산 시작은 열린 시점이 아니라 신호 해제 시점. 열리는 도중 발판을 떼면 즉시 현재 각도에서 닫힘. 디테일 <code>Hatch → Close After Fully Open</code></td><td>꺼짐</td></tr>
+<tr><td><code>CloseDelay</code></td><td>닫기 대기 시간(초). 디테일 <code>Hatch → Close Delay</code>. 열기 신호가 해제되거나 닫기 신호를 받으면 대기 시작. 0 이하면 닫기 동작을 즉시 시작</td><td>0</td></tr>
+<tr><td><code>CloseSignalChannel</code></td><td>닫기 전용 채널. 디테일 <code>Hatch → Close Signal Channel</code>. <code>WaitTrigger</code>가 켜져 있으면 이 채널을 받을 때 닫기 요청. 0 이하면 닫기 전용 채널 비활성화</td><td>1</td></tr>
+<tr><td><code>CloseAfterFullyOpen</code></td><td>신호형에서 완전히 열린 경우에만 닫기 요청부터 <code>CloseDelay</code> 적용. 열리는 도중 닫기 요청을 받으면 즉시 현재 각도에서 닫힘. 디테일 <code>Hatch → Close After Fully Open</code></td><td>꺼짐</td></tr>
 <tr><td><code>HatchWait</code></td><td>반복형에서 끝까지 열리거나 닫힌 뒤 기다리는 시간(초)</td><td>2</td></tr>
 </tbody></table></div>
 <ul>
 <li>여는 각도는 90도로 고정입니다. 방향만 <code>IsDown</code>으로 고릅니다.</li>
+<li>닫기 버튼은 <code>ReOn</code>으로 설정하고 해치 또는 해치 그룹의 <code>BP_TagSignalRelay</code>에 기본 <code>Channel=1</code>을 연결합니다. 0번 열기 신호가 유지 중이어도 닫히며, 닫기 신호 해제에는 반응하지 않습니다. 이후 새 열기 요청이 들어오면 다시 열립니다.</li>
 <li><code>CloseAfterFullyOpen</code> 꺼짐: 열리는 도중 신호가 꺼지면 그 각도에서 멈추고 <code>CloseDelay</code> 뒤 닫힙니다. 지연 대기 중 반대 요청은 이전 예약을 취소합니다. 열림 지연이 끝나기 전에 발판을 떼면 열기 예약도 취소합니다.</li>
 <li><strong>완전히 열린 경우에만 대기시키기:</strong> <code>WaitTrigger</code>와 <code>Close After Fully Open</code>을 켜고 <code>Close Delay</code>에 대기할 초를 입력합니다. 예: <code>Open Time=1.5</code>, <code>Close Delay=1</code>이면 끝까지 열린 뒤 발판을 뗀 순간부터 1초를 기다리고 닫힙니다. 열리는 도중 떼면 즉시 닫히며, <code>OpenDelay</code> 대기 중 떼면 열기 예약을 취소합니다.</li>
-<li>발판을 계속 밟으면 열린 채입니다. 완전히 열린 상태로 오래 밟았어도 떼는 순간부터 전체 <code>CloseDelay</code>를 기다립니다. 닫기 대기 중 다시 밟으면 닫기 예약이 취소되고, 다음에 떼면 새 해제 시점부터 전체 지연을 적용합니다. 대기 중 같은 닫기 요청을 반복해도 예약 시간이 미뤄지지 않습니다.</li>
+<li>발판을 계속 밟으면 닫기 신호를 받을 때까지 열린 채입니다. 발판에서 내려오는 경우에는 완전히 열린 상태로 오래 밟았어도 떼는 순간부터 전체 <code>CloseDelay</code>를 기다립니다. 닫기 대기 중 다시 밟으면 닫기 예약이 취소되고, 다음에 떼면 새 해제 시점부터 전체 지연을 적용합니다. 대기 중 같은 닫기 요청을 반복해도 예약 시간이 미뤄지지 않습니다.</li>
 <li>닫히는 도중 열기 요청을 받으면 기존처럼 <code>OpenDelay</code> 뒤 현재 각도에서 열립니다. 다시 완전히 열린 뒤 신호가 끊기면 그 해제 시점부터 다음 닫기 대기 시간을 셉니다. <code>CloseDelay</code>가 0 이하이면 완전히 열렸더라도 추가 대기 없이 닫힙니다.</li>
 <li><code>StartOpen</code>은 게임 시작 때 즉시 열린 자세를 설정하고 0번 신호 동작을 반대로 합니다. 이 경우에는 반전된 닫기 요청이 들어온 순간부터 <code>CloseDelay</code>를 적용합니다. 게임 시작 시각이나 완전히 열린 시각에서 세지 않습니다. 열기는 <code>OpenDelay</code>를 사용합니다.</li>
 <li>반복형에서는 게임 시작 → <code>OpenDelay</code> → 열림 이동 → <code>HatchWait</code> → <code>CloseDelay</code> → 닫힘 이동 → <code>HatchWait</code> 순서로 반복합니다. 예: <code>OpenDelay=1</code>, <code>CloseDelay=2</code>, <code>OpenTime=1.5</code>이면 열기 전 1초, 닫기 전 2초를 기다리고 각 이동은 1.5초 걸립니다.</li>

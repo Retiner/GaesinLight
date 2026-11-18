@@ -3,6 +3,25 @@
 ## 2026-11-14 DropBlock 필터 표시·InfoScreen 충돌·앉기 높이
 - BP_Charactor DropBlock 끝: Branch(CurrentColor == (0,0,0,1)) True → FilterMesh 숨김 / False → 보이기(사용자 구현, B 값 A1 입력·테스트 미확인). InfoScreen은 Query Only라 물리 블록 통과 → Query and Physics + PhysicsBody/Pawn Block 안내. 앉기: Camera는 SpringArm(Z 50, Arm Length 20) 끝, Crouched Half Height 30이라 눈이 캡슐 밖 → Crouched Half Height ≥ SpringArm Z + 10 필요(Arm Length 0이면 60, 틈 120cm). 앉을 때만 SpringArm Z를 낮추는 On Start/End Crouch 안도 제시, 미확정.
 
+## 2026-11-11 레이저 지연과 해치 닫기 신호
+- `BP_SignalLaser`의 Laser On Delay / Laser Off Delay는 각각 0번 켜기와 1번 끄기 지연(초), 기본 0. 켜기 신호 해제로 끄는 옵션에도 끄기 지연을 적용한다. 반대 요청은 예약을 취소하고 같은 요청은 만료 시각을 유지한다. 판정과 외형은 지연이 끝날 때 함께 바뀐다.
+- `BP_Hatch`의 Hatch → Close Signal Channel 기본 1. WaitTrigger가 켜져 있을 때 해당 채널의 활성화가 기존 닫기 경로를 호출한다. 채널 해제에는 개폐 동작이 없다. 기존 레벨에서 직접 또는 태그 중계로 해치에 연결된 채널은 0번이었다.
+- 분리된 테스트 프로젝트에서 플레이 검사 33개 통과. 실제 ReOn 버튼 → 태그 중계 → 해치 3개 닫힘 확인. 열린 Blue 레벨의 배치, 선택, 저장 상태를 확인하고 두 BP만 컴파일·저장했다. 검증 및 백업 `Saved/CodexBackups/LaserHatchSignals-20261111`.
+
+## 2026-11-11 Actor Tag 신호 중계
+- `BP_TagSignalRelay`(BP_Activate 자식) 추가. Tag Relay → TargetTag와 동일한 Actor Tags를 가진 BPI_Activatable 수신자에게 원래 채널의 켜짐·해제를 전달. 빈 태그·미지원 액터·중계 BP는 건너뛴다. 활성화 때 찾은 채널별 대상에만 해제를 보내며 프레임마다 검색하지 않는다.
+- BP_Trigger의 Targets에는 중계 인스턴스 하나만 연결. Hatch 그룹은 공통 태그와 WaitTrigger=true, StartOpen=false, Channel=0. 기존 맵 배치와 태그는 사용자 설정을 유지한다.
+- 분리된 테스트 프로젝트의 본 게임 모드에서 실제 트리거로 Hatch 3개 열림을 포함한 16개 검사 통과. 신규 BP 컴파일 오류·경고 0. 상세 구조 BP_STRUCTURE, 연결법 HTML #tag-signal-relay, 검증 `Saved/CodexBackups/TagSignalRelay-20261110`.
+
+## 2026-11-09 신호 제어 레이저·리스폰 구역
+- 새 `BP_SignalRespawn`은 BP_Respawn 자식, `BP_SignalLaser`는 그 자식. 신호 수신 인터페이스·ChannelRequired/ChannelCount/ActiveChannels 계산은 BP_Activate에서 복사. 기존 BP_Respawn과 송신 BP·레벨 파일은 변경하지 않는다.
+- 공통 신호 0 전체 on / 1 전체 off / 2 플레이어 차단 / 3 플레이어 차단 해제 / 4 블록 차단 / 5 블록 차단 해제. ReOn 펄스에도 명령 유지. 0~5 필요 개수 기본 1. `TurnOffOnEnableSignalRelease=true`면 압력판·Timed의 0번 해제로 전체 off. 기본 false. 개별 차단 해제는 3/5로 명시한다.
+- 상속 ResetPlayer/ResetBlock 체크는 초기 설정으로 보관해 실제 허용 여부에 AND 적용. 전체 off/on 후 개별 차단 유지. 다시 켤 때 이미 안에 있는 대상도 해당 종류만 즉시 처리. 플레이어는 기존 RespawnAt, 블록은 기존 ResetToStart를 사용한다.
+- 일반 구역 StartEnabled=true. 레이저 StartEnabled=false, ResetPlayer=true/ResetBlock=false. 레이저 중심=BP 배치 위치, LaserLength=1500, 판정 반폭/반높이 LaserHalfWidth/Height=12. PlayerRespawnLocation은 기존처럼 로컬 복귀 위치. 원본의 현재 루트는 Box이므로 상대 위치를 조절하면 액터 자체가 움직인다. 레이저는 Box를 중심에 유지하고 VFX 시작점만 -길이/2로 옮긴다.
+- Assets/Niagara/NS_RedLaser 원본을 보존하고 Effect/Laser/NS_SignalLaser 복사본 사용. 외형 유지, Beam End에 Position 사용자 입력 User.Beam End, Absolute End=true, Update Beam 추가. 켜진 동안 끝점 월드 좌표 갱신, 끄면 숨김·비활성화·시뮬레이션 정지·판정 off. 개별 리스폰 차단 중 빔은 계속 보인다.
+- 자료: Saved/CodexBackups/LaserHazard-20261109. 자동 승인 검토에서 초기 PIE 실행을 열린 레벨 변경 위험으로 거부하여, Content/Config를 완전히 복사한 IsolatedProject/CodexLaserTest.uproject의 별도 프로세스로 테스트한다. 원본 에디터는 Blue 맵을 유지하고 신규 Niagara 연결만 UI로 편집. 자세한 구조 BP_STRUCTURE, 연결법 HTML #signal-respawn.
+- 최종 BP_RealGameMode 저장본 PIE 43개 통과, 새 BP 컴파일 오류·경고 0, 최종 실행 스크립트 런타임 오류·경고 0. Content/Config 기존 220개 해시 보존, Blue 3,096개 액터 Transform·선택·미저장 상태 보존. Source 신규 BP/NS와 테스트 복사본 해시 일치. 주의: PIE 중 캐릭터에 set_editor_property(FadeTime)를 호출하면 구성 재실행으로 GI 등 캐시가 초기화됐다. 테스트 FadeTime은 PIE 전 CDO에만 지정하여 해결했고 원본 캐릭터를 수정하지 않았다. 커밋·푸시 없음.
+
 ## 2026-11-05 빛 경로용 옅은 안개
 - Tutorial+Red·Green·Blue에 `Lighting/Atmosphere/Fog_Spectrum_LightPaths`(ExponentialHeightFog) 각 1개 추가. Volumetric Fog 켜짐, Density .006, Height Falloff .01, Extinction Scale .5, Scattering Distribution .05, Albedo RGB230, Emissive0, View Distance8000cm, Volumetric Start20cm/Near Fade100cm, Static Lighting Scattering0. 일반 Height Fog의 Start1000cm/MaxOpacity.04는 볼류메트릭 안개의 불투명도 제한이 아니다.
 - 배치된 BP_Light/BP_BlinkLight 9개의 Volumetric Scattering Intensity만 2→40으로 조절. Unitless 밝기20·색·광각·그림자·켜짐 상태와 퍼즐 판정 유지. 환경 전등은 산란0 유지, Blue DirectionalLight만 산란1→0으로 변경해 전역의 흰 안개를 억제. BP 기본값이나 그래프는 변경하지 않았으므로 새로 배치한 퍼즐 광원은 필요한 경우 컴포넌트의 산란값을 조절한다.
@@ -340,7 +359,7 @@ RGB 손전등 퍼즐 게임. UE 5.8. 새 세션 시작 시 먼저 읽고 시작�
 - 개폐 지연 추가(2026-11-03): 디테일 **Hatch → OpenDelay / CloseDelay** [I], 각각 기본 0초. 양수는 현재 자세에서 정지하고 해당 초 뒤 실행, 0 이하는 기존 즉시 실행. OpenTime은 개폐 이동 시간, HatchWait는 반복형 끝점 대기 시간으로 그대로 유지. StartOpen의 초기 열린 자세는 즉시 설정하며 신호 반전 유지. 반복형은 최초 OpenDelay, 이후 HatchWait + 다음 방향 지연이 적용됨.
 - `HatchOpen`/`HatchClose` Custom Event → RequestHatchOpen/Close. 내부 HatchDelayPending/PendingHatchOpen/HatchDelayTimerHandle, 단일 인스턴스 타이머로 양방향 취소. 동일 방향 대기 중 중복 요청은 만료 시각을 미루지 않음. 새 ExecuteHatchOpen/Close 이벤트는 기존 `Timeline.SetPlayRate(1/OpenTime)` → Play / Reverse에 연결(현재 위치에서 이어서). 기존 Timeline·경첩·BeginPlay·Construction 유지. SetPlayRate는 Timeline 컴포넌트 변수에서 끌어야 함(빈 곳 검색 시 BlendSpace 버전이 나옴).
 - Finished → `WaitTrigger` 꺼짐이면 `Delay(HatchWait)` → Direction==Forward면 `HatchClose`, 아니면 `HatchOpen` (루프).
-- `OnChannelActive`/`OnChannelDeactive` 오버라이드 실물 확인: Parent 호출 → `WaitTrigger` 켜짐이면 `HatchOpen`/`HatchClose`(현재 Channel 분기 없음; 수신 규칙은 이번에 변경하지 않음). Parent 대신 자기 자신을 호출하면 Infinite loop 에러.
+- `OnChannelActive`/`OnChannelDeactive`: Parent 호출 → `WaitTrigger` 확인 → 닫기 전용 채널이면 활성화에서만 `HatchClose`. 그 외 채널은 기존 `HatchOpen`/`HatchClose` 사용. Parent 대신 자기 자신을 호출하면 Infinite loop 에러.
 - 개폐 지연 검증: 별도 PIE에서 열림/닫힘 독립 지연, 양방향 취소, 중복 요청, 이동 중 지연 후 역방향, 기본 0·음수, 시작 열림 반전, 필요 신호 수·마지막 송신자 해제, 자동 반복까지 통과. 컴파일 오류·경고 0. Blue의 기존 Hatch 배치·설정 보존 확인. 백업/검증 `Saved/CodexBackups/HatchDelay-20261103`.
 - 완전 열림 조건부 대기(2026-11-04, 신호 해제 기준으로 정정): 디테일 **Hatch → CloseAfterFullyOpen** [I], 기본 false. WaitTrigger=true에서 옵션 켜짐이면 **완전히 열린 경우에만** 닫기 요청(기본 StartOpen=false에서는 압력판 신호 해제)부터 전체 CloseDelay를 기다린다. 완전히 열린 시점부터 지난 시간은 빼지 않는다. 오래 밟아도 떼는 순간부터 전체 지연. 열리는 중 발판을 떼면 즉시 현재 각도에서 닫히며, OpenDelay 중 떼면 열기 예약을 취소한다. 조기 해제 시 끝까지 강제로 열지 않는다. 다시 밟으면 닫기 예약 취소, 다음 해제부터 새 지연. StartOpen 반전과 자동 모드 유지.
 - 내부 FullyOpenCloseQueued/HatchHasFullyOpened/HatchFullyOpenTime/FullyOpenCloseTimerHandle. RequestHatchOpen/Close 앞에 모드 분기, 타임라인 Finished에 HandleHatchMotionFinished. 최초 완료 시각은 기록만 유지하며 닫힘 지연에는 사용하지 않는다. QueueFullyOpenClose는 K2_IsTimerActiveHandle 가드로 진행 중 중복 예약을 무시하고 Max(CloseDelay,0)초 단발 예약 → ExecuteHatchClose. 닫기 시작에서 리셋. RequestFullyOpenClose는 완전 열림이 아니면 열기 타이머 해제·HatchDelayPending=false·즉시 ExecuteHatchClose. 부분 개방 정지 상태도 다시 열지 않고 닫음. 기존 이벤트·타임라인·경첩 계산 유지. 기존 두 Request 함수의 GUID 없는 오래된 주석만 제거.
