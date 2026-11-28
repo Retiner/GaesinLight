@@ -1012,3 +1012,99 @@ BP가 아닌 표준 PostProcessVolume. Tutorial+Red·Green의 기존 임시 볼�
 | 2026-11-18 | 팀원 PR #24 받은 뒤 BP_Charactor 노드 위치만 스크립트로 정리: 기존 노드 438개는 b555132 때 사용자 위치로 복원, 팀원 추가 노드는 연결 노드 옆으로 배치. 연결 변경 없음(506개 비교), 백업 Saved/CodexBackups/CharLayout-20261118 |
 | 2026-11-18 | BP_AvilityBlock AvilityStart: 초록·보라·노랑·하늘 소리 제거(사용자). Red·Blue 앞 Play Sound at Location 2개 남음(둘 다 Blue 소리, 위치 Get Actor Location) → Red1·StaticMesh 위치·SA_SFX 안내, Switch(Move) PatrolOnce 핀 비어 있음 안내. 미확인 |
 | 2026-11-18 | BP_Respawn(사용자): Area 줄무늬 메시와 Construction Script(Set Visibility(VisibleArea), DMI Tiling) 삭제. 팀원 PR #24의 Cast To BP_FallingHazardBlock → Branch(ResetBlock) → RestartFromStart 분기 삭제(BP_AvilityBlock 캐스트가 먼저 성공하므로 도달 불가였음). 현재 흐름 = Overlap → Cast BP_AvilityBlock → ResetBlock → ResetToStart / 실패 → Player AND ResetPlayer → RespawnAt(RespawnWorldLocation) |
+
+### BP_LightSensorBlock - Disable Grab After Activation (2026-11-24)
+- Instance-editable `DisableGrabAfterActivation` in the `Sensor` category; default `false`.
+- On first sensor charge completion, `SendActivate` sets inherited `CanGrab` and `CanGrab2` to false before dispatching target signals, even with no targets.
+- Signal deactivation does not restore grab. With the option disabled, existing grab configuration is preserved.
+- Saved BP compile: zero errors/warnings. Editor transient actor checks: 12 passed (on/off, pre/post activation, deactivation, repeat activation, existing CanGrab=false).
+- Backup and verification: `Saved/CodexBackups/BP_LightSensorBlock-before-grab-lock.uasset`, `sensor-grab-lock-build.json`, `sensor-grab-lock-test.json`.
+
+### BP_SquareLight - Signal Blink (2026-11-24)
+- Instance-editable `Signal Blink`: `EnableSignalBlink` (false), `BlinkSignalChannel` (2), `BlinkColor` (red), `BlinkOnTime` (1 s), `BlinkOffTime` (1 s).
+- A maintained start channel honors inherited ChannelRequired counts. Start on a full ON phase; duplicate signals preserve elapsed time. Signal release stops blinking and restores normal channel 0 red / off behavior.
+- Channel 1 has absolute priority: stop blinking and display steady green. If green is released while the start signal remains, restart a full ON phase. Choosing start channel 1 cannot override green.
+- Actor Tick runs only during blinking. Each duration is clamped to 0.01 s; modulo cycle time handles large frame deltas. Tube element 1 uses a private dynamic material while ON and glass_noise while OFF; shared material assets remain unchanged.
+- Compile: zero errors/warnings. 25 transient editor actor checks passed through actual Activate/Deactivate/ReceiveTick calls, covering color, timing, green interruption, restart, threshold counts, invalid times and legacy behavior. Interactive PIE not run.
+- Backup: `Saved/CodexBackups/BP_SquareLight-before-signal-blink.uasset`; verification: `square-signal-blink-build.json`, `square-signal-blink-test.json`.
+
+### BP_SignalDelay - delayed signal relay (2026-11-24)
+- New `/Game/BluePrint/BP_SignalDelay`, parent BP_Activate / BPI_Activatable.
+- Instance `Signal Delay`: DelayTime (1 second), InputChannel (0), SignalTargets (S_SignalTarget array: target + output channel), UseIncomingChannel (false; when true, forward InputChannel instead of each row channel).
+- Connect sender Targets/SignalTargets to this relay with Channel=InputChannel; connect relay SignalTargets to the final receivers. Supports multiple output targets and inherited ChannelRequired input thresholds.
+- Queue both activation and deactivation transitions. Fixed nonnegative delay preserves pulse order and duration; rapid transitions do not overwrite pending deliveries. Zero/negative delay sends immediately. FIFO also preserves order if DelayTime changes while deliveries are pending.
+- Target and output channel are captured at enqueue time. Invalid, unsupported, destroyed targets and direct self-targets are ignored. Tick only while queue nonempty; signals queued before BeginPlay remain enabled.
+- Compile: zero errors/warnings. 29 transient editor actor checks passed with Activate/Deactivate/ReceiveTick, including delays, pulses, threshold counts, relay chaining, channel remapping/pass-through, invalid receivers, and BP_SquareLight blink start/stop integration. Interactive PIE not run.
+- Build and verification: `Saved/CodexBackups/build_signal_delay.py`, `signal-delay-build.json`, `test_signal_delay.py`, `signal-delay-test.json`.
+
+### BP_SignalLaser / BP_MovingRestartLaser - editable Box extent (2026-11-24)
+- Added instance `Laser Collision > AutoSizeLaserBox` (default true to preserve existing level layouts). ConfigureLaserGeometry writes SetBoxExtent only when this option is true.
+- To edit manually: select actor self, disable Auto Size Laser Box, then select Box and edit Shape > Box Extent X/Y/Z. Construction and runtime geometry refresh preserve the manual extent. Re-enable the option to derive collision from LaserLength / LaserHalfWidth / LaserHalfHeight again.
+- LaserLength continues to control visible beam endpoints independently of manual collision extent. Parent BP_SignalLaser change is inherited by BP_MovingRestartLaser; no map configuration is migrated or saved automatically.
+- Compile: zero errors/warnings for parent and moving child. 18 transient editor actor checks passed for automatic defaults, enlargement, reduction, construction refresh, beam length, movement and restoring automatic mode. Interactive PIE not run.
+- Backup: `Saved/CodexBackups/BP_SignalLaser-before-editable-box.uasset`; results: `laser-box-edit-build.json`, `laser-box-edit-test.json`.
+
+### BP_Ceiling_Light_High_Signal - signal ceiling lamp (2026-11-24)
+- New child of BP_Ceiling_Light_High with BPI_Activatable. Parent asset is unchanged.
+- Initially uses SM_Floor_Plain and hides the inherited DownLight, including editor construction preview and BeginPlay.
+- `Ceiling Signal > OnSignalChannel` is instance editable, default 0. Matching Activate permanently latches ON for the current actor lifetime: mesh becomes SM_Floor_Plain_Light and DownLight becomes visible. Other channels and Deactivate do not turn it off; short/ReOn pulses work.
+- Child native mesh component is Movable to permit runtime mesh changes. Parent component mobility and inherited DownLight intensity, cone angles, range and transform remain unchanged. No per-frame work is required.
+- Wire BP_Trigger/Button/SignalDelay Target to this actor with Channel=OnSignalChannel. Startup initialization preserves signals received before BeginPlay.
+- Compile: zero errors/warnings. 24 transient editor actor checks passed for inheritance, interface, initial mesh/light, matching/custom signals, pulse retention, parent settings and real interface delivery from BP_SignalDelay. Interactive PIE not run.
+- Verification: `Saved/CodexBackups/signal-ceiling-build.json`, `signal-ceiling-test.json`.
+
+### BP_Ceiling_Light_Signal - rename / floor-lamp brightness (2026-11-25)
+- Renamed BP_Ceiling_Light_High_Signal to BP_Ceiling_Light_Signal. Keep the redirector at the old path so existing saved maps and BP references resolve safely. Parent remains BP_Ceiling_Light_High.
+- Added editable Ceiling Signal > SignalLightIntensity, default 80 lm, matching BP_Floor_Plain_Light's PanelLight intensity and units (was 600 lm). ApplyCeilingSignalState sets DownLight intensity in construction and on activation; existing mesh swap and latched signal behavior stay intact.
+- Current loaded level: 84 placed lamps keep transforms, OnSignalChannel and actor tags, and all now apply 80 lm. Parent and reference floor BP assets are unchanged. Maps were not auto-saved.
+- Renamed BP compiles with zero errors/warnings; six targeted checks passed for initial state, signal mesh swap, 80 lm, pulse retention and old path class resolution.
+- Results: Saved/CodexBackups/ceiling-brightness-rename-result.json and renamed-ceiling-light-verify.json. Backup: BP_Ceiling_Light_High_Signal-before-brightness-rename.uasset.
+
+### BP_SignalLaser family - BP_Laser10 mesh appearance (2026-11-25)
+- Backed up 7 source files with SHA-256 verification before editing: Saved/CodexBackups/SignalLaserMesh-20261125-152411/manifest.json. Copies include BP_SignalLaser, BP_MovingRestartLaser, BP_Laser10, SM_Laser, M_Laser, NS_SignalLaser and this structure document.
+- BP_SignalLaser now has collision-free LaserBeamMesh / ReverseLaserBeamMesh components using BP_Laser10's /Game/Code/Input/SM_Laser and M_Laser. BP_MovingRestartLaser inherits both. The source BP/assets and original Niagara effect are unchanged.
+- Laser Appearance > UseLaserMesh defaults true. Disable it to restore the original Niagara appearance. LaserMeshRadius defaults 1 cm (2 cm diameter, same as BP_Laser10's constructed beam); it controls visible thickness independently of the existing hazard Box.
+- Mesh segments follow existing LaserForwardEnd/LaserReverseEnd trace results, including single-ended shadowing and two-ended clipping. Transform from centered native-Z mesh (200 cm length / 100 cm diameter) to each world segment; update on movement, rotation, scale, power changes and blocker motion. Hide zero-length beams. Niagara components pause and hide in mesh mode.
+- Existing signals, delays, respawn/restart routing, movement and manual Box editing are preserved. No new visual collision is added.
+- Compile: zero errors/warnings for both BPs. 36 transient editor actor checks passed for exact mesh/material, start OFF, signals ON/OFF, geometry, transformed/moving actors, legacy fallback, one/two-sided blockers and custom collision Box. Interactive PIE/restart not rerun for this visual-only change.
+- Current 40 placed lasers retain transforms (tolerance 1e-6), extents and power/occlusion/geometry settings. Original mesh/material/Niagara asset hashes match backup. Maps were not auto-saved.
+- Results: Saved/CodexBackups/signal-laser-mesh-build.json and signal-laser-mesh-test.json; placement snapshots are inside the backup directory.
+
+### BP_AvilityBlock - stage 1 Grab override (2026-11-25)
+- Details > Size Stages > Grab: Override Stage 1 Grab (default false), Can Grab At Size Stage 1 (default true).
+- With override enabled at SizeStage=1, the latter option allows or denies Grab independently of CanGrab/CanGrab2. Physics movement mode is still required. Grab is denied while SizeMotion is active.
+- Stage 2/3 and disabled override retain the original CanInteract result. This query does not alter CanGrab or CanGrab2.
+- Parent BP_AvilityBlock saved; BP_LightBlock is a redirector to that parent. Descendants inherit the settings.
+- Backup: Saved/CodexBackups/Stage1Grab-20261125-154356. Compile checks passed for 13 asset paths (including redirector). 125 editor actor checks passed, including production shrink/return transitions and descendant permissions. No full player PIE Grab test was run.
+
+### BP_Ceiling_Light_Signal - runtime mobility fix (2026-11-25)
+- Level_Main_3 had 15 signal lamps with per-instance Static mobility, preventing SetStaticMesh during PIE.
+- ApplyCeilingSignalState now calls SetMobility(Movable) before either mesh swap, covering construction, BeginPlay and activation. Saved the Blueprint only; no map save required.
+- Backup: Saved/CodexBackups/CeilingMobility-20261125-201636.
+- Actual Level_Main_3 PIE verification passed 61 checks across all 15 reported actors: Movable, initial plain mesh/unlit, ignored wrong channel, accepted channel switches to light mesh and enables light. No SetStaticMesh/Mobility warnings in the verification run. The Python test emitted an unrelated deprecated API warning.
+
+### BP_SignalDeactivateRelay (2026-11-25)
+- New asset: /Game/BluePrint/BP_SignalDeactivateRelay, parent BP_Activate.
+- Details > Signal Deactivate: InputChannel (default 0), SignalTargets (Target + Channel per row).
+- Connect BP_Trigger.Targets to this relay on InputChannel, then configure relay.SignalTargets with receivers and channels to release.
+- Each accepted Activate sends one Deactivate per target row. Repeated activation is supported without requiring upstream release. Incoming Deactivate is ignored; no automatic reactivation, persistent connection blocking, or forced count reset.
+- Null, self, unsupported and destroyed targets are ignored. Guard prevents synchronous reentrant dispatch. Existing BPs and map wiring are unchanged.
+- Receivers determine release behavior: multiple signal contributions may require multiple releases; latched receivers such as BP_Ceiling_Light_Signal remain lit by design.
+- Compile errors/warnings: 0. Passed 16 editor actor checks, including multiple recipients, channel mapping, repeated pulses and stopping BP_SquareLight blink. No player overlap PIE test was run.
+
+### BP_SignalPulseRelay (2026-11-25)
+- New BP_Activate child: /Game/BluePrint/BP_SignalPulseRelay.
+- Details > Signal Pulse: InputChannel=0, OnDuration=1 second, OffDuration=1 second, SignalTargets (receiver + output channel).
+- Matching active input starts immediately with Activate. After OnDuration send Deactivate; after OffDuration repeat. Each duration clamps to 0.01 seconds. Uses game-time one-shot timers; no Tick loop.
+- Input release below ChannelRequired stops both timers and releases only the current ON contribution. Duplicate input does not restart the phase or duplicate output. Multiple incoming contributions must all release before stopping at the default threshold.
+- Each ON phase snapshots recipients so the corresponding OFF reaches the same actor/channel even if editable target rows change. Invalid/null/self/unsupported receivers are ignored.
+- Compatible with BP_TagSignalRelay and BP_SignalDeactivateRelay. A one-shot BP_Trigger starts ongoing repetition; use DeactivateRelay on the pulse relay InputChannel to stop it later. Receiver behavior still determines whether Deactivate visibly turns it off.
+- Compiled without errors/warnings. Actual PIE tests passed: immediate ON, timed ON/OFF cycles, direct and tagged recipients in sync, no output count accumulation, duplicate inputs, stop during either phase, canceled timers and restart. Log/test: Saved/CodexBackups/signal-pulse-relay-pie-test.json. Existing map edits were not saved.
+
+### BP_Ceiling_Light_Signal - native mesh/light blinking (2026-11-25)
+- Details > Ceiling Blink: EnableSignalBlink (default false), BlinkOnTime=1 second, BlinkOffTime=1 second. Durations clamp to 0.01 seconds.
+- Matching Activate(OnSignalChannel) starts immediately with the lit mesh and light ON, then native timers alternate SM_Floor_Plain_Light/light ON and SM_Floor_Plain/light OFF. PulseRelay is not needed. Duplicate Activate does not restart phase.
+- Matching Deactivate stops an active blink, clears both timers and restores the plain mesh/light OFF. A later Activate restarts. Wrong channels are ignored.
+- Disabled mode preserves the original latch behavior: one activation stays lit and Deactivate is ignored. Existing placed lamps are unchanged unless the option is enabled.
+- Original mobility safeguard remains before mesh swaps. Backup: Saved/CodexBackups/CeilingSignalBlink-20261125-211622.
+- Compile errors/warnings: 0. Actual PIE checks passed for timed mesh/light synchronization, custom channel, stop during ON/OFF, restart, canceled timers, brightness 80 and legacy mode. Test: Saved/CodexBackups/ceiling-signal-blink-pie-test.json. No maps saved.
